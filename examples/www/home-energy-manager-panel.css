@@ -1197,9 +1197,9 @@
 .pricing-group-selector-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: end;
-  margin-bottom: 14px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .pricing-group-edit-form__header-row {
