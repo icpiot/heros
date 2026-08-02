@@ -1317,19 +1317,22 @@
 .pricing-rule__actions--inline {
   align-self: center;
   min-width: 0;
-  width: 100%;
+  width: auto;
   justify-self: end;
   flex-wrap: wrap;
 }
 
 .pricing-rule__actions--inline .pricing-rule__button {
-  flex: 1 1 180px;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
 .pricing-rule__button {
+  box-sizing: border-box;
+  height: 38px;
   min-height: 38px;
-  padding: 8px 12px;
+  padding: 0 12px;
+  line-height: 1;
 }
 
 .pricing-rule__button--delete {

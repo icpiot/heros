@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "174";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "175";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2402,6 +2402,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingPage() {
+    if (!this._hass) {
+      return `
+        <section class="pricing">
+          <section class="grid pricing__grid pricing__grid--active-groups">
+            <article class="panel-card panel-card--wide">
+              <div class="panel-card__header">
+                <h2>Rate Group List</h2>
+                <span>Loading</span>
+              </div>
+            </article>
+          </section>
+        </section>
+      `;
+    }
     const model = this._loadPricingUi();
     const groups = this._pricingUiSortedGroups(model);
     const activeGroup = this._pricingUiActiveGroup({ ...model, groups }) || this._pricingUiGroupDefaults();
