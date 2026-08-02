@@ -133,3 +133,113 @@ def test_pricing_panel_ui_overlap_and_delete_logic():
     )
 
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_rolls_back_when_service_call_fails():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HomeEnergyManagerPanel extends HTMLElement",
+          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        const storage = new Map();
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: {
+            get() { return false; },
+            define() {},
+          },
+          localStorage: {
+            getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+            setItem(key, value) { storage.set(key, String(value)); },
+            removeItem(key) { storage.delete(key); },
+          },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+
+        const panel = new context.HomeEnergyManagerPanel();
+        panel._connectionName = () => "Test Provider";
+        panel._render = () => {};
+        panel._holdRenderWindow = () => {};
+        panel._pricingGroupDraft = {};
+        panel._pricingUiGroupDraft = {};
+        panel._hass = {
+          callService() {
+            return Promise.reject(new Error("backend failed"));
+          },
+        };
+
+        const original = {
+          groups: [{
+            group_id: "g1",
+            label: "Existing",
+            provider: "Test Provider",
+            plan_name: "",
+            effective_start_date: "2026-01-01",
+            pricing_type: "dynamic",
+            daily_connection_charge: "",
+            other_charges: "",
+            notes: "",
+            rules: [],
+          }],
+          activeGroupId: "g1",
+          warning: "",
+        };
+        panel._savePricingUi(original);
+        panel.shadowRoot = {
+          querySelectorAll() { return []; },
+          querySelector() { return null; },
+        };
+
+        Promise.resolve()
+          .then(async () => {
+            await panel._handlePricingUiDeleteGroup("g1");
+            const restored = panel._loadPricingUi();
+            const ok = restored.groups.length === 1 && restored.groups[0].group_id === "g1";
+            if (!ok) {
+              console.error(JSON.stringify(restored, null, 2));
+              process.exit(1);
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)

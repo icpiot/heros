@@ -2,4 +2,6 @@
 /TestData/
 *.pyc
 .env
+.ha_token
 .vscode/
+.venv/

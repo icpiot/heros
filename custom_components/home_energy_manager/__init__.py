@@ -140,7 +140,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=086"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=165"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -713,10 +713,24 @@ def _check_host_inverter_repair_issue(
 # Services — registered once at domain level, accept optional entry_id
 # ---------------------------------------------------------------------------
 
+def _configured_entry_ids(hass: HomeAssistant) -> list[str]:
+    """Return only real config-entry IDs stored under hass.data[DOMAIN]."""
+    return [
+        entry_id
+        for entry_id, entry_data in hass.data.get(DOMAIN, {}).items()
+        if isinstance(entry_data, dict)
+        and (
+            entry_data.get("coordinator") is not None
+            or entry_data.get("manager") is not None
+            or entry_data.get("pricing_store") is not None
+        )
+    ]
+
+
 def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall) -> str | None:
-    """Use the explicit entry_id if given; otherwise the first entry if only one exists."""
-    requested = call.data.get(ATTR_ENTRY_ID)
-    entries = list(hass.data.get(DOMAIN, {}).keys())
+    """Use the explicit entry_id if given; otherwise the first configured entry."""
+    requested = str(call.data.get(ATTR_ENTRY_ID) or "").strip()
+    entries = _configured_entry_ids(hass)
     if requested:
         if requested not in entries:
             raise HomeAssistantError(

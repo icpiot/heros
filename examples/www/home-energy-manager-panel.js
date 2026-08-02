@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "086";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "165";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -19,6 +19,9 @@ const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "neon", label: "Neon" },
   { value: "cyberpunk", label: "Cyberpunk" },
 ];
+
+const HOME_ENERGY_MANAGER_FALLBACK_HOSTS = new WeakSet();
+const HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS = new WeakMap();
 const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "overview", label: "Overview", icon: "◉" },
   { value: "policy", label: "Policy", icon: "▥" },
@@ -43,12 +46,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._renderHoldUntil = 0;
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
+    this._pricingGroupSelectorOpen = false;
+    this._pricingGroupEditorOpen = false;
     this._pricingTypeSelectorOpen = false;
-    this._pricingUiRuleDraft = this._pricingUiRuleDefaults();
+    this._pricingUiGroupDraft = {};
+    this._pricingUiRuleDrafts = {
+      buy: this._pricingUiRuleDefaults("buy"),
+      sell: this._pricingUiRuleDefaults("sell"),
+    };
+    this._pricingUiRuleDraft = this._pricingUiRuleDrafts.buy;
     this._deferredRenderTimer = null;
+    this._pricingAutoCommitTimer = null;
+    this._lastPricingAutoCommitSignature = "";
+    this._pricingFocusedField = null;
+    this._pricingFocusHoldUntil = 0;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
     this._boundLocationChange = this._handleLocationChange.bind(this);
+    this._bindInteractiveControls();
   }
 
   setConfig(config) {
@@ -59,6 +74,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (this._page === "pricing" && this._hasPricingUrlAction()) {
+      this._processPricingUrlAction();
+      this._render();
+      return;
+    }
+    if (this._page === "pricing" && this.shadowRoot?.querySelector(".pricing-group-card") && !this._pricingEditorModeFromUrl()) {
+      return;
+    }
     if (this._isSharedBatterySelectorHeld()) {
       this._holdRenderWindow(5000);
       return;
@@ -100,7 +123,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _shouldHoldRender() {
-    return Date.now() < this._renderHoldUntil;
+    const activeElement = this.shadowRoot?.activeElement;
+    return Date.now() < this._renderHoldUntil
+      || this._isPricingInteractionTarget(activeElement)
+      || this._isPricingEditorHeld();
   }
 
   _holdRenderWindow(duration = HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS) {
@@ -119,6 +145,112 @@ class HomeEnergyManagerPanel extends HTMLElement {
       || target?.dataset?.pricingGroupField !== undefined
       || target?.dataset?.pricingRuleField !== undefined
       || target?.dataset?.pricingRuleDay !== undefined;
+  }
+
+  _isPricingFillableTarget(target) {
+    if (!target || !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+      return false;
+    }
+    if (target.type === "hidden" || target.disabled || target.readOnly) {
+      return false;
+    }
+    return target.dataset?.pricingGroupField !== undefined
+      || target.dataset?.pricingRuleField !== undefined
+      || target.dataset?.pricingHolidayField !== undefined
+      || target.dataset?.pricingField !== undefined;
+  }
+
+  _rememberPricingFocusedField(target) {
+    if (!this._isPricingFillableTarget(target)) {
+      return;
+    }
+    this._pricingFocusedField = {
+      pricingGroupField: target.dataset.pricingGroupField || "",
+      pricingRuleField: target.dataset.pricingRuleField || "",
+      pricingHolidayField: target.dataset.pricingHolidayField || "",
+      pricingField: target.dataset.pricingField || "",
+      pricingRecordType: target.dataset.pricingRecordType || "",
+      name: target.getAttribute("name") || "",
+      tagName: target.tagName,
+    };
+    this._pricingFocusHoldUntil = Math.max(this._pricingFocusHoldUntil, Date.now() + 15000);
+    this._holdRenderWindow(15000);
+  }
+
+  _pricingFocusedFieldSelector() {
+    const field = this._pricingFocusedField;
+    if (!field) {
+      return "";
+    }
+    const escapeCss = (value) => {
+      if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+        return CSS.escape(String(value));
+      }
+      return String(value).replace(/["\\]/g, "\\$&");
+    };
+    const selectors = [];
+    if (field.pricingGroupField) {
+      selectors.push(`[data-pricing-group-field="${escapeCss(field.pricingGroupField)}"]`);
+    }
+    if (field.pricingRuleField) {
+      selectors.push(`[data-pricing-rule-field="${escapeCss(field.pricingRuleField)}"]`);
+    }
+    if (field.pricingHolidayField) {
+      selectors.push(`[data-pricing-holiday-field="${escapeCss(field.pricingHolidayField)}"]`);
+    }
+    if (field.pricingField) {
+      selectors.push(`[data-pricing-field="${escapeCss(field.pricingField)}"]`);
+    }
+    if (field.pricingRecordType) {
+      selectors.push(`[data-pricing-record-type="${escapeCss(field.pricingRecordType)}"]`);
+    }
+    if (field.name) {
+      selectors.push(`[name="${escapeCss(field.name)}"]`);
+    }
+    return selectors.join("");
+  }
+
+  _restorePricingFocusedField() {
+    if (!this.shadowRoot || !this._pricingFocusedField || Date.now() > this._pricingFocusHoldUntil) {
+      return;
+    }
+    const selector = this._pricingFocusedFieldSelector();
+    if (!selector) {
+      return;
+    }
+    const target = this.shadowRoot.querySelector(selector);
+    if (!this._isPricingFillableTarget(target)) {
+      return;
+    }
+    window.setTimeout(() => {
+      try {
+        target.focus({ preventScroll: true });
+      } catch (error) {
+        // Ignore focus restore failures from unsupported input types.
+      }
+    }, 0);
+  }
+
+  _openNativeDatePicker(target) {
+    // Keep native date inputs native. Calling showPicker from a shadow/HA panel can
+    // make Chromium render the picker at the viewport origin instead of the field.
+  }
+
+  _isPricingEditorHeld() {
+    if (Date.now() < this._renderHoldUntil) {
+      return true;
+    }
+    if (!this.shadowRoot || this._page !== "pricing") {
+      return false;
+    }
+    const editor = this.shadowRoot.querySelector(".pricing-group-card");
+    if (!editor) {
+      return false;
+    }
+    const activeElement = this.shadowRoot.activeElement || editor.ownerDocument?.activeElement;
+    return editor.matches(":focus-within")
+      || editor.contains(activeElement)
+      || Boolean(editor.querySelector("[data-pricing-group-field]:focus, [data-pricing-rule-field]:focus, [data-pricing-rule-day]:focus"));
   }
 
   _queueDeferredRender() {
@@ -401,6 +533,331 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
   }
 
+  _hasPricingUrlAction() {
+    try {
+      return Boolean(new URL(window.location.href).searchParams.get("hem_action"));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  _pricingEditorModeFromUrl() {
+    try {
+      const mode = new URL(window.location.href).searchParams.get("hem_editor");
+      return String(mode || "").trim().toLowerCase();
+    } catch (error) {
+      return "";
+    }
+  }
+
+  _processPricingUrlAction() {
+    if (this._processingPricingUrlAction) {
+      return;
+    }
+    let url;
+    try {
+      url = new URL(window.location.href);
+    } catch (error) {
+      return;
+    }
+    const action = url.searchParams.get("hem_action");
+    if (!action) {
+      return;
+    }
+    if (!this._hass) {
+      return;
+    }
+    this._processingPricingUrlAction = true;
+    try {
+      const model = this._loadPricingUi();
+      if (action === "add_group" || action === "update_group") {
+        const group = {
+          ...this._pricingUiGroupDefaults(),
+          group_id: action === "update_group"
+            ? String(url.searchParams.get("group_id") || model.activeGroupId || "").trim()
+            : this._generateRuleId(),
+          label: String(url.searchParams.get("group_label") || "").trim(),
+          provider: this._connectionName(),
+          plan_name: String(url.searchParams.get("plan_name") || "").trim(),
+          effective_start_date: this._normalizePricingDate(url.searchParams.get("effective_start_date")),
+          pricing_type: String(url.searchParams.get("pricing_type") || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic",
+          daily_connection_charge: String(url.searchParams.get("daily_connection_charge") || "").trim(),
+          other_charges: String(url.searchParams.get("other_charges") || "").trim(),
+          notes: String(url.searchParams.get("notes") || "").trim(),
+          rules: [],
+        };
+        group.label = group.label || `Rates from ${group.effective_start_date || "new group"}`;
+        const existingGroup = (model.groups || []).find((item) => String(item.group_id || "") === String(group.group_id || ""));
+        if (action === "update_group" && existingGroup?.effective_start_date) {
+          group.effective_start_date = String(existingGroup.effective_start_date || "");
+        }
+        if (!group.effective_start_date) {
+          model.warning = "Rate group effective start date is required.";
+        } else if ((model.groups || []).some((item) => (
+          String(item.effective_start_date || "") === group.effective_start_date
+          && String(item.group_id || "") !== String(group.group_id || "")
+        ))) {
+          model.warning = `A rate group already starts on ${group.effective_start_date}. Delete it or choose a different start date.`;
+        } else {
+          group.rules = Array.isArray(existingGroup?.rules) ? existingGroup.rules : [];
+          if (action === "update_group" && group.group_id) {
+            model.groups = (model.groups || []).map((item) => (
+              String(item.group_id || "") === String(group.group_id || "") ? group : item
+            ));
+          } else {
+            model.groups = [...(model.groups || []), group];
+          }
+          model.activeGroupId = group.group_id;
+          model.warning = "";
+          this._pricingUiGroupDraft = {};
+          this._callPricingGroupService(group);
+        }
+        this._savePricingUi(model);
+      }
+      if (action === "add_rule") {
+        const group = this._pricingUiActiveGroup(model);
+        const recordType = String(url.searchParams.get("record_type") || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+        if (!group) {
+          model.warning = "Add or select a rate group before adding records.";
+        } else {
+          const rule = {
+            ...this._pricingUiRuleDefaults(recordType),
+            rule_id: this._generateRuleId(),
+            label: String(url.searchParams.get("rule_label") || "").trim(),
+            start_time: String(url.searchParams.get("start_time") || "").trim(),
+            end_time: String(url.searchParams.get("end_time") || "").trim(),
+            import_rate: String(url.searchParams.get("import_rate") || "").trim(),
+            export_tier_1_limit: String(url.searchParams.get("export_tier_1_limit") || "").trim(),
+            export_tier_1_rate: String(url.searchParams.get("export_tier_1_rate") || "").trim(),
+            export_tier_2_rate: String(url.searchParams.get("export_tier_2_rate") || "").trim(),
+            controlled_load_rate: String(url.searchParams.get("controlled_load_rate") || "").trim(),
+            record_type: recordType,
+          };
+          const warning = this._pricingUiValidationForRule(group, rule);
+          if (warning) {
+            model.warning = warning;
+          } else {
+            group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
+            model.warning = "";
+            this._resetPricingUiRuleDraft(recordType);
+            this._callPricingRecordService(group.group_id, rule);
+          }
+        }
+        this._savePricingUi(model);
+      }
+      window.history.replaceState({}, "", `${url.pathname}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`);
+    } finally {
+      this._processingPricingUrlAction = false;
+    }
+  }
+
+  _pricingActionHref(action, values = {}) {
+    const params = new URLSearchParams({
+      hem_page: "pricing",
+      hem_action: action,
+      ...Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value ?? "")])),
+    });
+    return `/home-energy-manager?${params.toString()}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+  }
+
+  _pricingEditorHref(mode = "modify") {
+    const params = new URLSearchParams({
+      hem_page: "pricing",
+      hem_editor: String(mode || "modify"),
+    });
+    return `/home-energy-manager?${params.toString()}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+  }
+
+  _normalizePricingDate(value) {
+    const text = String(value || "").trim();
+    if (!text) {
+      return "";
+    }
+    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return text;
+    }
+    const localMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (localMatch) {
+      const [, day, month, year] = localMatch;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    return "";
+  }
+
+  _updatePricingActionLinks() {
+    if (!this.shadowRoot) {
+      return;
+    }
+    const groupDraft = this._readPricingUiGroupForm();
+    const model = this._loadPricingUi();
+    const activeGroup = this._pricingUiActiveGroup(model);
+    const updateGroupLink = this.shadowRoot.querySelector('[data-pricing-action-link="update_group"]');
+    if (updateGroupLink) {
+      updateGroupLink.href = this._pricingActionHref("update_group", {
+        group_id: activeGroup?.group_id || groupDraft.group_id,
+        group_label: groupDraft.label,
+        effective_start_date: activeGroup?.effective_start_date || groupDraft.effective_start_date,
+        plan_name: groupDraft.plan_name,
+        pricing_type: groupDraft.pricing_type,
+        daily_connection_charge: groupDraft.daily_connection_charge,
+        other_charges: groupDraft.other_charges,
+        notes: groupDraft.notes,
+      });
+    }
+    const groupLink = this.shadowRoot.querySelector('[data-pricing-action-link="add_group"]');
+    if (groupLink) {
+      groupLink.href = this._pricingActionHref("add_group", {
+        group_label: groupDraft.label,
+        effective_start_date: groupDraft.effective_start_date,
+        plan_name: groupDraft.plan_name,
+        pricing_type: groupDraft.pricing_type,
+        daily_connection_charge: groupDraft.daily_connection_charge,
+        other_charges: groupDraft.other_charges,
+        notes: groupDraft.notes,
+      });
+    }
+    ["buy", "sell"].forEach((recordType) => {
+      const draft = this._readPricingUiRuleForm(recordType);
+      const link = this.shadowRoot.querySelector(`[data-pricing-action-link="add_rule"][data-pricing-record-type="${recordType}"]`);
+      if (link) {
+        link.href = this._pricingActionHref("add_rule", {
+          record_type: recordType,
+          rule_label: draft.label,
+          start_time: draft.start_time,
+          end_time: draft.end_time,
+          import_rate: draft.import_rate,
+          controlled_load_rate: draft.controlled_load_rate,
+          export_tier_1_limit: draft.export_tier_1_limit,
+          export_tier_1_rate: draft.export_tier_1_rate,
+          export_tier_2_rate: draft.export_tier_2_rate,
+        });
+      }
+    });
+  }
+
+  _refreshPricingActionLink(link) {
+    if (!link?.dataset?.pricingActionLink) {
+      return;
+    }
+    this._updatePricingActionLinks();
+  }
+
+  _submitPricingGroupForm(form, action) {
+    if (!form) {
+      return;
+    }
+    const group = this._readPricingUiGroupForm();
+    const model = this._loadPricingUi();
+    const activeGroup = this._pricingUiActiveGroup(model);
+    const href = this._pricingActionHref(action, {
+      group_id: action === "update_group" ? (activeGroup.group_id || group.group_id) : "",
+      group_label: group.label,
+      effective_start_date: group.effective_start_date,
+      plan_name: group.plan_name,
+      pricing_type: group.pricing_type,
+      daily_connection_charge: group.daily_connection_charge,
+      other_charges: group.other_charges,
+      notes: group.notes,
+    });
+    window.location.href = href;
+  }
+
+  _isPricingAutoCommitRateReady(value) {
+    const text = String(value ?? "").trim();
+    return /^\d+(?:\.\d+)?$/.test(text) && Number(text) > 0 && text.length >= 3;
+  }
+
+  _pricingAutoCommitSignature(kind, payload = {}) {
+    return [
+      kind,
+      payload.group_id || "",
+      payload.label || "",
+      payload.effective_start_date || "",
+      payload.plan_name || "",
+      payload.start_time || "",
+      payload.end_time || "",
+      payload.import_rate || "",
+      payload.export_tier_1_rate || "",
+      payload.export_tier_2_rate || "",
+    ].map((value) => String(value ?? "").trim()).join("|");
+  }
+
+  _pricingGroupReadyForAutoCommit(group) {
+    return Boolean(
+      String(group?.label || "").trim()
+      && /^\d{4}-\d{2}-\d{2}$/.test(String(group?.effective_start_date || "").trim()),
+    );
+  }
+
+  _pricingRuleReadyForAutoCommit(rule) {
+    const recordType = String(rule?.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    const hasCoreFields = Boolean(
+      String(rule?.label || "").trim()
+      && /^\d{2}:\d{2}$/.test(String(rule?.start_time || "").trim())
+      && /^\d{2}:\d{2}$/.test(String(rule?.end_time || "").trim()),
+    );
+    if (!hasCoreFields) {
+      return false;
+    }
+    if (recordType === "sell") {
+      return this._isPricingAutoCommitRateReady(rule?.export_tier_1_rate || rule?.export_tier_2_rate);
+    }
+    return this._isPricingAutoCommitRateReady(rule?.import_rate);
+  }
+
+  _schedulePricingAutoCommit(recordType = "") {
+    // Disabled intentionally: pricing fields must behave like a normal form.
+    // Saving happens only when the user chooses Save/Add.
+  }
+
+  _tryPricingAutoCommit(recordType = "") {
+    if (this._page !== "pricing") {
+      return false;
+    }
+    if (recordType) {
+      const model = this._loadPricingUi();
+      const group = this._pricingUiActiveGroup(model);
+      if (!group) {
+        return false;
+      }
+      const rule = this._readPricingUiRuleForm(recordType);
+      if (!this._pricingRuleReadyForAutoCommit(rule)) {
+        return false;
+      }
+      const warning = this._pricingUiValidationForRule(group, rule);
+      if (warning) {
+        return false;
+      }
+      const signature = this._pricingAutoCommitSignature(`rule:${recordType}`, {
+        ...rule,
+        group_id: group.group_id,
+      });
+      if (signature === this._lastPricingAutoCommitSignature) {
+        return false;
+      }
+      this._lastPricingAutoCommitSignature = signature;
+      this._handlePricingUiAddRule(recordType);
+      return true;
+    }
+
+    const group = this._readPricingUiGroupForm();
+    if (!this._pricingGroupReadyForAutoCommit(group)) {
+      return false;
+    }
+    const model = this._loadPricingUi();
+    if ((model.groups || []).some((item) => String(item.effective_start_date || "") === String(group.effective_start_date || ""))) {
+      return false;
+    }
+    const signature = this._pricingAutoCommitSignature("group", group);
+    if (signature === this._lastPricingAutoCommitSignature) {
+      return false;
+    }
+    this._lastPricingAutoCommitSignature = signature;
+    this._handlePricingUiAddGroup();
+    return true;
+  }
+
   _states() {
     return Object.values(this._hass?.states || {});
   }
@@ -416,6 +873,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return fallback;
     }
     return this._formatEntityState(this._hass?.states?.[entityId], fallback);
+  }
+
+  _entryId() {
+    const entryId = String(this._config?.entry_id || "").trim();
+    return entryId && entryId !== "frontend_panel_registered" ? entryId : undefined;
   }
 
   _stateForConfiguredEntity(configKey, fallbackKey, domain = "sensor", fallback = "Unavailable") {
@@ -507,6 +969,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? attributes.active_rule
       : null;
     return {
+      available: Boolean(entity),
       state: entity?.state || "Unavailable",
       ruleCount: Number(attributes.rule_count ?? rules.length ?? 0),
       holidayCount: Number(attributes.holiday_count ?? holidayDates.length ?? 0),
@@ -575,6 +1038,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ...this._pricingUiDefaults(),
       groups,
       activeGroupId,
+      backendAvailable: Boolean(schedule.available),
     };
   }
 
@@ -590,6 +1054,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
     try {
       const parsed = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY) || "{}") || {};
       const backendModel = this._pricingUiFromBackendSchedule();
+      if (backendModel.backendAvailable && backendModel.groups.length === 0) {
+        try {
+          localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
+        } catch (storageError) {
+          // Ignore storage failures in private browsing / restricted environments.
+        }
+        return backendModel;
+      }
       if (!Array.isArray(parsed.groups) || parsed.groups.length === 0) {
         return backendModel;
       }
@@ -597,6 +1069,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         ...this._pricingUiDefaults(),
         ...backendModel,
         ...parsed,
+        backendAvailable: backendModel.backendAvailable,
         groups: Array.isArray(parsed.groups) ? parsed.groups : [],
       };
     } catch (error) {
@@ -622,7 +1095,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       label: "",
       provider: this._connectionName(),
       plan_name: "",
-      effective_start_date: new Date().toISOString().slice(0, 10),
+      effective_start_date: "",
       pricing_type: "dynamic",
       daily_connection_charge: "",
       other_charges: "",
@@ -631,20 +1104,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
     };
   }
 
-  _pricingUiRuleDefaults() {
+  _pricingUiRuleDefaults(recordType = "buy") {
     return {
       rule_id: "",
       label: "",
       day_types: ["mon", "tue", "wed", "thu", "fri"],
-      start_time: "00:00",
-      end_time: "23:59",
+      start_time: "",
+      end_time: "",
       import_rate: "",
       export_rate: "",
       export_tier_1_limit: "",
       export_tier_1_rate: "",
       export_tier_2_rate: "",
       controlled_load_rate: "",
-      record_type: "buy",
+      record_type: String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy",
       other_charges: "",
       notes: "",
     };
@@ -663,6 +1136,67 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       return "dynamic";
     }
+  }
+
+  _openPricingGroupSelector() {
+    this._pricingGroupSelectorOpen = true;
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  _closePricingGroupSelector() {
+    this._pricingGroupSelectorOpen = false;
+    this._holdRenderWindow(600);
+    this._render();
+  }
+
+  _renderPricingGroupSelector(groups = [], activeGroup = null) {
+    const selectedGroupId = String(activeGroup?.group_id || "");
+    const selectedLabel = activeGroup?.group_id
+      ? `${activeGroup.effective_start_date || "No date"} — ${activeGroup.label || "No description"}`
+      : "No rate group selected";
+    const hasGroups = groups.length > 0;
+    const dropdown = this._pricingGroupSelectorOpen && hasGroups
+      ? `
+          <div class="shared-selector__menu pricing-group-selector__menu" role="listbox" aria-label="Rate Group List">
+            ${groups.map((group) => {
+              const groupId = String(group.group_id || "");
+              const selected = groupId === selectedGroupId;
+              const label = `${group.effective_start_date || "No date"} — ${group.label || "No description"}`;
+              return `
+                <button
+                  type="button"
+                  class="shared-selector__option ${selected ? "is-selected" : ""}"
+                  role="option"
+                  aria-selected="${selected ? "true" : "false"}"
+                  data-pricing-ui-select-group="${this._escapeHtml(groupId)}"
+                >
+                  ${this._escapeHtml(label)}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        `
+      : "";
+    return `
+      <div class="shared-selector pricing-group-selector">
+        <div class="shared-selector__label" id="hem-pricing-group-label">Effective Date / Description</div>
+        <div class="shared-selector__picker">
+          <button
+            type="button"
+            class="shared-selector__control"
+            aria-haspopup="listbox"
+            aria-expanded="${this._pricingGroupSelectorOpen && hasGroups ? "true" : "false"}"
+            aria-labelledby="hem-pricing-group-label"
+            data-pricing-group-toggle
+            ${hasGroups ? "" : "disabled"}
+          >
+            <span>${this._escapeHtml(selectedLabel)}</span>
+          </button>
+          ${dropdown}
+        </div>
+      </div>
+    `;
   }
 
   _savePricingGroupDraftType(value) {
@@ -704,7 +1238,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       : "";
     return `
       <div class="pricing-type-selector">
-        <span>Pricing type</span>
+        <span>Type</span>
         <input type="hidden" data-pricing-group-field="pricing_type" value="${current}" />
         <div class="shared-selector__picker pricing-type-selector__picker">
           <button
@@ -741,7 +1275,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       label: String(form.label || "").trim() || `Rates from ${form.effective_start_date || defaults.effective_start_date}`,
       provider: String(form.provider || "").trim(),
       plan_name: String(form.plan_name || "").trim(),
-      effective_start_date: String(form.effective_start_date || defaults.effective_start_date).trim(),
+      effective_start_date: this._normalizePricingDate(form.effective_start_date || defaults.effective_start_date),
       pricing_type: String(form.pricing_type || this._pricingGroupDraftType() || defaults.pricing_type).trim().toLowerCase(),
       daily_connection_charge: String(form.daily_connection_charge || "").trim(),
       other_charges: String(form.other_charges || "").trim(),
@@ -750,13 +1284,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
     };
   }
 
+  _syncPricingUiGroupDraft() {
+    this._pricingUiGroupDraft = this._readPricingUiGroupForm();
+    return this._pricingUiGroupDraft;
+  }
+
   _readPricingUiRuleForm(recordType = "buy") {
-    const defaults = this._pricingUiRuleDefaults();
+    const normalizedRecordType = String(recordType || "buy").trim().toLowerCase() === "sell" ? "sell" : "buy";
+    const defaults = this._pricingUiRuleDefaults(normalizedRecordType);
     if (!this.shadowRoot) {
       return defaults;
     }
     const form = {};
-    this.shadowRoot.querySelectorAll("[data-pricing-rule-field]").forEach((field) => {
+    const fieldSelector = `[data-pricing-rule-field][data-pricing-record-type="${normalizedRecordType}"]`;
+    this.shadowRoot.querySelectorAll(fieldSelector).forEach((field) => {
       const key = field.dataset.pricingRuleField;
       if (!key) {
         return;
@@ -766,7 +1307,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
       form[key] = String(field.value || "");
     });
-    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-pricing-rule-day]:checked"))
+    const daySelector = `[data-pricing-rule-day][data-pricing-record-type="${normalizedRecordType}"]:checked`;
+    const dayTypes = Array.from(this.shadowRoot.querySelectorAll(daySelector))
       .map((field) => String(field.dataset.pricingRuleDay || ""))
       .filter(Boolean);
     return {
@@ -783,21 +1325,36 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_rate: String(form.export_tier_1_rate || "").trim(),
       export_tier_2_rate: String(form.export_tier_2_rate || "").trim(),
       controlled_load_rate: String(form.controlled_load_rate || "").trim(),
-      record_type: String(recordType || form.record_type || defaults.record_type || "buy").trim().toLowerCase(),
+      record_type: normalizedRecordType,
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
     };
   }
 
   _syncPricingUiRuleDraft(recordType = "") {
-    this._pricingUiRuleDraft = this._readPricingUiRuleForm(
-      recordType || this._pricingUiRuleDraft?.record_type || "buy",
-    );
+    const normalizedRecordType = String(recordType || this._pricingUiRuleDraft?.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    this._pricingUiRuleDrafts = {
+      buy: {
+        ...this._pricingUiRuleDefaults("buy"),
+        ...(this._pricingUiRuleDrafts?.buy || {}),
+      },
+      sell: {
+        ...this._pricingUiRuleDefaults("sell"),
+        ...(this._pricingUiRuleDrafts?.sell || {}),
+      },
+    };
+    this._pricingUiRuleDrafts[normalizedRecordType] = this._readPricingUiRuleForm(normalizedRecordType);
+    this._pricingUiRuleDraft = this._pricingUiRuleDrafts[normalizedRecordType];
     return this._pricingUiRuleDraft;
   }
 
-  _resetPricingUiRuleDraft() {
-    this._pricingUiRuleDraft = this._pricingUiRuleDefaults();
+  _resetPricingUiRuleDraft(recordType = "") {
+    const normalizedRecordType = String(recordType || this._pricingUiRuleDraft?.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    this._pricingUiRuleDrafts = {
+      ...(this._pricingUiRuleDrafts || {}),
+      [normalizedRecordType]: this._pricingUiRuleDefaults(normalizedRecordType),
+    };
+    this._pricingUiRuleDraft = this._pricingUiRuleDrafts[normalizedRecordType];
   }
 
   _pricingTimeToMinutes(value) {
@@ -872,26 +1429,64 @@ class HomeEnergyManagerPanel extends HTMLElement {
     ));
   }
 
-  _handlePricingUiAddGroup() {
+  async _handlePricingUiSaveGroup(updateActive = false) {
     const model = this._loadPricingUi();
+    const previousModel = JSON.parse(JSON.stringify(model));
+    const activeGroup = this._pricingUiActiveGroup(model);
     const group = this._readPricingUiGroupForm();
+    if (updateActive && activeGroup?.group_id) {
+      group.group_id = String(activeGroup.group_id || "");
+      group.effective_start_date = String(activeGroup.effective_start_date || "");
+      group.rules = Array.isArray(activeGroup.rules) ? activeGroup.rules : [];
+    }
     if (!group.effective_start_date) {
       model.warning = "Rate group effective start date is required.";
       this._savePricingUi(model);
       this._render();
       return;
     }
-    if ((model.groups || []).some((item) => String(item.effective_start_date || "") === group.effective_start_date)) {
+    const matchingGroup = (model.groups || []).find((item) => (
+      String(item.effective_start_date || "") === group.effective_start_date
+      && String(item.group_id || "") !== String(group.group_id || "")
+    ));
+    if (matchingGroup) {
       model.warning = `A rate group already starts on ${group.effective_start_date}. Delete it or choose a different start date.`;
       this._savePricingUi(model);
       this._render();
       return;
     }
-    model.groups = [...(model.groups || []), group];
+    const nextGroups = Array.isArray(model.groups) ? [...model.groups] : [];
+    const existingIndex = nextGroups.findIndex((item) => String(item.group_id || "") === String(group.group_id || ""));
+    if (existingIndex >= 0) {
+      nextGroups[existingIndex] = {
+        ...nextGroups[existingIndex],
+        ...group,
+        rules: Array.isArray(nextGroups[existingIndex].rules) ? nextGroups[existingIndex].rules : [],
+      };
+    } else {
+      nextGroups.push(group);
+    }
+    model.groups = nextGroups;
     model.activeGroupId = group.group_id;
     model.warning = "";
     this._savePricingUi(model);
+    this._pricingUiGroupDraft = {};
+    this._holdRenderWindow();
     this._render();
+    try {
+      await this._callPricingGroupService(group);
+    } catch (error) {
+      this._savePricingUi(previousModel);
+      this._render();
+    }
+  }
+
+  _handlePricingUiAddGroup() {
+    return this._handlePricingUiSaveGroup(false);
+  }
+
+  _handlePricingUiUpdateGroup() {
+    return this._handlePricingUiSaveGroup(true);
   }
 
   _handlePricingUiSelectGroup(groupId) {
@@ -899,11 +1494,42 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.activeGroupId = String(groupId || "");
     model.warning = "";
     this._savePricingUi(model);
+    const activeGroup = this._pricingUiActiveGroup(model);
+    this._pricingUiGroupDraft = {};
+    if (activeGroup?.pricing_type) {
+      this._savePricingGroupDraftType(activeGroup.pricing_type);
+    }
+    this._pricingGroupSelectorOpen = false;
+    this._pricingGroupEditorOpen = false;
     this._render();
   }
 
-  _handlePricingUiDeleteGroup(groupId) {
+  _handlePricingUiModifyGroup() {
     const model = this._loadPricingUi();
+    const activeGroup = this._pricingUiActiveGroup(model);
+    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup } : {};
+    if (activeGroup?.pricing_type) {
+      this._savePricingGroupDraftType(activeGroup.pricing_type);
+    }
+    this._pricingGroupEditorOpen = true;
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  _handlePricingUiNewGroup() {
+    this._pricingUiGroupDraft = {
+      ...this._pricingUiGroupDefaults(),
+      provider: this._connectionName(),
+      pricing_type: this._pricingGroupDraftType() || "dynamic",
+    };
+    this._pricingGroupEditorOpen = true;
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  async _handlePricingUiDeleteGroup(groupId) {
+    const model = this._loadPricingUi();
+    const previousModel = JSON.parse(JSON.stringify(model));
     const deleteGroupId = String(groupId || "");
     model.groups = (model.groups || []).filter((group) => String(group.group_id || "") !== deleteGroupId);
     if (String(model.activeGroupId || "") === deleteGroupId) {
@@ -912,10 +1538,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.warning = "";
     this._savePricingUi(model);
     this._render();
+    try {
+      await this._callPricingRemoveGroupService(deleteGroupId);
+    } catch (error) {
+      this._savePricingUi(previousModel);
+      this._render();
+    }
   }
 
-  _handlePricingUiAddRule() {
+  async _handlePricingUiAddRule(recordType = "buy") {
     const model = this._loadPricingUi();
+    const previousModel = JSON.parse(JSON.stringify(model));
     const group = this._pricingUiActiveGroup(model);
     if (!group) {
       model.warning = "Add or select a rate group before adding records.";
@@ -923,7 +1556,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._render();
       return;
     }
-    const rule = this._readPricingUiRuleForm();
+    const rule = this._readPricingUiRuleForm(recordType);
     const warning = this._pricingUiValidationForRule(group, rule);
     if (warning) {
       model.warning = warning;
@@ -934,11 +1567,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
     group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
     model.warning = "";
     this._savePricingUi(model);
+    this._resetPricingUiRuleDraft(rule.record_type);
+    this._holdRenderWindow();
     this._render();
+    try {
+      await this._callPricingRecordService(group.group_id, rule);
+    } catch (error) {
+      this._savePricingUi(previousModel);
+      this._render();
+    }
   }
 
-  _handlePricingUiDeleteRule(ruleId) {
+  async _handlePricingUiDeleteRule(ruleId) {
     const model = this._loadPricingUi();
+    const previousModel = JSON.parse(JSON.stringify(model));
     const group = this._pricingUiActiveGroup(model);
     if (!group) {
       return;
@@ -948,46 +1590,54 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.warning = "";
     this._savePricingUi(model);
     this._render();
+    try {
+      await this._callPricingRemoveRecordService(group.group_id, deleteRuleId);
+    } catch (error) {
+      this._savePricingUi(previousModel);
+      this._render();
+    }
   }
 
   _callPricingGroupService(group) {
     if (!this._hass || !group?.group_id) {
-      return;
+      return Promise.resolve();
     }
-    this._hass.callService("home_energy_manager", "pricing_upsert_group", {
-      entry_id: this._config?.entry_id,
+    return this._hass.callService("home_energy_manager", "pricing_upsert_group", {
+      entry_id: this._entryId(),
       group_id: group.group_id,
       label: group.label,
       provider: group.provider,
       plan_name: group.plan_name,
-      effective_start_date: group.effective_start_date,
+      effective_start_date: this._normalizePricingDate(group.effective_start_date),
       pricing_type: group.pricing_type,
       daily_connection_charge: String(group.daily_connection_charge ?? "").trim() === "" ? undefined : Number(group.daily_connection_charge),
       other_charges: group.other_charges,
       notes: group.notes,
     }).catch((error) => {
       console.error("Failed to save pricing group", error);
+      throw error;
     });
   }
 
   _callPricingRemoveGroupService(groupId) {
     if (!this._hass || !groupId) {
-      return;
+      return Promise.resolve();
     }
-    this._hass.callService("home_energy_manager", "pricing_remove_group", {
-      entry_id: this._config?.entry_id,
+    return this._hass.callService("home_energy_manager", "pricing_remove_group", {
+      entry_id: this._entryId(),
       group_id: groupId,
     }).catch((error) => {
       console.error("Failed to delete pricing group", error);
+      throw error;
     });
   }
 
   _callPricingRecordService(groupId, rule) {
     if (!this._hass || !groupId || !rule?.rule_id) {
-      return;
+      return Promise.resolve();
     }
-    this._hass.callService("home_energy_manager", "pricing_upsert_record", {
-      entry_id: this._config?.entry_id,
+    return this._hass.callService("home_energy_manager", "pricing_upsert_record", {
+      entry_id: this._entryId(),
       group_id: groupId,
       record_id: rule.rule_id,
       record_type: rule.record_type || "buy",
@@ -1005,19 +1655,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
       notes: rule.notes,
     }).catch((error) => {
       console.error("Failed to save pricing record", error);
+      throw error;
     });
   }
 
   _callPricingRemoveRecordService(groupId, ruleId) {
     if (!this._hass || !groupId || !ruleId) {
-      return;
+      return Promise.resolve();
     }
-    this._hass.callService("home_energy_manager", "pricing_remove_record", {
-      entry_id: this._config?.entry_id,
+    return this._hass.callService("home_energy_manager", "pricing_remove_record", {
+      entry_id: this._entryId(),
       group_id: groupId,
       record_id: ruleId,
     }).catch((error) => {
       console.error("Failed to delete pricing record", error);
+      throw error;
     });
   }
 
@@ -1632,7 +2284,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </section>
 
         <section class="grid forecast__grid">
-          <article class="panel-card panel-card--wide">
+          <article class="panel-card panel-card--wide pricing-editor-card pricing-group-card">
             <div class="panel-card__header">
               <h2>Forecast Setup</h2>
               <span>Configured entities</span>
@@ -1745,14 +2397,38 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const activeRules = Array.isArray(activeGroup.rules) ? activeGroup.rules : [];
     const buyRules = activeRules.filter((rule) => String(rule.record_type || "buy") !== "sell");
     const sellRules = activeRules.filter((rule) => String(rule.record_type || "buy") === "sell");
-    const ruleDraft = {
-      ...this._pricingUiRuleDefaults(),
-      ...(this._pricingUiRuleDraft || {}),
+    const pricingEditorMode = this._pricingEditorModeFromUrl();
+    const showGroupEditor = this._pricingGroupEditorOpen
+      || pricingEditorMode === "modify"
+      || pricingEditorMode === "new"
+      || !activeGroup.group_id;
+    const buyRuleDraft = {
+      ...this._pricingUiRuleDefaults("buy"),
+      ...(this._pricingUiRuleDrafts?.buy || {}),
+    };
+    const sellRuleDraft = {
+      ...this._pricingUiRuleDefaults("sell"),
+      ...(this._pricingUiRuleDrafts?.sell || {}),
     };
     const groupDraft = {
       ...this._pricingUiGroupDefaults(),
-      provider: activeGroup.provider || this._connectionName(),
+      ...(pricingEditorMode === "new" ? {} : activeGroup),
+      provider: pricingEditorMode === "new" ? this._connectionName() : (activeGroup.provider || this._connectionName()),
+      ...(this._pricingUiGroupDraft || {}),
     };
+    const renderDaySelector = (recordType) => `
+      <div class="pricing-field-group pricing-record-section__days">
+        <span>${recordType === "sell" ? "Sell days" : "Buy days"}</span>
+        <div class="pricing-day-grid">
+          ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
+            <label class="pricing-day-pill">
+              <input type="checkbox" data-pricing-record-type="${recordType}" data-pricing-rule-day="${day}" ${(recordType === "sell" ? sellRuleDraft : buyRuleDraft).day_types.includes(day) ? "checked" : ""} />
+              <span>${day === "public_holiday" ? "Public holiday" : day.toUpperCase()}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+    `;
     const overlapWarnings = activeRules
       .flatMap((rule, index) => activeRules.slice(index + 1).map((other) => [rule, other]))
       .filter(([rule, other]) => this._pricingRulesOverlap(rule, other))
@@ -1767,30 +2443,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const groupCards = visibleGroups.length
       ? visibleGroups.map((group) => {
           const isActive = String(group.group_id || "") === String(activeGroup.group_id || "");
-          const nextGroup = groups
-            .filter((item) => String(item.effective_start_date || "") > String(group.effective_start_date || ""))
-            .sort((a, b) => String(a.effective_start_date || "").localeCompare(String(b.effective_start_date || "")))[0];
           return `
             <article class="pricing-rule ${isActive ? "is-selected" : ""}">
-              <div class="pricing-rule__header">
+              <div class="pricing-rule__header ${showGroupEditor ? "is-hidden" : ""}">
                 <div>
                   <strong>${this._escapeHtml(String(group.label || "Unnamed rate group"))}</strong>
                   <span>${this._escapeHtml(String(group.provider || "Provider not set"))}${group.plan_name ? ` · ${this._escapeHtml(String(group.plan_name))}` : ""}</span>
                 </div>
                 <div class="pricing-rule__actions">
-                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-select-group="${this._escapeHtml(String(group.group_id || ""))}">${isActive ? "Selected" : "Select"}</button>
-                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete group</button>
+                  <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete group</button>
                 </div>
               </div>
-              <dl class="pricing-rule__meta">
-                <div><dt>Starts</dt><dd>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</dd></div>
-                <div><dt>Superseded</dt><dd>${nextGroup ? this._escapeHtml(String(nextGroup.effective_start_date || "")) : "When next group starts"}</dd></div>
+              <dl class="pricing-rule__meta ${showGroupEditor ? "is-hidden" : ""}">
+                <div><dt>Effective Date</dt><dd>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</dd></div>
+                <div><dt>Description</dt><dd>${this._escapeHtml(String(group.label || "No description"))}</dd></div>
                 <div><dt>Type</dt><dd>${this._escapeHtml(String(group.pricing_type || "dynamic"))}</dd></div>
                 <div><dt>Rules</dt><dd>${Array.isArray(group.rules) ? group.rules.length : 0}</dd></div>
               </dl>
-              <div class="pricing-rule__rates">
-                <span>Daily connection ${this._escapeHtml(this._formatPricingRate(group.daily_connection_charge, "$/day"))}</span>
-                ${group.other_charges ? `<span>${this._escapeHtml(String(group.other_charges))}</span>` : ""}
+              <div class="pricing-rule__detail-row">
+                <div class="pricing-rule__rates ${showGroupEditor ? "is-hidden" : ""}">
+                  <span>Daily connection ${this._escapeHtml(this._formatPricingRate(group.daily_connection_charge, "$/day"))}</span>
+                  <span>Other charges ${group.other_charges ? this._escapeHtml(String(group.other_charges)) : "Not set"}</span>
+                  <span>Notes ${group.notes ? this._escapeHtml(String(group.notes)) : "Not set"}</span>
+                </div>
+                <div class="pricing-rule__actions pricing-rule__actions--inline">
+                  <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
+                  <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-new-group href="${this._pricingEditorHref("new")}">Add as new rate group</a>
+                </div>
               </div>
             </article>
           `;
@@ -1819,7 +2498,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).join(", ") || "No days selected")}</span>
                 </div>
                 <div class="pricing-rule__actions">
-                  <button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
+                  <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
                 </div>
               </div>
               <dl class="pricing-rule__meta">
@@ -1848,11 +2527,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <article class="panel-card panel-card--wide pricing__hero">
           <div class="panel-card__header">
             <h2>Pricing</h2>
-            <span>Date-based schedule</span>
           </div>
           <p>
-            Build date-effective rate groups here first. Each new group starts on its effective
-            date and supersedes the older group. This is UI-only until we wire persistence and Workday.
+            Build date-effective rate groups here first. Each group starts on its effective date
+            and supersedes older rates. Buy and sell records are saved separately inside the group.
           </p>
         </article>
 
@@ -1865,55 +2543,66 @@ class HomeEnergyManagerPanel extends HTMLElement {
           `).join("")}
         </section>
 
-        <section class="grid pricing__grid pricing__grid--editor">
-          <article class="panel-card panel-card--wide pricing-editor-card pricing-group-card">
+        <section class="grid pricing__grid pricing__grid--active-groups">
+          <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Rate Group</h2>
-              <span>1 active group shown</span>
+              <h2>Rate Group List</h2>
+              <span>${groups.length} group${groups.length === 1 ? "" : "s"} saved</span>
             </div>
-            <p>
-              Add a master rate group whenever your provider changes rates. The next group start
-              date automatically supersedes prior rates.
-            </p>
-            ${warningMarkup}
-            <div class="pricing-form">
+            ${this._renderPricingGroupSelector(groups, activeGroup)}
+            <div class="pricing-rule-list">
+              ${groupCards}
+            </div>
+            <div class="pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
+              ${warningMarkup}
+              <form class="pricing-form pricing-group-edit-form" method="get" action="/home-energy-manager">
+              <input type="hidden" name="hem_page" value="pricing" />
+              <input type="hidden" name="group_id" value="${this._escapeHtml(String(activeGroup.group_id || groupDraft.group_id || ""))}" />
               <label>
-                <span>Group label</span>
-                <input type="text" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from Jan 1" />
+                <span>Group</span>
+                <input type="text" name="group_label" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from Jan 1" />
               </label>
-              <label>
-                <span>Effective start date</span>
-                <input type="date" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(String(groupDraft.effective_start_date || ""))}" />
-              </label>
-              <label>
-                <span>Plan name</span>
-                <input type="text" data-pricing-group-field="plan_name" value="${this._escapeHtml(String(groupDraft.plan_name || ""))}" placeholder="Optional" />
+              <label class="pricing-effective-date-field">
+                <span>Effective Date</span>
+                <input type="date" name="effective_start_date" data-pricing-date-input data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" />
               </label>
               ${this._renderPricingTypeSelector(this._pricingGroupDraftType() || groupDraft.pricing_type)}
-              <label>
-                <span>Daily connection charge</span>
-                <input type="number" step="0.001" data-pricing-group-field="daily_connection_charge" value="" />
+              <input type="hidden" name="pricing_type" value="${this._escapeHtml(String(this._pricingGroupDraftType() || groupDraft.pricing_type || "dynamic"))}" />
+              <label class="pricing-supply-charge-field">
+                <span>Daily Supply Charge</span>
+                <input type="number" step="0.001" name="daily_connection_charge" data-pricing-group-field="daily_connection_charge" value="${this._escapeHtml(String(groupDraft.daily_connection_charge ?? ""))}" />
               </label>
               <label class="pricing-form__notes">
                 <span>Other charges</span>
-                <textarea data-pricing-group-field="other_charges" rows="2" placeholder="Named daily/usage charges the user wants to record"></textarea>
+                <textarea name="other_charges" data-pricing-group-field="other_charges" rows="1">${this._escapeHtml(String(groupDraft.other_charges || ""))}</textarea>
               </label>
               <label class="pricing-form__notes">
                 <span>Notes</span>
-                <textarea data-pricing-group-field="notes" rows="2" placeholder="Optional notes about this rate group"></textarea>
+                <textarea name="notes" data-pricing-group-field="notes" rows="1">${this._escapeHtml(String(groupDraft.notes || ""))}</textarea>
               </label>
+              <div class="pricing-form__actions pricing-group-form__actions">
+              <a class="theme-pill pricing-group-action pricing-group-action--save ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
+                group_id: activeGroup.group_id || groupDraft.group_id,
+                group_label: groupDraft.label,
+                effective_start_date: activeGroup.effective_start_date || groupDraft.effective_start_date,
+                plan_name: groupDraft.plan_name,
+                pricing_type: groupDraft.pricing_type,
+                daily_connection_charge: groupDraft.daily_connection_charge,
+                other_charges: groupDraft.other_charges,
+                notes: groupDraft.notes,
+              })}">Save active group</a>
+              <a class="theme-pill pricing-group-action pricing-group-action--add" data-pricing-action-link="add_group" data-pricing-ui-add-group href="${this._pricingActionHref("add_group", {
+                group_label: groupDraft.label,
+                effective_start_date: groupDraft.effective_start_date,
+                plan_name: groupDraft.plan_name,
+                pricing_type: groupDraft.pricing_type,
+                daily_connection_charge: groupDraft.daily_connection_charge,
+                other_charges: groupDraft.other_charges,
+                notes: groupDraft.notes,
+              })}">Add as new rate group</a>
+              </div>
+            </form>
             </div>
-            <div class="pricing-form__actions">
-              <button type="button" class="theme-pill" data-pricing-ui-add-group>Add rate group</button>
-            </div>
-            <div class="pricing-active-group">
-              <span>Active group</span>
-              <strong>${activeGroup.group_id ? this._escapeHtml(String(activeGroup.label || "Unnamed rate group")) : "No group yet"}</strong>
-              <small>${activeGroup.group_id
-                ? `${this._escapeHtml(String(activeGroup.provider || "Provider not set"))}${activeGroup.plan_name ? ` · ${this._escapeHtml(String(activeGroup.plan_name))}` : ""} · starts ${this._escapeHtml(String(activeGroup.effective_start_date || "not set"))}`
-                : "Add a group first, then add rate records to it."}</small>
-            </div>
-
             <section class="pricing-group-card__records">
               <div class="panel-card__header panel-card__header--nested">
                 <h2>Rate Records</h2>
@@ -1924,78 +2613,95 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 Overlapping day/time windows are blocked before save.
               </p>
               <div class="pricing-holiday-form pricing-record-form">
-                <div class="pricing-record-section pricing-record-section--details">
-                  <div class="pricing-record-section__heading">
-                    <strong>Record details</strong>
-                  </div>
-                  <div class="pricing-record-section__grid pricing-record-section__grid--details">
-                    <label class="pricing-record-form__name">
-                      <span>Tariff label</span>
-                      <input type="text" data-pricing-rule-field="label" value="${this._escapeHtml(String(ruleDraft.label || ""))}" placeholder="Shoulder, PHOL, Peak..." />
-                    </label>
-                    <label class="pricing-record-form__time">
-                      <span>Start time</span>
-                      <input type="time" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(ruleDraft.start_time))}" />
-                    </label>
-                    <label class="pricing-record-form__time">
-                      <span>End time</span>
-                      <input type="time" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(ruleDraft.end_time))}" />
-                    </label>
-                  </div>
-                </div>
-                <div class="pricing-record-section pricing-buy-form">
+                <form class="pricing-record-section pricing-record-section--buy pricing-buy-form" method="get" action="/home-energy-manager#hem_page=pricing">
+                  <input type="hidden" name="hem_action" value="add_rule" />
+                  <input type="hidden" name="hem_page" value="pricing" />
+                  <input type="hidden" name="record_type" value="buy" />
                   <div class="pricing-record-section__heading">
                     <div>
-                      <strong>Buy prices</strong>
-                      <span>Add as many buy/import prices as needed</span>
+                      <strong>Buy Electricity</strong>
+                      <span>Purchase tariff rows are independent from feed-in rows</span>
                     </div>
-                    <button type="button" class="theme-pill pricing-record-section__add" data-pricing-ui-add-rule="buy" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>+ Add buy price</button>
+                    <a class="theme-pill pricing-record-section__add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_rule" data-pricing-record-type="buy" onpointerdown="event.preventDefault(); location.href=this.href" onmousedown="event.preventDefault(); location.href=this.href" onclick="event.preventDefault(); location.href=this.href" href="${this._pricingActionHref("add_rule", {
+                      record_type: "buy",
+                      rule_label: buyRuleDraft.label,
+                      start_time: buyRuleDraft.start_time,
+                      end_time: buyRuleDraft.end_time,
+                      import_rate: buyRuleDraft.import_rate,
+                      controlled_load_rate: buyRuleDraft.controlled_load_rate,
+                    })}">+ Add buy price</a>
                   </div>
-                  <div class="pricing-record-section__grid pricing-record-section__grid--buy">
+                  <div class="pricing-record-section__grid pricing-record-section__grid--tariff">
+                    <label class="pricing-record-form__name">
+                      <span>Purchase tariff</span>
+                      <input type="text" name="rule_label" data-pricing-record-type="buy" data-pricing-rule-field="label" value="${this._escapeHtml(String(buyRuleDraft.label || ""))}" placeholder="Purchase Tariff 1" />
+                    </label>
+                    <label class="pricing-record-form__time">
+                      <span>Start</span>
+                      <input type="time" name="start_time" data-pricing-record-type="buy" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(buyRuleDraft.start_time))}" />
+                    </label>
+                    <label class="pricing-record-form__time">
+                      <span>End</span>
+                      <input type="time" name="end_time" data-pricing-record-type="buy" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(buyRuleDraft.end_time))}" />
+                    </label>
                     <label class="pricing-record-form__rate">
                       <span>Import rate ($/kWh)</span>
-                      <input type="number" step="0.001" data-pricing-rule-field="import_rate" value="" />
+                      <input type="number" step="0.001" name="import_rate" data-pricing-record-type="buy" data-pricing-rule-field="import_rate" value="${this._escapeHtml(String(buyRuleDraft.import_rate ?? ""))}" />
                     </label>
                     <label class="pricing-record-form__rate">
                       <span>Controlled load ($/kWh)</span>
-                      <input type="number" step="0.001" data-pricing-rule-field="controlled_load_rate" value="" />
+                      <input type="number" step="0.001" name="controlled_load_rate" data-pricing-record-type="buy" data-pricing-rule-field="controlled_load_rate" value="${this._escapeHtml(String(buyRuleDraft.controlled_load_rate ?? ""))}" />
                     </label>
                   </div>
-                </div>
-                <div class="pricing-record-section pricing-sell-form">
+                  ${renderDaySelector("buy")}
+                </form>
+                <form class="pricing-record-section pricing-record-section--sell pricing-sell-form" method="get" action="/home-energy-manager#hem_page=pricing">
+                  <input type="hidden" name="hem_action" value="add_rule" />
+                  <input type="hidden" name="hem_page" value="pricing" />
+                  <input type="hidden" name="record_type" value="sell" />
                   <div class="pricing-record-section__heading">
                     <div>
-                      <strong>Sell prices</strong>
-                      <span>Feed-in prices, independent from buy prices</span>
+                      <strong>Sell Electricity</strong>
+                      <span>Feed-in tariff rows have their own time and day selection</span>
                     </div>
-                    <button type="button" class="theme-pill pricing-record-section__add" data-pricing-ui-add-rule="sell" ${activeGroup.group_id ? "" : "is-disabled"}" ${activeGroup.group_id ? "" : "disabled"}>+ Add sell price</button>
+                    <a class="theme-pill pricing-record-section__add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_rule" data-pricing-record-type="sell" onpointerdown="event.preventDefault(); location.href=this.href" onmousedown="event.preventDefault(); location.href=this.href" onclick="event.preventDefault(); location.href=this.href" href="${this._pricingActionHref("add_rule", {
+                      record_type: "sell",
+                      rule_label: sellRuleDraft.label,
+                      start_time: sellRuleDraft.start_time,
+                      end_time: sellRuleDraft.end_time,
+                      export_tier_1_limit: sellRuleDraft.export_tier_1_limit,
+                      export_tier_1_rate: sellRuleDraft.export_tier_1_rate,
+                      export_tier_2_rate: sellRuleDraft.export_tier_2_rate,
+                    })}">+ Add sell price</a>
                   </div>
-                  <div class="pricing-record-section__grid pricing-record-section__grid--sell">
+                  <div class="pricing-record-section__grid pricing-record-section__grid--tariff">
+                    <label class="pricing-record-form__name">
+                      <span>Feed-in tariff</span>
+                      <input type="text" name="rule_label" data-pricing-record-type="sell" data-pricing-rule-field="label" value="${this._escapeHtml(String(sellRuleDraft.label || ""))}" placeholder="Feed-in Tariff 1" />
+                    </label>
+                    <label class="pricing-record-form__time">
+                      <span>Start</span>
+                      <input type="time" name="start_time" data-pricing-record-type="sell" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(sellRuleDraft.start_time))}" />
+                    </label>
+                    <label class="pricing-record-form__time">
+                      <span>End</span>
+                      <input type="time" name="end_time" data-pricing-record-type="sell" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(sellRuleDraft.end_time))}" />
+                    </label>
                     <label>
                       <span>First block up to (kWh)</span>
-                      <input type="number" step="1" min="0" data-pricing-rule-field="export_tier_1_limit" value="" placeholder="1000" />
+                      <input type="number" step="1" min="0" name="export_tier_1_limit" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_1_limit" value="${this._escapeHtml(String(sellRuleDraft.export_tier_1_limit ?? ""))}" placeholder="1000" />
                     </label>
                     <label>
                       <span>First block rate ($/kWh)</span>
-                      <input type="number" step="0.001" min="0" data-pricing-rule-field="export_tier_1_rate" value="" placeholder="0.08" />
+                      <input type="number" step="0.001" min="0" name="export_tier_1_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_1_rate" value="${this._escapeHtml(String(sellRuleDraft.export_tier_1_rate ?? ""))}" placeholder="0.08" />
                     </label>
                     <label>
                       <span>Remainder rate ($/kWh)</span>
-                      <input type="number" step="0.001" min="0" data-pricing-rule-field="export_tier_2_rate" value="" placeholder="0.02" />
+                      <input type="number" step="0.001" min="0" name="export_tier_2_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_2_rate" value="${this._escapeHtml(String(sellRuleDraft.export_tier_2_rate ?? ""))}" placeholder="0.02" />
                     </label>
                   </div>
-                </div>
-                <div class="pricing-field-group pricing-form__notes">
-                  <span>Days</span>
-                  <div class="pricing-day-grid">
-                    ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
-                      <label class="pricing-day-pill">
-                        <input type="checkbox" data-pricing-rule-day="${day}" ${ruleDraft.day_types.includes(day) ? "checked" : ""} />
-                        <span>${day === "public_holiday" ? "Public holiday" : day.toUpperCase()}</span>
-                      </label>
-                    `).join("")}
-                  </div>
-                </div>
+                  ${renderDaySelector("sell")}
+                </form>
               </div>
               <div class="pricing-rule-list pricing-rule-list--attached">
                 <div class="pricing-record-list-section">
@@ -2017,27 +2723,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
         </section>
 
-        <section class="grid pricing__grid">
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Active Rate Group</h2>
-              <span>1 group shown</span>
-            </div>
-            <div class="pricing-rule-list">
-              ${groupCards}
-            </div>
-          </article>
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Outstanding Integration</h2>
-              <span>Later</span>
-            </div>
-            <p>
-              This screen is intentionally UI-only. Next pass can connect Workday public holidays
-              and save these groups through Home Assistant services once you approve the model.
-            </p>
-          </article>
-        </section>
       </section>
     `;
   }
@@ -2422,6 +3107,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!this.shadowRoot) {
       return;
     }
+    this._processPricingUrlAction();
 
     const connectionName = this._connectionName();
     const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
@@ -2444,19 +3130,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <div class="hero__copy">
             <h1>${title}</h1>
             <p>${subtitle}</p>
-          </div>
-          <div class="hero__actions">
-            <div class="theme-picker" role="group" aria-label="Theme presets">
-              ${HOME_ENERGY_MANAGER_PANEL_THEMES.map((theme) => `
-                <button
-                  type="button"
-                  class="theme-pill ${theme.value === this._theme ? "is-active" : ""}"
-                  data-theme="${theme.value}"
-                >
-                  ${theme.label}
-                </button>
-              `).join("")}
-            </div>
           </div>
         </header>
 
@@ -2483,13 +3156,81 @@ class HomeEnergyManagerPanel extends HTMLElement {
       </section>
     `;
 
-    this._mountEmbeddedCards();
-    this._bindInteractiveControls();
+    try {
+      this._mountEmbeddedCards();
+    } finally {
+      this._bindInteractiveControls();
+    }
   }
 
   _bindInteractiveControls() {
     if (!this.shadowRoot) {
       return;
+    }
+
+    this.shadowRoot.querySelectorAll("[data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field]").forEach((field) => {
+      if (field.__hemNativeInputStopBound) {
+        return;
+      }
+      field.__hemNativeInputStopBound = true;
+      ["pointerdown", "mousedown", "mouseup", "click"].forEach((eventName) => {
+        field.addEventListener(eventName, (event) => {
+          event.stopPropagation();
+        });
+      });
+    });
+
+    if (!this._criticalPressHandlersBound) {
+      this._criticalPressHandlersBound = true;
+      const handleCriticalActivation = (event) => {
+        const path = event.composedPath?.() || [];
+        const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
+        if (pricingUiAddGroup) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiAddGroup();
+          return true;
+        }
+        const pricingUiUpdateGroup = path.find((node) => node?.dataset?.pricingUiUpdateGroup !== undefined);
+        if (pricingUiUpdateGroup) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiUpdateGroup();
+          return true;
+        }
+        const pricingUiModifyGroup = path.find((node) => node?.dataset?.pricingUiModifyGroup !== undefined);
+        if (pricingUiModifyGroup) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiModifyGroup();
+          return true;
+        }
+        const pricingUiNewGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
+        if (pricingUiNewGroup) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiNewGroup();
+          return true;
+        }
+        const pricingUiAddRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined);
+        if (pricingUiAddRule) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiAddRule(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
+          return true;
+        }
+        const pageButton = path.find((node) => node?.dataset?.page);
+        if (pageButton && !pageButton.disabled) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._setPage(pageButton.dataset.page);
+          return true;
+        }
+        return false;
+      };
+      ["pointerdown", "mousedown", "click"].forEach((eventName) => {
+        this.shadowRoot.addEventListener(eventName, handleCriticalActivation, true);
+      });
     }
 
     this.shadowRoot.querySelectorAll('[data-theme]').forEach((button) => {
@@ -2555,37 +3296,54 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-pricing-action-link]').forEach((link) => {
+      if (link.__hemPricingActionRefreshBound) {
+        return;
+      }
+      link.__hemPricingActionRefreshBound = true;
+      ["pointerdown", "mousedown", "click"].forEach((eventName) => {
+        link.addEventListener(eventName, () => {
+          this._refreshPricingActionLink(link);
+        });
+      });
+    });
+
     this.shadowRoot.querySelectorAll('[data-pricing-ui-add-group]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
+        event.stopPropagation();
         this._handlePricingUiAddGroup();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-update-group]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiUpdateGroup();
       };
     });
 
     this.shadowRoot.querySelectorAll('[data-pricing-ui-select-group]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
+        event.stopPropagation();
         this._handlePricingUiSelectGroup(button.dataset.pricingUiSelectGroup);
-      };
-    });
-
-    this.shadowRoot.querySelectorAll('[data-pricing-ui-delete-group]').forEach((button) => {
-      button.onclick = (event) => {
-        event.preventDefault();
-        this._handlePricingUiDeleteGroup(button.dataset.pricingUiDeleteGroup);
       };
     });
 
     this.shadowRoot.querySelectorAll('[data-pricing-ui-add-rule]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
-        this._handlePricingUiAddRule();
+        event.stopPropagation();
+        this._handlePricingUiAddRule(button.dataset.pricingUiAddRule || "buy");
       };
     });
 
     this.shadowRoot.querySelectorAll('[data-pricing-ui-delete-rule]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
+        event.stopPropagation();
         this._handlePricingUiDeleteRule(button.dataset.pricingUiDeleteRule);
       };
     });
@@ -2603,9 +3361,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._holdRenderWindow(1200);
         return;
       }
+      if (target?.dataset?.pricingGroupField !== undefined) {
+        this._syncPricingUiGroupDraft();
+        this._updatePricingActionLinks();
+        this._schedulePricingAutoCommit();
+        return;
+      }
       if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
-        this._syncPricingUiRuleDraft();
-        this._holdRenderWindow(2500);
+        const recordType = target?.dataset?.pricingRecordType || "";
+        this._syncPricingUiRuleDraft(recordType);
+        this._updatePricingActionLinks();
+        this._schedulePricingAutoCommit(recordType);
         return;
       }
       if (this._isPricingInteractionTarget(target)) {
@@ -2615,20 +3381,74 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     });
 
-    this.shadowRoot.addEventListener("mousedown", (event) => {
+    const handlePressActivation = (event) => {
       const path = event.composedPath?.() || [];
+      const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
+      if (pricingUiAddGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiAddGroup();
+        return true;
+      }
+      const pricingUiUpdateGroup = path.find((node) => node?.dataset?.pricingUiUpdateGroup !== undefined);
+      if (pricingUiUpdateGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiUpdateGroup();
+        return true;
+      }
+      const pricingUiAddRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined);
+      if (pricingUiAddRule) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiAddRule(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
+        return true;
+      }
+      const pricingUiSelectGroup = path.find((node) => node?.dataset?.pricingUiSelectGroup);
+      if (pricingUiSelectGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiSelectGroup(pricingUiSelectGroup.dataset.pricingUiSelectGroup);
+        return true;
+      }
+      const pageButton = path.find((node) => node?.dataset?.page);
+      if (pageButton && !pageButton.disabled) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._setPage(pageButton.dataset.page);
+        return true;
+      }
+      return false;
+    };
+
+    this.shadowRoot.addEventListener("mousedown", (event) => {
+      if (handlePressActivation(event)) {
+        return;
+      }
+      const path = event.composedPath?.() || [];
+      if (path.some((node) => node?.classList?.contains?.("pricing-group-card"))) {
+        return;
+      }
       if (path.some((node) => node?.dataset?.sharedSettingsTargetToggle || node?.dataset?.sharedSettingsTargetOption)) {
         this._holdBatterySelectorWindow();
       }
-      if (path.some((node) => node?.dataset?.pricingTypeToggle || node?.dataset?.pricingTypeOption)) {
+      if (path.some((node) => node?.dataset?.pricingTypeToggle || node?.dataset?.pricingTypeOption || node?.dataset?.pricingGroupToggle || node?.dataset?.pricingUiSelectGroup)) {
         this._holdRenderWindow(8000);
       }
       if (path.some((node) => this._isPricingInteractionTarget(node))) {
-        this._holdRenderWindow(8000);
+        return;
       }
     }, true);
 
+    this.shadowRoot.addEventListener("pointerdown", (event) => {
+      const path = event.composedPath?.() || [];
+      handlePressActivation(event);
+    }, true);
+
     this.shadowRoot.addEventListener("focusin", (event) => {
+      if (event.target?.closest?.(".pricing-group-card") || this._isPricingInteractionTarget(event.target)) {
+        return;
+      }
       if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption || this._isPricingInteractionTarget(event.target)) {
         if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption) {
           this._holdBatterySelectorWindow();
@@ -2640,7 +3460,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("focusout", (event) => {
       if (this._isPricingInteractionTarget(event.target)) {
-        this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 250);
+        this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 400);
         this._queueDeferredRender();
       }
     });
@@ -2700,8 +3520,47 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return;
       }
 
+      const pricingGroupToggle = path.find((node) => node?.dataset?.pricingGroupToggle !== undefined);
+      if (pricingGroupToggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (pricingGroupToggle.disabled) {
+          return;
+        }
+        if (this._pricingGroupSelectorOpen) {
+          this._closePricingGroupSelector();
+        } else {
+          this._openPricingGroupSelector();
+        }
+        return;
+      }
+
+      const pricingDatePicker = path.find((node) => node?.dataset?.pricingDatePicker !== undefined);
+      if (pricingDatePicker) {
+        event.preventDefault();
+        event.stopPropagation();
+        const dateInput = pricingDatePicker.closest?.(".pricing-date-control")?.querySelector?.("[data-pricing-date-input]");
+        if (dateInput) {
+          try {
+            dateInput.focus({ preventScroll: true });
+            if (typeof dateInput.showPicker === "function") {
+              dateInput.showPicker();
+            }
+          } catch (error) {
+            // If showPicker is unavailable/blocked, focusing still leaves the native date field editable.
+          }
+        }
+        return;
+      }
+
       if (this._pricingTypeSelectorOpen && !path.some((node) => node?.classList?.contains?.("pricing-type-selector"))) {
         this._pricingTypeSelectorOpen = false;
+        this._render();
+        return;
+      }
+
+      if (this._pricingGroupSelectorOpen && !path.some((node) => node?.classList?.contains?.("pricing-group-selector"))) {
+        this._pricingGroupSelectorOpen = false;
         this._render();
         return;
       }
@@ -2723,27 +3582,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
       if (pricingUiAddGroup) {
         event.preventDefault();
-        const model = this._loadPricingUi();
-        const group = this._readPricingUiGroupForm();
-        if (!group.effective_start_date) {
-          model.warning = "Rate group effective start date is required.";
-          this._savePricingUi(model);
-          this._render();
-          return;
-        }
-        if ((model.groups || []).some((item) => String(item.effective_start_date || "") === group.effective_start_date)) {
-          model.warning = `A rate group already starts on ${group.effective_start_date}. Delete it or choose a different start date.`;
-          this._savePricingUi(model);
-          this._render();
-          return;
-        }
-        model.groups = [...(model.groups || []), group];
-        model.activeGroupId = group.group_id;
-        model.warning = "";
-        this._savePricingUi(model);
-        this._callPricingGroupService(group);
-        this._holdRenderWindow();
-        this._render();
+        this._handlePricingUiAddGroup();
+        return;
+      }
+
+      const pricingUiUpdateGroup = path.find((node) => node?.dataset?.pricingUiUpdateGroup !== undefined);
+      if (pricingUiUpdateGroup) {
+        event.preventDefault();
+        this._handlePricingUiUpdateGroup();
+        return;
+      }
+
+      const pricingUiModifyGroup = path.find((node) => node?.dataset?.pricingUiModifyGroup !== undefined);
+      if (pricingUiModifyGroup) {
+        event.preventDefault();
+        this._handlePricingUiModifyGroup();
+        return;
+      }
+
+      const pricingUiNewGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
+      if (pricingUiNewGroup) {
+        event.preventDefault();
+        this._handlePricingUiNewGroup();
         return;
       }
 
@@ -2761,17 +3621,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const pricingUiDeleteGroup = path.find((node) => node?.dataset?.pricingUiDeleteGroup);
       if (pricingUiDeleteGroup) {
         event.preventDefault();
-        const model = this._loadPricingUi();
         const groupId = String(pricingUiDeleteGroup.dataset.pricingUiDeleteGroup || "");
-        model.groups = (model.groups || []).filter((group) => String(group.group_id || "") !== groupId);
-        if (String(model.activeGroupId || "") === groupId) {
-          model.activeGroupId = model.groups[0]?.group_id || "";
-        }
-        model.warning = "";
-        this._savePricingUi(model);
-        this._callPricingRemoveGroupService(groupId);
-        this._holdRenderWindow();
-        this._render();
+        this._handlePricingUiDeleteGroup(groupId);
         return;
       }
 
@@ -2798,7 +3649,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         model.warning = "";
         this._savePricingUi(model);
         this._callPricingRecordService(group.group_id, rule);
-        this._resetPricingUiRuleDraft();
+        this._resetPricingUiRuleDraft(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
         this._holdRenderWindow();
         this._render();
         return;
@@ -2811,12 +3662,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         const group = this._pricingUiActiveGroup(model);
         if (group) {
           const ruleId = String(pricingUiDeleteRule.dataset.pricingUiDeleteRule || "");
-          group.rules = (Array.isArray(group.rules) ? group.rules : []).filter((rule) => String(rule.rule_id || "") !== ruleId);
-          model.warning = "";
-          this._savePricingUi(model);
-          this._callPricingRemoveRecordService(group.group_id, ruleId);
-          this._holdRenderWindow();
-          this._render();
+          this._handlePricingUiDeleteRule(ruleId);
         }
         return;
       }
@@ -2830,7 +3676,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           return;
         }
         this._hass.callService("home_energy_manager", "pricing_upsert_rule", {
-          entry_id: this._config?.entry_id,
+          entry_id: this._entryId(),
           rule_id: draft.rule_id,
           effective_date: draft.effective_date,
           effective_time: draft.effective_time,
@@ -2904,7 +3750,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           return;
         }
         this._hass.callService("home_energy_manager", "pricing_remove_rule", {
-          entry_id: this._config?.entry_id,
+          entry_id: this._entryId(),
           rule_id: pricingDelete.dataset.pricingDeleteRule,
         }).catch((error) => {
           console.error("Failed to delete pricing rule", error);
@@ -2925,7 +3771,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           holidayDates.add(String(draft.holiday_date));
         }
         this._hass.callService("home_energy_manager", "pricing_set_holidays", {
-          entry_id: this._config?.entry_id,
+          entry_id: this._entryId(),
           holiday_dates: Array.from(holidayDates),
           holiday_source: draft.holiday_source || "manual",
           region: draft.region || "",
@@ -2946,7 +3792,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         current.delete(String(pricingHolidayRemove.dataset.pricingRemoveHoliday || ""));
         const draft = this._syncPricingDraftFromInputs();
         this._hass.callService("home_energy_manager", "pricing_set_holidays", {
-          entry_id: this._config?.entry_id,
+          entry_id: this._entryId(),
           holiday_dates: Array.from(current),
           holiday_source: draft.holiday_source || "manual",
           region: draft.region || "",
@@ -2970,9 +3816,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._holdRenderWindow(1200);
         return;
       }
+      if (target?.dataset?.pricingGroupField !== undefined) {
+        this._syncPricingUiGroupDraft();
+        this._updatePricingActionLinks();
+        this._schedulePricingAutoCommit();
+        return;
+      }
       if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
-        this._syncPricingUiRuleDraft();
-        this._holdRenderWindow(1800);
+        const recordType = target?.dataset?.pricingRecordType || "";
+        this._syncPricingUiRuleDraft(recordType);
+        this._updatePricingActionLinks();
+        this._schedulePricingAutoCommit(recordType);
         return;
       }
       if (this._isPricingInteractionTarget(target)) {
@@ -3021,24 +3875,65 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 }
 
-function bootstrapHomeEnergyManagerPanelFallback() {
-  document.querySelectorAll("home-energy-manager-panel").forEach((host) => {
-    if (host.__hemFallbackBootstrapped) {
+function bootstrapHomeEnergyManagerPanelFallback(root = document) {
+  const hosts = [];
+  const visit = (node) => {
+    if (!node) {
       return;
     }
-    host.__hemFallbackBootstrapped = true;
+    if (node.matches?.("home-energy-manager-panel")) {
+      hosts.push(node);
+    }
+    node.querySelectorAll?.("home-energy-manager-panel").forEach((host) => hosts.push(host));
+    node.querySelectorAll?.("*").forEach((element) => {
+      if (element.shadowRoot) {
+        visit(element.shadowRoot);
+      }
+    });
+  };
+  visit(root);
+  hosts.forEach((host) => {
+    if (HOME_ENERGY_MANAGER_FALLBACK_HOSTS.has(host)) {
+      return;
+    }
+    HOME_ENERGY_MANAGER_FALLBACK_HOSTS.add(host);
+    const renderRoot = host instanceof HomeEnergyManagerPanel
+      ? host.shadowRoot
+      : host;
 
     const panel = Object.create(HomeEnergyManagerPanel.prototype);
-    panel.shadowRoot = host;
+    Object.defineProperty(panel, "shadowRoot", {
+      configurable: true,
+      value: renderRoot,
+      writable: true,
+    });
     panel._config = {};
     panel._theme = panel._loadTheme();
     panel._debugEnabled = panel._loadDebugEnabled();
     panel._page = panel._loadPage();
+    panel._renderHoldUntil = 0;
+    panel._batterySelectorHoldUntil = 0;
+    panel._batterySelectorOpen = false;
+    panel._pricingGroupSelectorOpen = false;
+    panel._pricingGroupEditorOpen = false;
+    panel._pricingTypeSelectorOpen = false;
+    panel._pricingUiGroupDraft = {};
+    panel._pricingUiRuleDrafts = {
+      buy: panel._pricingUiRuleDefaults("buy"),
+      sell: panel._pricingUiRuleDefaults("sell"),
+    };
+    panel._pricingUiRuleDraft = panel._pricingUiRuleDrafts.buy;
+    panel._deferredRenderTimer = null;
     panel._hass = null;
     panel._panel = null;
     panel._route = null;
     panel._narrow = false;
     panel._hasDelegatedHandlers = false;
+    panel._pricingFocusedField = null;
+    panel._pricingFocusHoldUntil = 0;
+    panel._pricingAutoCommitTimer = null;
+    panel._lastPricingAutoCommitSignature = "";
+    HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, panel);
 
     Object.defineProperty(host, "hass", {
       configurable: true,
@@ -3085,12 +3980,124 @@ function bootstrapHomeEnergyManagerPanelFallback() {
   });
 }
 
+function homeEnergyManagerPanelControllerForRoot(root) {
+  const host = root?.host?.matches?.("home-energy-manager-panel") ? root.host : null;
+  if (!host) {
+    return null;
+  }
+  if (!HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.has(host)) {
+    bootstrapHomeEnergyManagerPanelFallback(host);
+  }
+  return HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.get(host) || null;
+}
+
+function homeEnergyManagerPanelControllerForEvent(event) {
+  const path = event?.composedPath?.() || [];
+  const host = path.find((node) => node?.matches?.("home-energy-manager-panel"));
+  if (!host) {
+    return null;
+  }
+  if (!HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.has(host)) {
+    bootstrapHomeEnergyManagerPanelFallback(host);
+  }
+  return HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.get(host) || null;
+}
+
+function handleHomeEnergyManagerGlobalActivation(event) {
+  const path = event?.composedPath?.() || [];
+  const actionLink = path.find((node) => node?.dataset?.pricingActionLink);
+  const addGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined)
+    || (actionLink?.dataset?.pricingActionLink === "add_group" ? actionLink : null);
+  const addRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined)
+    || (actionLink?.dataset?.pricingActionLink === "add_rule" ? actionLink : null);
+  const pageButton = path.find((node) => node?.dataset?.page);
+  if (!addGroup && !addRule && !pageButton) {
+    return;
+  }
+  const panel = homeEnergyManagerPanelControllerForEvent(event)
+    || homeEnergyManagerPanelControllerForRoot(actionLink?.getRootNode?.());
+  if (!panel) {
+    return;
+  }
+  event.preventDefault?.();
+  event.stopPropagation?.();
+  if (addGroup) {
+    panel._handlePricingUiAddGroup();
+    return;
+  }
+  if (addRule) {
+    panel._handlePricingUiAddRule(addRule.dataset?.pricingRecordType || addRule.dataset?.pricingUiAddRule || "buy");
+    return;
+  }
+  if (pageButton && !pageButton.disabled) {
+    panel._setPage(pageButton.dataset.page);
+  }
+}
+
+const homeEnergyManagerPanelInlineAction = (event, action, recordType = "") => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const panel = homeEnergyManagerPanelControllerForRoot(event?.currentTarget?.getRootNode?.());
+    if (!panel) {
+      return;
+    }
+    if (action === "add-group") {
+      panel._handlePricingUiAddGroup();
+      return;
+    }
+    if (action === "update-group") {
+      panel._handlePricingUiUpdateGroup();
+      return;
+    }
+    if (action === "add-rule") {
+      panel._handlePricingUiAddRule(recordType || event?.currentTarget?.dataset?.pricingUiAddRule || "buy");
+    }
+};
+
+[
+  typeof self !== "undefined" ? self : null,
+  typeof window !== "undefined" ? window : null,
+  typeof globalThis !== "undefined" ? globalThis : null,
+].filter(Boolean).forEach((scope) => {
+  try {
+    scope.homeEnergyManagerPanelInlineAction = homeEnergyManagerPanelInlineAction;
+  } catch (error) {
+    // Ignore non-writable host scopes.
+  }
+});
+
+function startHomeEnergyManagerPanelFallback() {
+  bootstrapHomeEnergyManagerPanelFallback(document);
+  if (typeof window.setInterval === "function") {
+    window.setInterval(() => bootstrapHomeEnergyManagerPanelFallback(document), 1000);
+  }
+  if (!window.__hemGlobalActivationBound) {
+    window.__hemGlobalActivationBound = true;
+    ["pointerdown", "mousedown", "click"].forEach((eventName) => {
+      window.addEventListener(eventName, handleHomeEnergyManagerGlobalActivation, true);
+      document.addEventListener(eventName, handleHomeEnergyManagerGlobalActivation, true);
+    });
+  }
+  if (typeof MutationObserver === "undefined") {
+    return;
+  }
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes?.forEach((node) => {
+        bootstrapHomeEnergyManagerPanelFallback(node);
+      });
+    });
+  });
+  observer.observe(document.documentElement || document, { childList: true, subtree: true });
+}
+
 if (typeof customElements !== "undefined") {
   if (!customElements.get("home-energy-manager-panel")) {
     customElements.define("home-energy-manager-panel", HomeEnergyManagerPanel);
   }
+  startHomeEnergyManagerPanelFallback();
 } else {
-  bootstrapHomeEnergyManagerPanelFallback();
+  startHomeEnergyManagerPanelFallback();
 }
 
 
