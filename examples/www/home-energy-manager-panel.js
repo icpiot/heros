@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "176";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "177";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1138,8 +1138,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingUiActiveGroup(model = this._loadPricingUi()) {
     const groups = Array.isArray(model.groups) ? model.groups : [];
-    return groups.find((group) => String(group.group_id || "") === String(model.activeGroupId || ""))
+    const today = this._pricingTodayDate();
+    const selected = groups.find((group) => String(group.group_id || "") === String(model.activeGroupId || ""));
+    if (selected && (!selected.effective_start_date || String(selected.effective_start_date) <= today)) {
+      return selected;
+    }
+    return this._pricingMostRecentActiveGroup(groups, today)
+      || selected
       || groups[0]
+      || null;
+  }
+
+  _pricingTodayDate() {
+    const now = new Date();
+    const offsetMs = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+  }
+
+  _pricingMostRecentActiveGroup(groups = [], today = this._pricingTodayDate()) {
+    return [...(Array.isArray(groups) ? groups : [])]
+      .filter((group) => group?.effective_start_date && String(group.effective_start_date) <= today)
+      .sort((a, b) => String(b.effective_start_date || "").localeCompare(String(a.effective_start_date || "")))[0]
       || null;
   }
 
@@ -2583,7 +2602,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>${groups.length} group${groups.length === 1 ? "" : "s"} saved</span>
             </div>
             ${this._renderPricingGroupSelector(groups, activeGroup)}
-            <div class="pricing-rule-list">
+            <div class="pricing-rule-list ${showGroupEditor && activeGroup.group_id ? "is-hidden" : ""}">
               ${groupCards}
             </div>
             <div class="pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
