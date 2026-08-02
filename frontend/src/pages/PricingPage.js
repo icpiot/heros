@@ -1118,8 +1118,8 @@ export class HemPricingPage extends LitElement {
 
     .pricing-tiles {
       display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 
     .pricing-tiles article {

@@ -5,6 +5,7 @@
 - Source of truth: `C:\Dev\repos\home-energy-manager`
 - Do not use the deleted `neovoltBattery_HomeAssistantPlugin` repo unless the user explicitly asks for it.
 - Treat this repo as the only active codebase for all work in this session.
+- The Home Assistant config mount for this workspace is `H:\`, which mirrors the live HA config tree used for sync work.
 
 ## Repository Layout
 
@@ -31,3 +32,4 @@
 
 - Keep repo instructions current with the actual tree.
 - When instructions conflict with code, the code and repo tree take priority.
+- If you add any local-only operational notes for HA sync work, keep them under `.codex/` and out of git.

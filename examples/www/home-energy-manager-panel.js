@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "165";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "169";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2566,8 +2566,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <span>Effective Date</span>
                 <input type="date" name="effective_start_date" data-pricing-date-input data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" />
               </label>
-              ${this._renderPricingTypeSelector(this._pricingGroupDraftType() || groupDraft.pricing_type)}
-              <input type="hidden" name="pricing_type" value="${this._escapeHtml(String(this._pricingGroupDraftType() || groupDraft.pricing_type || "dynamic"))}" />
+              <div class="pricing-group-edit-form__header-row">
+                <div class="pricing-group-edit-form__header-row-main">
+                  ${this._renderPricingTypeSelector(this._pricingGroupDraftType() || groupDraft.pricing_type)}
+                  <input type="hidden" name="pricing_type" value="${this._escapeHtml(String(this._pricingGroupDraftType() || groupDraft.pricing_type || "dynamic"))}" />
+                </div>
+                <a class="theme-pill pricing-group-action pricing-group-action--add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_group" data-pricing-ui-add-group href="${this._pricingActionHref("add_group", {
+                  group_label: groupDraft.label,
+                  effective_start_date: groupDraft.effective_start_date,
+                  plan_name: groupDraft.plan_name,
+                  pricing_type: groupDraft.pricing_type,
+                  daily_connection_charge: groupDraft.daily_connection_charge,
+                  other_charges: groupDraft.other_charges,
+                  notes: groupDraft.notes,
+                })}">Add as new rate group</a>
+              </div>
               <label class="pricing-supply-charge-field">
                 <span>Daily Supply Charge</span>
                 <input type="number" step="0.001" name="daily_connection_charge" data-pricing-group-field="daily_connection_charge" value="${this._escapeHtml(String(groupDraft.daily_connection_charge ?? ""))}" />
@@ -2591,15 +2604,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 other_charges: groupDraft.other_charges,
                 notes: groupDraft.notes,
               })}">Save active group</a>
-              <a class="theme-pill pricing-group-action pricing-group-action--add" data-pricing-action-link="add_group" data-pricing-ui-add-group href="${this._pricingActionHref("add_group", {
-                group_label: groupDraft.label,
-                effective_start_date: groupDraft.effective_start_date,
-                plan_name: groupDraft.plan_name,
-                pricing_type: groupDraft.pricing_type,
-                daily_connection_charge: groupDraft.daily_connection_charge,
-                other_charges: groupDraft.other_charges,
-                notes: groupDraft.notes,
-              })}">Add as new rate group</a>
               </div>
             </form>
             </div>

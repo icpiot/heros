@@ -1194,6 +1194,17 @@
   margin-left: auto;
 }
 
+.pricing-group-edit-form__header-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.pricing-group-edit-form__header-row-main {
+  min-width: 0;
+}
+
 .pricing-form__actions .theme-pill {
   justify-self: start;
 }
@@ -1204,7 +1215,9 @@
   color: #06111f;
   font-weight: 900;
   letter-spacing: 0.01em;
-  padding: 11px 16px;
+  min-height: 38px;
+  padding: 8px 14px;
+  white-space: nowrap;
 }
 
 .pricing-group-action--save {
@@ -1213,6 +1226,11 @@
 
 .pricing-group-action--add {
   background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
+}
+
+.pricing-group-edit-form__header-row .pricing-group-action--add {
+  align-self: end;
+  justify-self: end;
 }
 
 .pricing-group-action:hover,
@@ -1313,14 +1331,28 @@
 
 .pricing-rule__detail-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
   gap: 12px;
   align-items: center;
 }
 
+.pricing__tiles {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
 .pricing-rule__actions--inline {
   align-self: center;
-  min-width: 360px;
+  min-width: 0;
+  width: 100%;
+  justify-self: end;
+  flex-wrap: wrap;
+}
+
+.pricing-rule__actions--inline .pricing-rule__button {
+  flex: 1 1 180px;
+  min-width: 0;
 }
 
 .pricing-rule__button {
