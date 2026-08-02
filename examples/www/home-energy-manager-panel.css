@@ -1197,9 +1197,9 @@
 .pricing-group-selector-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .pricing-group-edit-form__header-row {
@@ -1234,16 +1234,13 @@
 
 .pricing-group-action--add {
   background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: fit-content;
-  min-width: 0;
 }
 
 .pricing-group-selector-row .pricing-group-action--add {
   align-self: end;
   justify-self: end;
+  width: fit-content;
+  min-width: 0;
 }
 
 .pricing-group-action:hover,
