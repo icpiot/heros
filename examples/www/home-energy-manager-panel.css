@@ -1224,7 +1224,7 @@
   font-weight: 900;
   letter-spacing: 0.01em;
   min-height: 38px;
-  padding: 8px 14px;
+  padding: 8px 12px;
   white-space: nowrap;
 }
 
@@ -1234,9 +1234,14 @@
 
 .pricing-group-action--add {
   background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 0;
 }
 
-.pricing-group-edit-form__header-row .pricing-group-action--add {
+.pricing-group-selector-row .pricing-group-action--add {
   align-self: end;
   justify-self: end;
 }
