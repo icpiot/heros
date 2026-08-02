@@ -1217,47 +1217,9 @@
   justify-self: start;
 }
 
-.pricing-group-action {
-  border-color: transparent;
-  box-shadow: 0 10px 24px rgba(0, 229, 255, 0.22);
-  color: #06111f;
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  min-height: 38px;
-  padding: 8px 12px;
-  white-space: nowrap;
-}
-
-.pricing-group-action--save {
-  background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
-}
-
-.pricing-group-action--add {
-  background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
-}
-
-.pricing-group-selector-row .pricing-group-action--add {
+.pricing-group-selector-row .pricing-rule__button {
   align-self: end;
   justify-self: end;
-  width: fit-content;
-  min-width: 0;
-}
-
-.pricing-group-action:hover,
-.pricing-group-action:focus {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 14px 30px rgba(0, 229, 255, 0.3);
-  filter: brightness(1.06);
-  outline: none;
-}
-
-.pricing-group-action:disabled,
-.pricing-group-action.is-disabled {
-  border-color: transparent;
-  box-shadow: 0 8px 18px rgba(0, 229, 255, 0.12);
-  color: #06111f;
-  cursor: not-allowed;
-  filter: saturate(0.7);
-  opacity: 0.58;
 }
 
 .pricing-chip-list {
