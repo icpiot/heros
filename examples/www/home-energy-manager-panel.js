@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "169";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "170";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1179,22 +1179,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
         `
       : "";
     return `
-      <div class="shared-selector pricing-group-selector">
-        <div class="shared-selector__label" id="hem-pricing-group-label">Effective Date / Description</div>
-        <div class="shared-selector__picker">
-          <button
-            type="button"
-            class="shared-selector__control"
-            aria-haspopup="listbox"
-            aria-expanded="${this._pricingGroupSelectorOpen && hasGroups ? "true" : "false"}"
-            aria-labelledby="hem-pricing-group-label"
-            data-pricing-group-toggle
-            ${hasGroups ? "" : "disabled"}
-          >
-            <span>${this._escapeHtml(selectedLabel)}</span>
-          </button>
-          ${dropdown}
+      <div class="pricing-group-selector-row">
+        <div class="shared-selector pricing-group-selector">
+          <div class="shared-selector__label" id="hem-pricing-group-label">Effective Date / Description</div>
+          <div class="shared-selector__picker">
+            <button
+              type="button"
+              class="shared-selector__control"
+              aria-haspopup="listbox"
+              aria-expanded="${this._pricingGroupSelectorOpen && hasGroups ? "true" : "false"}"
+              aria-labelledby="hem-pricing-group-label"
+              data-pricing-group-toggle
+              ${hasGroups ? "" : "disabled"}
+            >
+              <span>${this._escapeHtml(selectedLabel)}</span>
+            </button>
+            ${dropdown}
+          </div>
         </div>
+        <a class="theme-pill pricing-group-action pricing-group-action--add ${activeGroup?.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_group" data-pricing-ui-add-group href="${this._pricingActionHref("add_group", {
+          group_label: activeGroup?.label || "",
+          effective_start_date: activeGroup?.effective_start_date || "",
+          plan_name: activeGroup?.plan_name || "",
+          pricing_type: activeGroup?.pricing_type || "dynamic",
+          daily_connection_charge: activeGroup?.daily_connection_charge,
+          other_charges: activeGroup?.other_charges,
+          notes: activeGroup?.notes,
+        })}">Add as new rate group</a>
       </div>
     `;
   }
@@ -2571,15 +2582,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   ${this._renderPricingTypeSelector(this._pricingGroupDraftType() || groupDraft.pricing_type)}
                   <input type="hidden" name="pricing_type" value="${this._escapeHtml(String(this._pricingGroupDraftType() || groupDraft.pricing_type || "dynamic"))}" />
                 </div>
-                <a class="theme-pill pricing-group-action pricing-group-action--add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_group" data-pricing-ui-add-group href="${this._pricingActionHref("add_group", {
-                  group_label: groupDraft.label,
-                  effective_start_date: groupDraft.effective_start_date,
-                  plan_name: groupDraft.plan_name,
-                  pricing_type: groupDraft.pricing_type,
-                  daily_connection_charge: groupDraft.daily_connection_charge,
-                  other_charges: groupDraft.other_charges,
-                  notes: groupDraft.notes,
-                })}">Add as new rate group</a>
               </div>
               <label class="pricing-supply-charge-field">
                 <span>Daily Supply Charge</span>

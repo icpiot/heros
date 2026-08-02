@@ -1194,9 +1194,17 @@
   margin-left: auto;
 }
 
-.pricing-group-edit-form__header-row {
+.pricing-group-selector-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.pricing-group-edit-form__header-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: end;
 }
