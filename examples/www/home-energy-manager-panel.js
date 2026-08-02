@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "175";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "176";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1050,9 +1050,22 @@ class HomeEnergyManagerPanel extends HTMLElement {
     };
   }
 
-  _loadPricingUi() {
+  _loadStoredPricingUi() {
     try {
       const parsed = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY) || "{}") || {};
+      return {
+        ...this._pricingUiDefaults(),
+        ...parsed,
+        groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+      };
+    } catch (error) {
+      return this._pricingUiDefaults();
+    }
+  }
+
+  _loadPricingUi() {
+    try {
+      const parsed = this._loadStoredPricingUi();
       const backendModel = this._pricingUiFromBackendSchedule();
       if (backendModel.backendAvailable && backendModel.groups.length === 0) {
         try {
@@ -2403,20 +2416,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingPage() {
     if (!this._hass) {
-      return `
-        <section class="pricing">
-          <section class="grid pricing__grid pricing__grid--active-groups">
-            <article class="panel-card panel-card--wide">
-              <div class="panel-card__header">
-                <h2>Rate Group List</h2>
-                <span>Loading</span>
-              </div>
-            </article>
-          </section>
-        </section>
-      `;
+      const storedModel = this._loadStoredPricingUi();
+      if (Array.isArray(storedModel.groups) && storedModel.groups.length > 0) {
+        return this._pricingPageWithModel(storedModel);
+      }
     }
-    const model = this._loadPricingUi();
+    return this._pricingPageWithModel(this._loadPricingUi());
+  }
+
+  _pricingPageWithModel(model) {
     const groups = this._pricingUiSortedGroups(model);
     const activeGroup = this._pricingUiActiveGroup({ ...model, groups }) || this._pricingUiGroupDefaults();
     const activeRules = Array.isArray(activeGroup.rules) ? activeGroup.rules : [];
