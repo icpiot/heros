@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "177";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "178";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -666,6 +666,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
       hem_editor: String(mode || "modify"),
     });
     return `/home-energy-manager?${params.toString()}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+  }
+
+  _clearPricingEditorUrl() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("hem_editor");
+      url.searchParams.delete("hem_action");
+      url.searchParams.set("hem_page", "pricing");
+      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+      window.history.replaceState({}, "", url.toString());
+    } catch (error) {
+      // Keep the saved data even if the browser blocks URL cleanup.
+    }
   }
 
   _normalizePricingDate(value) {
@@ -1514,6 +1527,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.warning = "";
     this._savePricingUi(model);
     this._pricingUiGroupDraft = {};
+    this._pricingGroupEditorOpen = false;
+    this._clearPricingEditorUrl();
     this._holdRenderWindow();
     this._render();
     try {
@@ -2605,7 +2620,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <div class="pricing-rule-list ${showGroupEditor && activeGroup.group_id ? "is-hidden" : ""}">
               ${groupCards}
             </div>
-            <div class="pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
+            <div class="pricing-rule pricing-rule--editor is-selected pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
               ${warningMarkup}
               <form class="pricing-form pricing-group-edit-form" method="get" action="/home-energy-manager">
               <input type="hidden" name="hem_page" value="pricing" />
@@ -2637,7 +2652,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <textarea name="notes" data-pricing-group-field="notes" rows="1">${this._escapeHtml(String(groupDraft.notes || ""))}</textarea>
               </label>
               <div class="pricing-form__actions pricing-group-form__actions">
-              <a class="theme-pill pricing-group-action pricing-group-action--save ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
+              <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
                 group_id: activeGroup.group_id || groupDraft.group_id,
                 group_label: groupDraft.label,
                 effective_start_date: activeGroup.effective_start_date || groupDraft.effective_start_date,

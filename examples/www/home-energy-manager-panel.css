@@ -790,7 +790,11 @@
 .pricing-group-editor {
   display: grid;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 12px;
+}
+
+.pricing-rule--editor {
+  box-sizing: border-box;
 }
 
 .pricing-group-selector {
