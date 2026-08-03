@@ -427,3 +427,97 @@ def test_pricing_panel_ui_keeps_selected_future_group_active():
     )
 
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_new_group_keeps_stable_group_id():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HomeEnergyManagerPanel extends HTMLElement",
+          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: {
+            get() { return false; },
+            define() {},
+          },
+          localStorage: {
+            getItem() { return null; },
+            setItem() {},
+            removeItem() {},
+          },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+
+        const panel = new context.HomeEnergyManagerPanel();
+        panel._render = () => {};
+        panel._holdRenderWindow = () => {};
+        panel._connectionName = () => "Test Provider";
+        panel._savePricingUi = () => {};
+        panel._loadPricingUi = () => ({ groups: [], activeGroupId: "", warning: "" });
+        panel._pricingGroupDraft = {};
+        panel._handlePricingUiNewGroup();
+
+        const draft = panel._pricingUiGroupDraft;
+        panel.shadowRoot = {
+          querySelectorAll() {
+            return [
+              { dataset: { pricingGroupField: "group_id" }, value: draft.group_id },
+              { dataset: { pricingGroupField: "label" }, value: "Browser Test Group" },
+              { dataset: { pricingGroupField: "effective_start_date" }, value: "2026-08-03" },
+              { dataset: { pricingGroupField: "pricing_type" }, value: "dynamic" },
+              { dataset: { pricingGroupField: "daily_connection_charge" }, value: "" },
+              { dataset: { pricingGroupField: "other_charges" }, value: "" },
+              { dataset: { pricingGroupField: "notes" }, value: "" },
+            ];
+          },
+        };
+
+        const readBack = panel._readPricingUiGroupForm();
+        const ok = Boolean(draft.group_id)
+          && readBack.group_id === draft.group_id
+          && readBack.effective_start_date === "2026-08-03";
+
+        if (!ok) {
+          console.error(JSON.stringify({ draft, readBack }, null, 2));
+          process.exit(1);
+        }
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)

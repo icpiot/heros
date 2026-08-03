@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "199";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "201";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1753,6 +1753,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._savePricingUi(model);
     this._pricingUiGroupDraft = {
       ...this._pricingUiGroupDefaults(),
+      group_id: this._generateRuleId(),
       provider: this._connectionName(),
       pricing_type: this._pricingGroupDraftType() || "dynamic",
     };
@@ -2811,7 +2812,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               ${this._renderHelpPanel("group")}
               <form class="pricing-form pricing-group-edit-form" method="get" action="/home-energy-manager">
               <input type="hidden" name="hem_page" value="pricing" />
-              <input type="hidden" name="group_id" value="${this._escapeHtml(String(activeGroup.group_id || groupDraft.group_id || ""))}" />
+              <input type="hidden" name="group_id" data-pricing-group-field="group_id" value="${this._escapeHtml(String(activeGroup.group_id || groupDraft.group_id || ""))}" />
               <label>
                 <span>Group</span>
                 <input type="text" name="group_label" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from Jan 1" />
