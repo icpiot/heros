@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "182";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "183";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -743,6 +743,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return "Public holiday";
     }
     return String(day || "").toUpperCase();
+  }
+
+  _pricingSummaryDayLabel(day) {
+    if (day === "public_holiday") {
+      return "Public holiday";
+    }
+    return String(day || "").slice(0, 3).toUpperCase();
   }
 
   _renderHelpButton(section, label) {
@@ -2711,14 +2718,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <div class="pricing-rule__header">
                 <div>
                   <strong>${this._escapeHtml(String(rule.label || "Unnamed rule"))}</strong>
-                  <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingDisplayDayLabel(day)).join(", ") || "No days selected")}</span>
+                  <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected")}</span>
                 </div>
                 <div class="pricing-rule__actions">
                   <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
                 </div>
               </div>
               <dl class="pricing-rule__meta">
-                <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingDisplayDayLabel(day)).join(", ") || "Not set")}</dd></div>
+                <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "Not set")}</dd></div>
                 <div><dt>Start</dt><dd>${this._escapeHtml(String(rule.start_time || "00:00"))}</dd></div>
                 <div><dt>End</dt><dd>${this._escapeHtml(String(rule.end_time || "23:59"))}</dd></div>
               </dl>

@@ -1199,16 +1199,30 @@
 }
 
 .pricing-rule--summary .pricing-rule__meta {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(120px, 0.9fr)) minmax(180px, 1fr);
 }
 
 .pricing-rule--summary .pricing-rule__rates {
   gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .pricing-rule--summary p {
   margin: 0;
   color: var(--hem-panel-muted);
+}
+
+.pricing-rule--summary .pricing-rule__meta div {
+  border: 1px solid var(--hem-panel-border);
+}
+
+.pricing-rule--summary .pricing-rule__meta dd,
+.pricing-rule--summary .pricing-rule__meta dt {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pricing-form label,
