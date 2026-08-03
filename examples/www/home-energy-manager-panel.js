@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "187";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "188";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1219,15 +1219,16 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingUiRuleDefaults(recordType = "buy") {
+    const normalizedRecordType = String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy";
     return {
       rule_id: "",
-      label: "",
-      day_types: ["mon", "tue", "wed", "thu", "fri"],
-      start_time: "",
-      end_time: "",
+      label: normalizedRecordType === "sell" ? "Flat FIT" : "",
+      day_types: normalizedRecordType === "sell" ? ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] : ["mon", "tue", "wed", "thu", "fri"],
+      start_time: normalizedRecordType === "sell" ? "00:00" : "",
+      end_time: normalizedRecordType === "sell" ? "23:59" : "",
       import_rate: "",
       export_rate: "",
-      record_type: String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy",
+      record_type: normalizedRecordType,
       other_charges: "",
       notes: "",
     };
@@ -1601,7 +1602,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingUiValidationForRule(group, candidateRule, existingRuleId = "") {
     const recordType = String(candidateRule.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
-    if (!candidateRule.label || !candidateRule.start_time || !candidateRule.end_time) {
+    if (recordType !== "sell" && (!candidateRule.label || !candidateRule.start_time || !candidateRule.end_time)) {
       return "Rule label, start time, and end time are required.";
     }
     if (this._pricingRuleSegments(candidateRule).length === 0) {
