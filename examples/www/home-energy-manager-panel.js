@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "184";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "186";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -653,9 +653,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             start_time: String(url.searchParams.get("start_time") || "").trim(),
             end_time: String(url.searchParams.get("end_time") || "").trim(),
             import_rate: String(url.searchParams.get("import_rate") || "").trim(),
-            export_tier_1_limit: String(url.searchParams.get("export_tier_1_limit") || "").trim(),
-            export_tier_1_rate: String(url.searchParams.get("export_tier_1_rate") || "").trim(),
-            export_tier_2_rate: String(url.searchParams.get("export_tier_2_rate") || "").trim(),
+            export_rate: String(url.searchParams.get("export_rate") || url.searchParams.get("export_tier_1_rate") || "").trim(),
             record_type: recordType,
           };
           const warning = this._pricingUiValidationForRule(group, rule);
@@ -838,9 +836,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           start_time: draft.start_time,
           end_time: draft.end_time,
           import_rate: draft.import_rate,
-          export_tier_1_limit: draft.export_tier_1_limit,
-          export_tier_1_rate: draft.export_tier_1_rate,
-          export_tier_2_rate: draft.export_tier_2_rate,
+          export_rate: draft.export_rate,
         });
       }
     });
@@ -888,8 +884,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       payload.start_time || "",
       payload.end_time || "",
       payload.import_rate || "",
-      payload.export_tier_1_rate || "",
-      payload.export_tier_2_rate || "",
+      payload.export_rate || "",
     ].map((value) => String(value ?? "").trim()).join("|");
   }
 
@@ -911,7 +906,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return false;
     }
     if (recordType === "sell") {
-      return this._isPricingAutoCommitRateReady(rule?.export_tier_1_rate || rule?.export_tier_2_rate);
+      return this._isPricingAutoCommitRateReady(rule?.export_rate);
     }
     return this._isPricingAutoCommitRateReady(rule?.import_rate);
   }
@@ -1109,9 +1104,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       end_time: String(record?.end_time || "23:59"),
       import_rate: record?.import_rate ?? "",
       export_rate: record?.export_rate ?? "",
-      export_tier_1_limit: sellTiers.tier_1_limit_kwh ?? record?.export_tier_1_limit ?? "",
-      export_tier_1_rate: sellTiers.tier_1_rate ?? record?.export_tier_1_rate ?? "",
-      export_tier_2_rate: sellTiers.tier_2_rate ?? record?.export_tier_2_rate ?? "",
       record_type: String(record?.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy",
       other_charges: String(record?.other_charges || ""),
       notes: String(record?.notes || ""),
@@ -1235,9 +1227,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       end_time: "",
       import_rate: "",
       export_rate: "",
-      export_tier_1_limit: "",
-      export_tier_1_rate: "",
-      export_tier_2_rate: "",
       record_type: String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy",
       other_charges: "",
       notes: "",
@@ -1535,10 +1524,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       start_time: String(form.start_time || defaults.start_time).trim(),
       end_time: String(form.end_time || defaults.end_time).trim(),
       import_rate: String(form.import_rate || "").trim(),
-      export_rate: String(form.export_rate || form.export_tier_1_rate || "").trim(),
-      export_tier_1_limit: String(form.export_tier_1_limit || "").trim(),
-      export_tier_1_rate: String(form.export_tier_1_rate || "").trim(),
-      export_tier_2_rate: String(form.export_tier_2_rate || "").trim(),
+      export_rate: String(form.export_rate || "").trim(),
       record_type: normalizedRecordType,
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
@@ -1620,11 +1606,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (this._pricingRuleSegments(candidateRule).length === 0) {
       return "Rule start and end time must be valid and cannot be the same.";
     }
-    if (candidateRule.export_tier_1_limit && !candidateRule.export_tier_1_rate) {
-      return "Sell tariff first block rate is required when a first block kWh limit is set.";
-    }
-    if (candidateRule.export_tier_2_rate && (!candidateRule.export_tier_1_limit || !candidateRule.export_tier_1_rate)) {
-      return "Sell tariff remainder rate needs a first block kWh limit and first block rate.";
+    if (recordType === "sell" && !this._isPricingAutoCommitRateReady(candidateRule.export_rate)) {
+      return "Sell export rate must be a valid number.";
     }
     const rules = Array.isArray(group?.rules) ? group.rules : [];
     const overlap = rules.find((rule) => (
@@ -1863,9 +1846,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       effective_end_time: rule.end_time,
       import_rate: String(rule.import_rate ?? "").trim() === "" ? undefined : Number(rule.import_rate),
       export_rate: String(rule.export_rate ?? "").trim() === "" ? undefined : Number(rule.export_rate),
-      export_tier_1_limit: String(rule.export_tier_1_limit ?? "").trim() === "" ? undefined : Number(rule.export_tier_1_limit),
-      export_tier_1_rate: String(rule.export_tier_1_rate ?? "").trim() === "" ? undefined : Number(rule.export_tier_1_rate),
-      export_tier_2_rate: String(rule.export_tier_2_rate ?? "").trim() === "" ? undefined : Number(rule.export_tier_2_rate),
       other_charges: rule.other_charges,
       notes: rule.notes,
     }).catch((error) => {
@@ -2704,9 +2684,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           const isSellRule = String(rule.record_type || "buy") === "sell";
           const rateBits = isSellRule
             ? [
-                rule.export_tier_1_rate || rule.export_tier_2_rate
-                  ? `Sell ${rule.export_tier_1_limit ? `first ${rule.export_tier_1_limit} kWh at ` : ""}${this._formatPricingRate(rule.export_tier_1_rate || rule.export_rate)}${rule.export_tier_2_rate ? `, then ${this._formatPricingRate(rule.export_tier_2_rate)}` : ""}`
-                  : (rule.export_rate !== null && rule.export_rate !== undefined ? `Sell ${this._formatPricingRate(rule.export_rate)}` : null),
+                rule.export_rate !== null && rule.export_rate !== undefined ? `Sell ${this._formatPricingRate(rule.export_rate)}` : null,
                 rule.other_charges ? String(rule.other_charges) : null,
               ].filter(Boolean)
             : [
@@ -2891,9 +2869,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       rule_label: sellRuleDraft.label,
                       start_time: sellRuleDraft.start_time,
                       end_time: sellRuleDraft.end_time,
-                      export_tier_1_limit: sellRuleDraft.export_tier_1_limit,
-                      export_tier_1_rate: sellRuleDraft.export_tier_1_rate,
-                      export_tier_2_rate: sellRuleDraft.export_tier_2_rate,
+                      export_rate: sellRuleDraft.export_rate,
                     })}">+ Add sell price</a>
                   </div>
                   <div class="pricing-record-section__grid pricing-record-section__grid--sell-tariff">
@@ -2909,17 +2885,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <span>End</span>
                       <input type="time" name="end_time" data-pricing-record-type="sell" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(sellRuleDraft.end_time))}" />
                     </label>
-                    <label>
-                      <span>First block up to (kWh)</span>
-                      <input type="number" step="1" min="0" name="export_tier_1_limit" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_1_limit" value="${this._escapeHtml(String(sellRuleDraft.export_tier_1_limit ?? ""))}" placeholder="1000" />
-                    </label>
-                    <label>
-                      <span>First block rate ($/kWh)</span>
-                      <input type="number" step="0.001" min="0" name="export_tier_1_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_1_rate" value="${this._escapeHtml(String(sellRuleDraft.export_tier_1_rate ?? ""))}" placeholder="0.08" />
-                    </label>
-                    <label>
-                      <span>Remainder rate ($/kWh)</span>
-                      <input type="number" step="0.001" min="0" name="export_tier_2_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_2_rate" value="${this._escapeHtml(String(sellRuleDraft.export_tier_2_rate ?? ""))}" placeholder="0.02" />
+                    <label class="pricing-record-form__rate">
+                      <span>Export rate ($/kWh)</span>
+                      <input type="number" step="0.001" min="0" name="export_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_rate" value="${this._escapeHtml(String(sellRuleDraft.export_rate ?? ""))}" placeholder="0.08" />
                     </label>
                   </div>
                   ${this._renderHelpPanel("sell")}
