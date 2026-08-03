@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "205";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "206";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -87,6 +87,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._lastPricingAutoCommitSignature = "";
     this._pricingFocusedField = null;
     this._pricingFocusHoldUntil = 0;
+    this._pricingFileLoadKey = "";
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
     this._boundLocationChange = this._handleLocationChange.bind(this);
@@ -101,6 +102,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._ensurePricingFileLoaded();
     if (this._page === "pricing" && this._hasPricingUrlAction()) {
       this._processPricingUrlAction();
       this._render();
@@ -140,6 +142,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   connectedCallback() {
     window.addEventListener("hashchange", this._boundLocationChange);
     window.addEventListener("popstate", this._boundLocationChange);
+    this._ensurePricingFileLoaded();
     this._render();
   }
 
@@ -557,6 +560,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (nextPage !== this._page) {
       this._page = nextPage;
     }
+    this._ensurePricingFileLoaded();
     this._render();
   }
 
@@ -1110,6 +1114,45 @@ class HomeEnergyManagerPanel extends HTMLElement {
     };
   }
 
+  _pricingScheduleDataFromPayload(payload = {}) {
+    const groups = Array.isArray(payload.groups) ? payload.groups : [];
+    const holidayDates = Array.isArray(payload.holiday_dates) ? payload.holiday_dates : [];
+    return {
+      available: true,
+      state: "Loaded",
+      ruleCount: groups.reduce((total, group) => total + (Array.isArray(group?.records) ? group.records.length : 0), 0),
+      holidayCount: holidayDates.length,
+      holidaySource: String(payload.holiday_source || "manual"),
+      region: String(payload.region || ""),
+      holidayDates,
+      dateMap: payload.date_map && typeof payload.date_map === "object" ? payload.date_map : {},
+      rules: Array.isArray(payload.rules) ? payload.rules : [],
+      groups,
+      activeRule: null,
+      activeGroup: groups[0] || null,
+      updatedAt: String(payload.updated_at || payload.updated || ""),
+      activeType: "",
+      activeProvider: "",
+    };
+  }
+
+  _pricingUiFromScheduleData(schedule) {
+    const groups = Array.isArray(schedule.groups)
+      ? schedule.groups.map((group) => this._pricingUiGroupFromBackendGroup(group))
+      : [];
+    const activeGroupId = schedule.activeGroup?.group_id
+      || groups.find((group) => group.effective_start_date)?.group_id
+      || groups[0]?.group_id
+      || "";
+    return {
+      ...this._pricingUiDefaults(),
+      groups,
+      activeGroupId,
+      backendAvailable: Boolean(schedule.available),
+      backendUpdatedAt: schedule.updatedAt,
+    };
+  }
+
   _pricingUiRuleFromBackendRecord(record) {
     const metadata = record?.metadata && typeof record.metadata === "object" ? record.metadata : {};
     const sellTiers = metadata.sell_tiers && typeof metadata.sell_tiers === "object" ? metadata.sell_tiers : {};
@@ -1145,21 +1188,47 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingUiFromBackendSchedule() {
-    const schedule = this._pricingScheduleData();
-    const groups = Array.isArray(schedule.groups)
-      ? schedule.groups.map((group) => this._pricingUiGroupFromBackendGroup(group))
-      : [];
-    const activeGroupId = schedule.activeGroup?.group_id
-      || groups.find((group) => group.effective_start_date)?.group_id
-      || groups[0]?.group_id
-      || "";
-    return {
-      ...this._pricingUiDefaults(),
-      groups,
-      activeGroupId,
-      backendAvailable: Boolean(schedule.available),
-      backendUpdatedAt: schedule.updatedAt,
-    };
+    return this._pricingUiFromScheduleData(this._pricingScheduleData());
+  }
+
+  _pricingFileUrl() {
+    const entryId = this._entryId();
+    if (!entryId) {
+      return "";
+    }
+    return `/local/home-energy-manager/${encodeURIComponent(entryId)}/pricing_schedule.json?cb=${Date.now()}`;
+  }
+
+  _ensurePricingFileLoaded() {
+    if (this._page !== "pricing") {
+      return;
+    }
+    const url = this._pricingFileUrl();
+    if (!url) {
+      return;
+    }
+    const loadKey = `${url.split("?")[0]}:${Math.floor(Date.now() / 3000)}`;
+    if (this._pricingFileLoadKey === loadKey) {
+      return;
+    }
+    this._pricingFileLoadKey = loadKey;
+    window.fetch(url, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Pricing file unavailable: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        const model = this._pricingUiFromScheduleData(this._pricingScheduleDataFromPayload(payload));
+        this._savePricingUiFromBackend(model);
+        if (this._page === "pricing" && !this._shouldHoldRender()) {
+          this._render();
+        }
+      })
+      .catch((error) => {
+        console.debug("Pricing file not ready; using HA state fallback", error);
+      });
   }
 
   _pricingUiDefaults() {
@@ -1260,6 +1329,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
         groups: Array.isArray(model?.groups) ? model.groups : [],
         localUpdatedAt: now,
         pendingWriteUntil: now + HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS,
+      }));
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _savePricingUiFromBackend(model) {
+    try {
+      const backendUpdatedAt = Date.parse(String(model?.backendUpdatedAt || ""));
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify({
+        ...this._pricingUiDefaults(),
+        ...(model || {}),
+        groups: Array.isArray(model?.groups) ? model.groups : [],
+        localUpdatedAt: Number.isFinite(backendUpdatedAt) ? backendUpdatedAt : Date.now(),
+        pendingWriteUntil: 0,
       }));
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
@@ -2648,6 +2732,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingPage() {
+    this._ensurePricingFileLoaded();
     if (!this._hass) {
       const storedModel = this._loadStoredPricingUi();
       if (Array.isArray(storedModel.groups) && storedModel.groups.length > 0) {
@@ -4211,6 +4296,7 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._hasDelegatedHandlers = false;
     panel._pricingFocusedField = null;
     panel._pricingFocusHoldUntil = 0;
+    panel._pricingFileLoadKey = "";
     panel._pricingAutoCommitTimer = null;
     panel._lastPricingAutoCommitSignature = "";
     HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, panel);
@@ -4220,6 +4306,7 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
       get: () => panel._hass,
       set: (value) => {
         panel._hass = value;
+        panel._ensurePricingFileLoaded();
         panel._render();
       },
     });
