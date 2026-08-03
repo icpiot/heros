@@ -1051,12 +1051,31 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.pricing-record-section__grid--buy-tariff {
+  grid-template-columns: minmax(220px, 1.15fr) minmax(120px, 0.85fr) minmax(120px, 0.85fr) minmax(140px, 0.9fr);
+}
+
 .pricing-record-section__grid--tariff {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .pricing-record-section__grid label {
   min-width: 0;
+}
+
+.pricing-record-section__grid select {
+  width: 100%;
+  min-width: 0;
+}
+
+.pricing-record-section__grid input[type="time"] {
+  color-scheme: dark;
+}
+
+.pricing-record-section__grid input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(68%) sepia(80%) saturate(645%) hue-rotate(157deg) brightness(101%) contrast(101%);
+  opacity: 0.95;
 }
 
 .pricing-record-section__days {

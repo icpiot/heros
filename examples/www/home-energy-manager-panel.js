@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "178";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "179";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -10,9 +10,30 @@ const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui";
+const HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY = "home-energy-manager.panel.pricing.purchase_tariffs";
 const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
+const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
+const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS = [
+  "Morning Peak",
+  "Evening Peak",
+  "Morning Shoulder",
+  "Afternoon Shoulder",
+  "Evening Shoulder",
+  "Overnight Off-Peak",
+  "Weekend Off-Peak",
+  "10am-2pm Super Off-Peak",
+  "Overnight EV Charging",
+  "CL1",
+  "CL2",
+  "Peak Demand",
+  "Anytime Demand",
+  "Standard FiT",
+  "Premium FiT",
+  "Time-varying FiT",
+  "11am-2pm Free Energy Window",
+];
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
   { value: "sunrise", label: "Sunrise" },
@@ -630,7 +651,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
             export_tier_1_limit: String(url.searchParams.get("export_tier_1_limit") || "").trim(),
             export_tier_1_rate: String(url.searchParams.get("export_tier_1_rate") || "").trim(),
             export_tier_2_rate: String(url.searchParams.get("export_tier_2_rate") || "").trim(),
-            controlled_load_rate: String(url.searchParams.get("controlled_load_rate") || "").trim(),
             record_type: recordType,
           };
           const warning = this._pricingUiValidationForRule(group, rule);
@@ -740,7 +760,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
           start_time: draft.start_time,
           end_time: draft.end_time,
           import_rate: draft.import_rate,
-          controlled_load_rate: draft.controlled_load_rate,
           export_tier_1_limit: draft.export_tier_1_limit,
           export_tier_1_rate: draft.export_tier_1_rate,
           export_tier_2_rate: draft.export_tier_2_rate,
@@ -1015,7 +1034,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_limit: sellTiers.tier_1_limit_kwh ?? record?.export_tier_1_limit ?? "",
       export_tier_1_rate: sellTiers.tier_1_rate ?? record?.export_tier_1_rate ?? "",
       export_tier_2_rate: sellTiers.tier_2_rate ?? record?.export_tier_2_rate ?? "",
-      controlled_load_rate: record?.controlled_load_rate ?? "",
       record_type: String(record?.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy",
       other_charges: String(record?.other_charges || ""),
       notes: String(record?.notes || ""),
@@ -1142,11 +1160,53 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_limit: "",
       export_tier_1_rate: "",
       export_tier_2_rate: "",
-      controlled_load_rate: "",
       record_type: String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy",
       other_charges: "",
       notes: "",
     };
+  }
+
+  _purchaseTariffOptions() {
+    let customOptions = [];
+    try {
+      customOptions = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY) || "[]") || [];
+    } catch (error) {
+      customOptions = [];
+    }
+    return [...new Set([
+      ...HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS,
+      ...customOptions.map((option) => String(option || "").trim()).filter(Boolean),
+    ])];
+  }
+
+  _saveCustomPurchaseTariff(label) {
+    const normalized = String(label || "").trim();
+    if (!normalized) {
+      return "";
+    }
+    const options = this._purchaseTariffOptions();
+    if (!options.includes(normalized)) {
+      try {
+        localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY, JSON.stringify([...options, normalized]));
+      } catch (error) {
+        // The typed label can still be used for this record even if storage is blocked.
+      }
+    }
+    return normalized;
+  }
+
+  _renderPurchaseTariffSelector(value = "") {
+    const selectedValue = String(value || "").trim();
+    const options = this._purchaseTariffOptions();
+    const includesSelected = !selectedValue || options.includes(selectedValue);
+    return `
+      <select name="rule_label" data-pricing-purchase-tariff-select data-pricing-record-type="buy" data-pricing-rule-field="label">
+        ${selectedValue && !includesSelected ? `<option value="${this._escapeHtml(selectedValue)}" selected>${this._escapeHtml(selectedValue)}</option>` : ""}
+        <option value="" ${selectedValue ? "" : "selected"}>Select tariff</option>
+        ${options.map((option) => `<option value="${this._escapeHtml(option)}" ${option === selectedValue ? "selected" : ""}>${this._escapeHtml(option)}</option>`).join("")}
+        <option value="${HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE}">Other- Add to List</option>
+      </select>
+    `;
   }
 
   _pricingUiActiveGroup(model = this._loadPricingUi()) {
@@ -1380,7 +1440,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_limit: String(form.export_tier_1_limit || "").trim(),
       export_tier_1_rate: String(form.export_tier_1_rate || "").trim(),
       export_tier_2_rate: String(form.export_tier_2_rate || "").trim(),
-      controlled_load_rate: String(form.controlled_load_rate || "").trim(),
       record_type: normalizedRecordType,
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
@@ -1708,7 +1767,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       export_tier_1_limit: String(rule.export_tier_1_limit ?? "").trim() === "" ? undefined : Number(rule.export_tier_1_limit),
       export_tier_1_rate: String(rule.export_tier_1_rate ?? "").trim() === "" ? undefined : Number(rule.export_tier_1_rate),
       export_tier_2_rate: String(rule.export_tier_2_rate ?? "").trim() === "" ? undefined : Number(rule.export_tier_2_rate),
-      controlled_load_rate: String(rule.controlled_load_rate ?? "").trim() === "" ? undefined : Number(rule.controlled_load_rate),
       other_charges: rule.other_charges,
       notes: rule.notes,
     }).catch((error) => {
@@ -2554,7 +2612,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
               ].filter(Boolean)
             : [
                 rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
-                rule.controlled_load_rate !== null && rule.controlled_load_rate !== undefined ? `Controlled ${this._formatPricingRate(rule.controlled_load_rate)}` : null,
                 rule.other_charges ? String(rule.other_charges) : null,
               ].filter(Boolean);
           return `
@@ -2690,13 +2747,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       start_time: buyRuleDraft.start_time,
                       end_time: buyRuleDraft.end_time,
                       import_rate: buyRuleDraft.import_rate,
-                      controlled_load_rate: buyRuleDraft.controlled_load_rate,
                     })}">+ Add buy price</a>
                   </div>
-                  <div class="pricing-record-section__grid pricing-record-section__grid--tariff">
+                  <div class="pricing-record-section__grid pricing-record-section__grid--buy-tariff">
                     <label class="pricing-record-form__name">
                       <span>Purchase tariff</span>
-                      <input type="text" name="rule_label" data-pricing-record-type="buy" data-pricing-rule-field="label" value="${this._escapeHtml(String(buyRuleDraft.label || ""))}" placeholder="Purchase Tariff 1" />
+                      ${this._renderPurchaseTariffSelector(buyRuleDraft.label)}
                     </label>
                     <label class="pricing-record-form__time">
                       <span>Start</span>
@@ -2709,10 +2765,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                     <label class="pricing-record-form__rate">
                       <span>Import rate ($/kWh)</span>
                       <input type="number" step="0.001" name="import_rate" data-pricing-record-type="buy" data-pricing-rule-field="import_rate" value="${this._escapeHtml(String(buyRuleDraft.import_rate ?? ""))}" />
-                    </label>
-                    <label class="pricing-record-form__rate">
-                      <span>Controlled load ($/kWh)</span>
-                      <input type="number" step="0.001" name="controlled_load_rate" data-pricing-record-type="buy" data-pricing-rule-field="controlled_load_rate" value="${this._escapeHtml(String(buyRuleDraft.controlled_load_rate ?? ""))}" />
                     </label>
                   </div>
                   ${renderDaySelector("buy")}
@@ -3428,6 +3480,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._updatePricingActionLinks();
         this._schedulePricingAutoCommit();
         return;
+      }
+      if (target?.dataset?.pricingPurchaseTariffSelect !== undefined && target.value === HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE) {
+        const customLabel = this._saveCustomPurchaseTariff(window.prompt("Enter purchase tariff label") || "");
+        if (customLabel) {
+          const option = document.createElement("option");
+          option.value = customLabel;
+          option.textContent = customLabel;
+          const otherOption = Array.from(target.options).find((item) => item.value === HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE);
+          target.insertBefore(option, otherOption || null);
+          target.value = customLabel;
+        } else {
+          target.value = "";
+        }
       }
       if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
         const recordType = target?.dataset?.pricingRecordType || "";
