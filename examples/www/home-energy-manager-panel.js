@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "204";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "205";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -13,6 +13,7 @@ const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pric
 const HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY = "home-energy-manager.panel.pricing.purchase_tariffs";
 const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
+const HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS = 120000;
 const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
 const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
 const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS = [
@@ -1157,6 +1158,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       groups,
       activeGroupId,
       backendAvailable: Boolean(schedule.available),
+      backendUpdatedAt: schedule.updatedAt,
     };
   }
 
@@ -1165,6 +1167,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
       groups: [],
       activeGroupId: "",
       warning: "",
+      backendUpdatedAt: "",
+      localUpdatedAt: 0,
+      pendingWriteUntil: 0,
     };
   }
 
@@ -1199,6 +1204,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
       const backendGroups = Array.isArray(backendModel.groups) ? backendModel.groups : [];
       const parsedGroups = Array.isArray(parsed.groups) ? parsed.groups : [];
+      const localUpdatedAt = Number(parsed.localUpdatedAt || 0);
+      const pendingWriteUntil = Number(parsed.pendingWriteUntil || 0);
+      const backendUpdatedAt = Date.parse(String(backendModel.backendUpdatedAt || ""));
+      if (
+        parsedGroups.length > 0
+        && (
+          Date.now() < pendingWriteUntil
+          || (localUpdatedAt > 0 && (!Number.isFinite(backendUpdatedAt) || localUpdatedAt > backendUpdatedAt))
+        )
+      ) {
+        return {
+          ...this._pricingUiDefaults(),
+          ...backendModel,
+          ...parsed,
+          backendAvailable: backendModel.backendAvailable,
+          groups: parsedGroups,
+        };
+      }
       const mergedGroups = [...backendGroups];
       parsedGroups.forEach((group) => {
         const groupId = String(group?.group_id || "");
@@ -1230,10 +1253,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _savePricingUi(model) {
     try {
+      const now = Date.now();
       localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify({
         ...this._pricingUiDefaults(),
         ...(model || {}),
         groups: Array.isArray(model?.groups) ? model.groups : [],
+        localUpdatedAt: now,
+        pendingWriteUntil: now + HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS,
       }));
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
