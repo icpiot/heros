@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "196";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "197";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2848,7 +2848,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <textarea name="notes" data-pricing-group-field="notes" rows="1">${this._escapeHtml(String(groupDraft.notes || ""))}</textarea>
               </label>
               <div class="pricing-form__actions pricing-group-form__actions">
-              <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
+              <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
                 group_id: activeGroup.group_id || groupDraft.group_id,
                 group_label: groupDraft.label,
                 effective_start_date: activeGroup.effective_start_date || groupDraft.effective_start_date,
