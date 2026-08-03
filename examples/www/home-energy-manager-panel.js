@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "180";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "181";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -74,6 +74,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
     this._pricingTypeSelectorOpen = false;
+    this._pricingHelpOpen = "";
     this._pricingUiGroupDraft = {};
     this._pricingUiRuleDrafts = {
       buy: this._pricingUiRuleDefaults("buy"),
@@ -703,6 +704,72 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       // Keep the saved data even if the browser blocks URL cleanup.
     }
+  }
+
+  _pricingHelpContent(section) {
+    const content = {
+      group: [
+        "Group: the label shown in the selector and summary card.",
+        "Effective Date: when this rate group becomes active.",
+        "Type: fixed or dynamic pricing mode.",
+        "Daily Supply Charge: the daily fixed charge for this group.",
+        "Other charges: any extra notes or fees that apply to the group.",
+        "Notes: free text for anything else you want to remember.",
+      ],
+      buy: [
+        "Purchase tariff: choose a named tariff label or add a new one.",
+        "Start: start time for the buy price window.",
+        "End: end time for the buy price window.",
+        "Import rate: the energy rate charged for this buy window.",
+      ],
+      sell: [
+        "Feed-in tariff: the label for the export price window.",
+        "Start: start time for the sell price window.",
+        "End: end time for the sell price window.",
+        "First block up to (kWh): optional first block size for tiered export pricing.",
+        "First block rate ($/kWh): rate for the first export block.",
+        "Remainder rate ($/kWh): rate after the first export block.",
+      ],
+    };
+    return Array.isArray(content[section]) ? content[section] : [];
+  }
+
+  _pricingDisplayType(value) {
+    return String(value || "dynamic").trim().toLowerCase() === "fixed" ? "Fixed" : "Dynamic";
+  }
+
+  _pricingDisplayDayLabel(day) {
+    if (day === "public_holiday") {
+      return "Public holiday";
+    }
+    return String(day || "").toUpperCase();
+  }
+
+  _renderHelpButton(section, label) {
+    const active = this._pricingHelpOpen === section;
+    return `
+      <button
+        type="button"
+        class="pricing-help-button ${active ? "is-active" : ""}"
+        data-pricing-help="${section}"
+        aria-expanded="${active ? "true" : "false"}"
+        aria-label="${this._escapeHtml(label)} help"
+      >
+        ?
+      </button>
+    `;
+  }
+
+  _renderHelpPanel(section) {
+    if (this._pricingHelpOpen !== section) {
+      return "";
+    }
+    const items = this._pricingHelpContent(section);
+    return `
+      <div class="pricing-help-panel" role="note">
+        ${items.map((item) => `<p>${this._escapeHtml(item)}</p>`).join("")}
+      </div>
+    `;
   }
 
   _normalizePricingDate(value) {
@@ -2573,7 +2640,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           ${["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"].map((day) => `
             <label class="pricing-day-pill">
               <input type="checkbox" data-pricing-record-type="${recordType}" data-pricing-rule-day="${day}" ${(recordType === "sell" ? sellRuleDraft : buyRuleDraft).day_types.includes(day) ? "checked" : ""} />
-              <span>${day === "public_holiday" ? "Public holiday" : day.toUpperCase()}</span>
+              <span>${this._pricingDisplayDayLabel(day)}</span>
             </label>
           `).join("")}
         </div>
@@ -2586,7 +2653,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const ruleTiles = [
       { label: "Rate groups", value: String(groups.length) },
       { label: "Active group rules", value: String(activeRules.length) },
-      { label: "Active type", value: String(activeGroup.pricing_type || "dynamic") },
+      { label: "Active type", value: this._pricingDisplayType(activeGroup.pricing_type) },
       { label: "Effective from", value: String(activeGroup.effective_start_date || "Not set") },
     ];
     const visibleGroups = activeGroup.group_id ? [activeGroup] : [];
@@ -2607,7 +2674,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <dl class="pricing-rule__meta ${showGroupEditor ? "is-hidden" : ""}">
                 <div><dt>Effective Date</dt><dd>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</dd></div>
                 <div><dt>Description</dt><dd>${this._escapeHtml(String(group.label || "No description"))}</dd></div>
-                <div><dt>Type</dt><dd>${this._escapeHtml(String(group.pricing_type || "dynamic"))}</dd></div>
+                <div><dt>Type</dt><dd>${this._escapeHtml(this._pricingDisplayType(group.pricing_type))}</dd></div>
                 <div><dt>Rules</dt><dd>${Array.isArray(group.rules) ? group.rules.length : 0}</dd></div>
               </dl>
               <div class="pricing-rule__detail-row">
@@ -2640,21 +2707,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 rule.other_charges ? String(rule.other_charges) : null,
               ].filter(Boolean);
           return `
-            <article class="pricing-rule">
+            <article class="pricing-rule pricing-rule--summary">
               <div class="pricing-rule__header">
                 <div>
                   <strong>${this._escapeHtml(String(rule.label || "Unnamed rule"))}</strong>
-                  <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).join(", ") || "No days selected")}</span>
+                  <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingDisplayDayLabel(day)).join(", ") || "No days selected")}</span>
                 </div>
                 <div class="pricing-rule__actions">
                   <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
                 </div>
               </div>
               <dl class="pricing-rule__meta">
-                <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).join(", ") || "Not set")}</dd></div>
+                <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingDisplayDayLabel(day)).join(", ") || "Not set")}</dd></div>
                 <div><dt>Start</dt><dd>${this._escapeHtml(String(rule.start_time || "00:00"))}</dd></div>
                 <div><dt>End</dt><dd>${this._escapeHtml(String(rule.end_time || "23:59"))}</dd></div>
-                <div><dt>Override</dt><dd>${Array.isArray(rule.day_types) && rule.day_types.includes("public_holiday") ? "Public holiday" : "Standard"}</dd></div>
               </dl>
               <div class="pricing-rule__rates">
                 ${rateBits.length ? rateBits.map((bit) => `<span>${this._escapeHtml(bit)}</span>`).join("") : "<span>No rates set yet</span>"}
@@ -2704,6 +2770,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </div>
             <div class="pricing-rule pricing-rule--editor is-selected pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
               ${warningMarkup}
+              <div class="pricing-section-heading">
+                <div>
+                  <strong>Rate Group Details</strong>
+                  <span>Manage the active group before attaching buy or sell records.</span>
+                </div>
+                ${this._renderHelpButton("group", "Group help")}
+              </div>
+              ${this._renderHelpPanel("group")}
               <form class="pricing-form pricing-group-edit-form" method="get" action="/home-energy-manager">
               <input type="hidden" name="hem_page" value="pricing" />
               <input type="hidden" name="group_id" value="${this._escapeHtml(String(activeGroup.group_id || groupDraft.group_id || ""))}" />
@@ -2753,8 +2827,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <span>${activeRules.length} record(s) attached</span>
               </div>
               <p>
-                Add records to the selected group only. Public holiday records override normal day records.
-                Overlapping day/time windows are blocked before save.
+                Add records to the selected group only. Overlapping day/time windows are blocked before save.
               </p>
               <div class="pricing-holiday-form pricing-record-form">
                 <form class="pricing-record-section pricing-record-section--buy pricing-buy-form" method="get" action="/home-energy-manager#hem_page=pricing">
@@ -2766,6 +2839,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <strong>Buy Electricity</strong>
                       <span>Purchase tariff rows are independent from feed-in rows</span>
                     </div>
+                    ${this._renderHelpButton("buy", "Buy help")}
                     <a class="theme-pill pricing-record-section__add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_rule" data-pricing-record-type="buy" onpointerdown="event.preventDefault(); location.href=this.href" onmousedown="event.preventDefault(); location.href=this.href" onclick="event.preventDefault(); location.href=this.href" href="${this._pricingActionHref("add_rule", {
                       record_type: "buy",
                       rule_label: buyRuleDraft.label,
@@ -2792,6 +2866,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <input type="number" step="0.001" name="import_rate" data-pricing-record-type="buy" data-pricing-rule-field="import_rate" value="${this._escapeHtml(String(buyRuleDraft.import_rate ?? ""))}" />
                     </label>
                   </div>
+                  ${this._renderHelpPanel("buy")}
                   ${renderDaySelector("buy")}
                 </form>
                 <form class="pricing-record-section pricing-record-section--sell pricing-sell-form" method="get" action="/home-energy-manager#hem_page=pricing">
@@ -2803,6 +2878,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <strong>Sell Electricity</strong>
                       <span>Feed-in tariff rows have their own time and day selection</span>
                     </div>
+                    ${this._renderHelpButton("sell", "Sell help")}
                     <a class="theme-pill pricing-record-section__add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_rule" data-pricing-record-type="sell" onpointerdown="event.preventDefault(); location.href=this.href" onmousedown="event.preventDefault(); location.href=this.href" onclick="event.preventDefault(); location.href=this.href" href="${this._pricingActionHref("add_rule", {
                       record_type: "sell",
                       rule_label: sellRuleDraft.label,
@@ -2813,7 +2889,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       export_tier_2_rate: sellRuleDraft.export_tier_2_rate,
                     })}">+ Add sell price</a>
                   </div>
-                  <div class="pricing-record-section__grid pricing-record-section__grid--tariff">
+                  <div class="pricing-record-section__grid pricing-record-section__grid--sell-tariff">
                     <label class="pricing-record-form__name">
                       <span>Feed-in tariff</span>
                       <input type="text" name="rule_label" data-pricing-record-type="sell" data-pricing-rule-field="label" value="${this._escapeHtml(String(sellRuleDraft.label || ""))}" placeholder="Feed-in Tariff 1" />
@@ -2839,6 +2915,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <input type="number" step="0.001" min="0" name="export_tier_2_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_tier_2_rate" value="${this._escapeHtml(String(sellRuleDraft.export_tier_2_rate ?? ""))}" placeholder="0.02" />
                     </label>
                   </div>
+                  ${this._renderHelpPanel("sell")}
                   ${renderDaySelector("sell")}
                 </form>
               </div>

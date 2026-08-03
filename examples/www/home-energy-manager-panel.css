@@ -1036,6 +1036,66 @@
   text-transform: uppercase;
 }
 
+.pricing-section-heading,
+.pricing-record-section__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pricing-section-heading {
+  padding: 16px 16px 0;
+}
+
+.pricing-section-heading strong,
+.pricing-record-section__heading strong {
+  display: block;
+}
+
+.pricing-section-heading span,
+.pricing-record-section__heading span {
+  display: block;
+  margin-top: 4px;
+}
+
+.pricing-help-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--hem-panel-border);
+  background: rgba(9, 18, 34, 0.92);
+  color: var(--hem-panel-accent);
+  font: inherit;
+  font-weight: 900;
+  line-height: 1;
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.pricing-help-button.is-active,
+.pricing-help-button:hover,
+.pricing-help-button:focus {
+  background: linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong));
+  color: #06111f;
+  outline: none;
+}
+
+.pricing-help-panel {
+  margin: 0 16px 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--hem-panel-border);
+  background: rgba(7, 14, 26, 0.82);
+  color: var(--hem-panel-muted);
+  display: grid;
+  gap: 6px;
+}
+
+.pricing-help-panel p {
+  margin: 0;
+}
+
 .pricing-record-section__grid {
   display: grid;
   gap: 12px;
@@ -1055,8 +1115,8 @@
   grid-template-columns: minmax(220px, 1.15fr) minmax(120px, 0.85fr) minmax(120px, 0.85fr) minmax(140px, 0.9fr);
 }
 
-.pricing-record-section__grid--tariff {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.pricing-record-section__grid--sell-tariff {
+  grid-template-columns: minmax(220px, 1.15fr) minmax(120px, 0.85fr) minmax(120px, 0.85fr) minmax(150px, 0.95fr) minmax(150px, 0.95fr) minmax(150px, 0.95fr);
 }
 
 .pricing-record-section__grid label {
@@ -1127,6 +1187,28 @@
   border-top: 1px solid var(--hem-panel-border);
   margin-top: 14px;
   padding-top: 14px;
+}
+
+.pricing-rule--summary {
+  display: grid;
+  gap: 10px;
+}
+
+.pricing-rule--summary .pricing-rule__header {
+  align-items: center;
+}
+
+.pricing-rule--summary .pricing-rule__meta {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pricing-rule--summary .pricing-rule__rates {
+  gap: 6px;
+}
+
+.pricing-rule--summary p {
+  margin: 0;
+  color: var(--hem-panel-muted);
 }
 
 .pricing-form label,
