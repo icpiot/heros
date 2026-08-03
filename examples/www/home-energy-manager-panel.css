@@ -1176,6 +1176,9 @@
 
 .pricing-rule-list--attached {
   margin-top: 14px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .pricing-record-list-section {
@@ -1728,6 +1731,10 @@
   .pricing-group-card .pricing-form,
   .pricing-record-section__grid,
   .pricing-rule__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-rule-list--attached {
     grid-template-columns: 1fr;
   }
 
