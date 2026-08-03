@@ -21,7 +21,8 @@ from .pricing import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PRICING_DIR_NAME = "home-energy-manager-pricing"
+PRICING_DIR_NAME = "home-energy-manager"
+LEGACY_PRICING_DIR_NAME = "home-energy-manager-pricing"
 PRICING_FILE_NAME = "pricing.json"
 PRICING_SCHEDULE_FILE_NAME = "pricing_schedule.json"
 
@@ -64,7 +65,9 @@ class PriceHistoryStore:
         self.hass = hass
         self.entry_id = entry_id
         self.base_dir = Path(hass.config.path("www", PRICING_DIR_NAME, entry_id))
+        self.legacy_base_dir = Path(hass.config.path("www", LEGACY_PRICING_DIR_NAME, entry_id))
         self.history_file = self.base_dir / PRICING_FILE_NAME
+        self.legacy_history_file = self.legacy_base_dir / PRICING_FILE_NAME
 
     async def async_store_record(
         self,
@@ -121,7 +124,10 @@ class PriceHistoryStore:
         self._save_sync(history)
 
     def _load_sync(self) -> dict[str, Any]:
-        return load_pricing_history_file(self.history_file)
+        payload = load_pricing_history_file(self.history_file)
+        if payload:
+            return payload
+        return load_pricing_history_file(self.legacy_history_file)
 
     def _save_sync(self, history: dict[str, Any]) -> None:
         write_pricing_history_file(self.history_file, history)
@@ -151,7 +157,9 @@ class PricingScheduleStore:
         self.hass = hass
         self.entry_id = entry_id
         self.base_dir = Path(hass.config.path("www", PRICING_DIR_NAME, entry_id))
+        self.legacy_base_dir = Path(hass.config.path("www", LEGACY_PRICING_DIR_NAME, entry_id))
         self.schedule_file = self.base_dir / PRICING_SCHEDULE_FILE_NAME
+        self.legacy_schedule_file = self.legacy_base_dir / PRICING_SCHEDULE_FILE_NAME
 
     async def async_schedule(self) -> PricingSchedule:
         """Return the stored pricing schedule."""
@@ -244,6 +252,8 @@ class PricingScheduleStore:
 
     def _schedule_sync(self) -> PricingSchedule:
         payload = load_pricing_history_file(self.schedule_file)
+        if not payload:
+            payload = load_pricing_history_file(self.legacy_schedule_file)
         return PricingSchedule.from_dict(payload)
 
     def _save_schedule_sync(self, schedule: PricingSchedule) -> None:

@@ -122,6 +122,20 @@ All services accept an optional `entry_id` field. If you have a single
 provider account configured you can omit it; with multiple accounts it's
 required (the call will tell you which entry_ids exist).
 
+## Pricing storage
+
+Pricing remains file-based for now because the dataset is small and the panel
+already works well with a lightweight store.
+
+- Current storage root: `www/home-energy-manager/<entry_id>/`
+- Live schedule file: `pricing_schedule.json`
+- Historical pricing file: `pricing.json`
+- Legacy fallback: `www/home-energy-manager-pricing/<entry_id>/` remains
+  readable while old data is being cleaned up
+
+This keeps the pricing workflow simple and keeps the shared state easy to
+inspect in Home Assistant's `www` folder.
+
 ## Example automations
 
 ```yaml

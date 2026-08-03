@@ -1,13 +1,14 @@
 # Pricing Backend Design
 
-This document describes the proposed backend shape for the Pricing UI that was
-introduced in panel build V064.
+This document describes the pricing data shape used by the Pricing UI.
 
 ## Scope
 
-The current V064 panel stores rate groups locally in the browser while the user
-reviews the model. Backend persistence should start only after the model is
-approved.
+Pricing stays file-backed for now because the dataset is small and the workflow
+is easiest to reason about that way. The current live files live under
+`www/home-energy-manager/<entry_id>/`, with the older
+`www/home-energy-manager-pricing/<entry_id>/` path kept as a legacy read
+fallback during cleanup.
 
 ## Data model
 

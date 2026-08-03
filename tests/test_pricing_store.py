@@ -96,7 +96,7 @@ def test_pricing_store_persists_and_loads_records(tmp_path):
     assert len(history.entries) == 1
     assert history.entries[0] == record
 
-    payload = (tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing.json").read_text(encoding="utf-8")
+    payload = (tmp_path / "www" / "home-energy-manager" / "entry-1" / "pricing.json").read_text(encoding="utf-8")
     assert '"scope_key"' not in payload
     assert '"NSW"' in payload
 
@@ -109,7 +109,7 @@ def test_pricing_store_uses_safe_scope_names(tmp_path):
 
     asyncio.run(store.async_store_record(scope_key="../evil scope", label="All systems", record=record))
 
-    assert (tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing.json").exists()
+    assert (tmp_path / "www" / "home-energy-manager" / "entry-1" / "pricing.json").exists()
 
 
 def test_pricing_history_file_helpers_round_trip(tmp_path):
@@ -207,7 +207,7 @@ def test_pricing_schedule_store_persists_groups_and_records(tmp_path):
     assert schedule.groups[0].records[0] == record
 
     payload = load_pricing_history_file(
-        tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing_schedule.json"
+        tmp_path / "www" / "home-energy-manager" / "entry-1" / "pricing_schedule.json"
     )
     assert payload["version"] == 2
     assert payload["groups"][0]["records"][0]["import_rate"] == 0.42
@@ -219,3 +219,34 @@ def test_pricing_schedule_store_persists_groups_and_records(tmp_path):
     asyncio.run(store.async_remove_group("group-1"))
     schedule_after_group_remove = asyncio.run(store.async_schedule())
     assert schedule_after_group_remove.groups == []
+
+
+def test_pricing_schedule_store_reads_legacy_path_when_new_path_is_empty(tmp_path):
+    legacy_path = tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing_schedule.json"
+    legacy_payload = {
+        "version": 1,
+        "updated": "2026-07-14T00:00:00+00:00",
+        "groups": [
+            {
+                "group_id": "legacy-group",
+                "label": "Legacy group",
+                "effective_start_date": "2026-01-01",
+                "pricing_type": "fixed",
+                "provider": "Test Provider",
+                "plan_name": "",
+                "daily_connection_charge": 0.149,
+                "other_charges": "",
+                "notes": "",
+                "records": [],
+            }
+        ],
+    }
+
+    write_pricing_history_file(legacy_path, legacy_payload)
+    store = PricingScheduleStore(_FakeHass(tmp_path), "entry-1")
+
+    import asyncio
+
+    schedule = asyncio.run(store.async_schedule())
+    assert len(schedule.groups) == 1
+    assert schedule.groups[0].group_id == "legacy-group"
