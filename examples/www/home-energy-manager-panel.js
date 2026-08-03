@@ -1427,15 +1427,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             ${dropdown}
           </div>
         </div>
-        <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-action-link="add_group" data-pricing-ui-add-group href="${this._pricingActionHref("add_group", {
-          group_label: activeGroup?.label || "",
-          effective_start_date: activeGroup?.effective_start_date || "",
-          plan_name: activeGroup?.plan_name || "",
-          pricing_type: activeGroup?.pricing_type || "dynamic",
-          daily_connection_charge: activeGroup?.daily_connection_charge,
-          other_charges: activeGroup?.other_charges,
-          notes: activeGroup?.notes,
-        })}">Add as new rate group</a>
+        <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-new-group>Add as new rate group</button>
       </div>
     `;
   }
@@ -4267,12 +4259,13 @@ function homeEnergyManagerPanelControllerForEvent(event) {
 function handleHomeEnergyManagerGlobalActivation(event) {
   const path = event?.composedPath?.() || [];
   const actionLink = path.find((node) => node?.dataset?.pricingActionLink);
+  const newGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
   const addGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined)
     || (actionLink?.dataset?.pricingActionLink === "add_group" ? actionLink : null);
   const addRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined)
     || (actionLink?.dataset?.pricingActionLink === "add_rule" ? actionLink : null);
   const pageButton = path.find((node) => node?.dataset?.page);
-  if (!addGroup && !addRule && !pageButton) {
+  if (!newGroup && !addGroup && !addRule && !pageButton) {
     return;
   }
   const panel = homeEnergyManagerPanelControllerForEvent(event)
@@ -4282,6 +4275,10 @@ function handleHomeEnergyManagerGlobalActivation(event) {
   }
   event.preventDefault?.();
   event.stopPropagation?.();
+  if (newGroup) {
+    panel._handlePricingUiNewGroup();
+    return;
+  }
   if (addGroup) {
     panel._handlePricingUiAddGroup();
     return;
