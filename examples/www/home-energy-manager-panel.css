@@ -1178,12 +1178,13 @@
   margin-top: 14px;
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .pricing-record-list-section {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 18px;
@@ -1199,6 +1200,7 @@
 .pricing-rule--summary {
   display: grid;
   gap: 10px;
+  min-width: 0;
   border-radius: 16px;
   padding: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
@@ -1225,7 +1227,7 @@
 }
 
 .pricing-rule--summary .pricing-rule__meta {
-  grid-template-columns: minmax(260px, 1.6fr) repeat(2, minmax(150px, 0.75fr));
+  grid-template-columns: minmax(220px, 1.6fr) repeat(2, minmax(120px, 0.75fr));
   align-items: stretch;
 }
 
@@ -1257,6 +1259,12 @@
   text-overflow: clip;
   white-space: normal;
   word-break: normal;
+}
+
+@media (min-width: 1240px) {
+  .pricing-rule-list--attached {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .pricing-form label,
