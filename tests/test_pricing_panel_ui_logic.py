@@ -343,6 +343,98 @@ def test_pricing_panel_ui_prefers_local_file_data_over_stale_sensor_state():
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
 
 
+def test_pricing_panel_ui_backend_file_load_does_not_replace_pending_local_record():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HomeEnergyManagerPanel extends HTMLElement",
+          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        const group = {
+          group_id: "group",
+          label: "Rates",
+          effective_start_date: "2026-08-01",
+          rules: [
+            { rule_id: "peak", record_type: "buy", label: "Peak" },
+            { rule_id: "shoulder", record_type: "buy", label: "Shoulder" },
+          ],
+        };
+        const storage = new Map([
+          ["home-energy-manager.panel.pricing.ui", JSON.stringify({
+            groups: [group],
+            activeGroupId: "group",
+            localUpdatedAt: Date.now(),
+            pendingWriteUntil: Date.now() + 120000,
+          })],
+        ]);
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          Date,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: {
+            get() { return false; },
+            define() {},
+          },
+          localStorage: {
+            getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+            setItem(key, value) { storage.set(key, String(value)); },
+            removeItem(key) { storage.delete(key); },
+          },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+
+        const panel = new context.HomeEnergyManagerPanel();
+        panel._savePricingUiFromBackend({
+          groups: [{ ...group, rules: [{ rule_id: "peak", record_type: "buy", label: "Peak" }] }],
+          activeGroupId: "group",
+          backendUpdatedAt: "2026-08-01T00:00:00+00:00",
+        });
+
+        const restored = JSON.parse(storage.get("home-energy-manager.panel.pricing.ui"));
+        const rules = restored.groups[0]?.rules || [];
+        if (rules.length !== 2 || !rules.some((rule) => rule.rule_id === "shoulder")) {
+          console.error(JSON.stringify({ restored }, null, 2));
+          process.exit(1);
+        }
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
 def test_pricing_panel_ui_keeps_selected_future_group_active():
     script = textwrap.dedent(
         r"""

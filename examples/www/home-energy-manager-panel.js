@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "210";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "211";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1358,6 +1358,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _savePricingUiFromBackend(model) {
     try {
       const backendUpdatedAt = Date.parse(String(model?.backendUpdatedAt || ""));
+      const existing = this._loadStoredPricingUi();
+      const existingLocalUpdatedAt = Number(existing.localUpdatedAt || 0);
+      const existingPendingWriteUntil = Number(existing.pendingWriteUntil || 0);
+      if (
+        Array.isArray(existing.groups)
+        && existing.groups.length > 0
+        && (
+          Date.now() < existingPendingWriteUntil
+          || (existingLocalUpdatedAt > 0 && (!Number.isFinite(backendUpdatedAt) || existingLocalUpdatedAt > backendUpdatedAt))
+        )
+      ) {
+        return;
+      }
       localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify({
         ...this._pricingUiDefaults(),
         ...(model || {}),
