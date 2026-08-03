@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "190";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "191";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -755,7 +755,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!text) {
       return "";
     }
-    if (text.includes("rule label") || text.includes("start time") || text.includes("end time") || text.includes("sell export rate") || text.includes("overlapping") || text.includes("record")) {
+    if (text.includes("export rate") || text.includes("feed-in") || text.includes("sell ")) {
+      return "sell";
+    }
+    if (text.includes("import rate") || text.includes("purchase tariff") || text.includes("buy ")) {
+      return "buy";
+    }
+    if (text.includes("rule label") || text.includes("start time") || text.includes("end time") || text.includes("overlapping") || text.includes("record")) {
       return "records";
     }
     return "group";
@@ -2710,7 +2716,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 rule.other_charges ? String(rule.other_charges) : null,
               ].filter(Boolean);
           return `
-            <article class="pricing-rule pricing-rule--summary">
+            <article class="pricing-rule pricing-rule--summary ${isSellRule ? "pricing-rule--summary--sell" : "pricing-rule--summary--buy"}">
               <div class="pricing-rule__header">
                 <div>
                   <strong>${this._escapeHtml(String(rule.label || "Unnamed rule"))}</strong>
@@ -2744,6 +2750,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
       : "";
     const recordWarningMarkup = warningMessage && warningSection === "records"
       ? `<div class="pricing-alert pricing-alert--records">${this._escapeHtml(warningMessage)}</div>`
+      : "";
+    const buyWarningMarkup = warningMessage && warningSection === "buy"
+      ? `<div class="pricing-alert pricing-alert--records pricing-alert--buy">${this._escapeHtml(warningMessage)}</div>`
+      : "";
+    const sellWarningMarkup = warningMessage && warningSection === "sell"
+      ? `<div class="pricing-alert pricing-alert--records pricing-alert--sell">${this._escapeHtml(warningMessage)}</div>`
       : "";
     return `
       <section class="pricing">
@@ -2857,6 +2869,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       import_rate: buyRuleDraft.import_rate,
                     })}">+ Add buy price</a>
                   </div>
+                  ${buyWarningMarkup}
                   <div class="pricing-record-section__grid pricing-record-section__grid--buy-tariff">
                     <label class="pricing-record-form__name">
                       <span>Purchase tariff</span>
@@ -2896,6 +2909,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       export_rate: sellRuleDraft.export_rate,
                     })}">+ Add sell price</a>
                   </div>
+                  ${sellWarningMarkup}
                   <div class="pricing-record-section__grid pricing-record-section__grid--sell-tariff">
                     <label class="pricing-record-form__name">
                       <span>Feed-in tariff</span>
