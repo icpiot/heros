@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "211";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "212";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -74,6 +74,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._batterySelectorOpen = false;
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
+    this._pricingRecordEditorMode = "";
     this._pricingTypeSelectorOpen = false;
     this._pricingHelpOpen = "";
     this._pricingUiGroupDraft = {};
@@ -1843,6 +1844,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._pricingUiGroupDraft = {};
     this._pricingGroupEditorOpen = false;
     this._clearPricingEditorUrl();
+    this._pricingRecordEditorMode = "";
     this._holdRenderWindow();
     this._render();
     try {
@@ -1873,6 +1875,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
+    this._pricingRecordEditorMode = "";
     this._render();
   }
 
@@ -1886,6 +1889,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._savePricingGroupDraftType(activeGroup.pricing_type);
     }
     this._pricingGroupEditorOpen = true;
+    this._pricingRecordEditorMode = "";
     this._holdRenderWindow(8000);
     this._render();
   }
@@ -1901,7 +1905,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
       pricing_type: this._pricingGroupDraftType() || "dynamic",
     };
     this._pricingGroupEditorOpen = true;
+    this._pricingRecordEditorMode = "";
     this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  _handlePricingUiCancelGroupEdit() {
+    this._pricingUiGroupDraft = {};
+    this._pricingRecordEditorMode = "";
+    this._pricingGroupEditorOpen = false;
+    this._clearPricingEditorUrl();
+    this._render();
+  }
+
+  _handlePricingUiStartRecord(recordType = "buy") {
+    const normalizedRecordType = String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    this._pricingRecordEditorMode = normalizedRecordType;
+    this._resetPricingUiRuleDraft(normalizedRecordType);
+    this._pricingGroupEditorOpen = true;
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  _handlePricingUiCancelRecord() {
+    const recordType = this._pricingRecordEditorMode || "buy";
+    this._resetPricingUiRuleDraft(recordType);
+    this._pricingRecordEditorMode = "";
+    this._pricingGroupEditorOpen = true;
     this._render();
   }
 
@@ -1946,6 +1976,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.warning = "";
     this._savePricingUi(model);
     this._resetPricingUiRuleDraft(rule.record_type);
+    this._pricingRecordEditorMode = "";
+    this._pricingGroupEditorOpen = true;
     this._holdRenderWindow();
     this._render();
     try {
@@ -2786,7 +2818,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
       || pricingEditorMode === "modify"
       || pricingEditorMode === "new"
       || !activeGroup.group_id;
-    const showRecordEditors = showGroupEditor && (Boolean(activeGroup.group_id) || pricingEditorMode === "new");
+    const recordEditorMode = showGroupEditor
+      ? (String(this._pricingRecordEditorMode || "").toLowerCase() === "sell" ? "sell" : String(this._pricingRecordEditorMode || "").toLowerCase() === "buy" ? "buy" : "")
+      : "";
+    const showBuyRecordEditor = recordEditorMode === "buy";
+    const showSellRecordEditor = recordEditorMode === "sell";
     const buyRuleDraft = {
       ...this._pricingUiRuleDefaults("buy"),
       ...(this._pricingUiRuleDrafts?.buy || {}),
@@ -2984,7 +3020,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 <textarea name="notes" data-pricing-group-field="notes" rows="1">${this._escapeHtml(String(groupDraft.notes || ""))}</textarea>
               </label>
               <div class="pricing-form__actions pricing-group-form__actions">
-              <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
+              <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete pricing-group-action--save" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
                 group_id: activeGroup.group_id || groupDraft.group_id,
                 group_label: groupDraft.label,
                 effective_start_date: activeGroup.effective_start_date || groupDraft.effective_start_date,
@@ -2994,6 +3030,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 other_charges: groupDraft.other_charges,
                 notes: groupDraft.notes,
               })}">Save active group</a>
+              <div class="pricing-group-form__record-actions">
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="buy" ${activeGroup.group_id ? "" : "disabled"}>+ Add buy price</button>
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="sell" ${activeGroup.group_id ? "" : "disabled"}>+ Add sell price</button>
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button>
+              </div>
               </div>
             </form>
             </div>
@@ -3006,8 +3047,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 Add records to the selected group only. Overlapping day/time windows are blocked before save.
               </p>
               ${recordWarningMarkup}
-              <div class="pricing-holiday-form pricing-record-form ${showRecordEditors ? "" : "is-hidden"}">
-                <form class="pricing-record-section pricing-record-section--buy pricing-buy-form" method="get" action="/home-energy-manager#hem_page=pricing">
+              <div class="pricing-holiday-form pricing-record-form ${recordEditorMode ? "" : "is-hidden"}">
+                <form class="pricing-record-section pricing-record-section--buy pricing-buy-form ${showBuyRecordEditor ? "" : "is-hidden"}" method="get" action="/home-energy-manager#hem_page=pricing">
                   <input type="hidden" name="hem_action" value="add_rule" />
                   <input type="hidden" name="hem_page" value="pricing" />
                   <input type="hidden" name="record_type" value="buy" />
@@ -3017,13 +3058,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <span>Purchase tariff rows are independent from feed-in rows</span>
                     </div>
                     ${this._renderHelpButton("buy", "Buy help")}
-                    <a class="theme-pill pricing-record-section__add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_rule" data-pricing-record-type="buy" onpointerdown="event.preventDefault(); location.href=this.href" onmousedown="event.preventDefault(); location.href=this.href" onclick="event.preventDefault(); location.href=this.href" href="${this._pricingActionHref("add_rule", {
-                      record_type: "buy",
-                      rule_label: buyRuleDraft.label,
-                      start_time: buyRuleDraft.start_time,
-                      end_time: buyRuleDraft.end_time,
-                      import_rate: buyRuleDraft.import_rate,
-                    })}">+ Add buy price</a>
                   </div>
                   ${buyWarningMarkup}
                   <div class="pricing-record-section__grid pricing-record-section__grid--buy-tariff">
@@ -3046,8 +3080,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   </div>
                   ${this._renderHelpPanel("buy")}
                   ${renderDaySelector("buy")}
+                  <div class="pricing-form__actions pricing-record-form__actions">
+                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-add-rule="buy">Save buy price</button>
+                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-record>Cancel</button>
+                  </div>
                 </form>
-                <form class="pricing-record-section pricing-record-section--sell pricing-sell-form" method="get" action="/home-energy-manager#hem_page=pricing">
+                <form class="pricing-record-section pricing-record-section--sell pricing-sell-form ${showSellRecordEditor ? "" : "is-hidden"}" method="get" action="/home-energy-manager#hem_page=pricing">
                   <input type="hidden" name="hem_action" value="add_rule" />
                   <input type="hidden" name="hem_page" value="pricing" />
                   <input type="hidden" name="record_type" value="sell" />
@@ -3057,13 +3095,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <span>Feed-in tariff rows have their own time and day selection</span>
                     </div>
                     ${this._renderHelpButton("sell", "Sell help")}
-                    <a class="theme-pill pricing-record-section__add ${activeGroup.group_id ? "" : "is-disabled"}" data-pricing-action-link="add_rule" data-pricing-record-type="sell" onpointerdown="event.preventDefault(); location.href=this.href" onmousedown="event.preventDefault(); location.href=this.href" onclick="event.preventDefault(); location.href=this.href" href="${this._pricingActionHref("add_rule", {
-                      record_type: "sell",
-                      rule_label: sellRuleDraft.label,
-                      start_time: sellRuleDraft.start_time,
-                      end_time: sellRuleDraft.end_time,
-                      export_rate: sellRuleDraft.export_rate,
-                    })}">+ Add sell price</a>
                   </div>
                   ${sellWarningMarkup}
                   <div class="pricing-record-section__grid pricing-record-section__grid--sell-tariff">
@@ -3086,6 +3117,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   </div>
                   ${this._renderHelpPanel("sell")}
                   ${renderDaySelector("sell")}
+                  <div class="pricing-form__actions pricing-record-form__actions">
+                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-add-rule="sell">Save sell price</button>
+                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-record>Cancel</button>
+                  </div>
                 </form>
               </div>
               <div class="pricing-rule-list pricing-rule-list--attached">
@@ -3597,6 +3632,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._handlePricingUiNewGroup();
           return true;
         }
+        const pricingUiCancelGroup = path.find((node) => node?.dataset?.pricingUiCancelGroup !== undefined);
+        if (pricingUiCancelGroup) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiCancelGroupEdit();
+          return true;
+        }
+        const pricingUiStartRecord = path.find((node) => node?.dataset?.pricingUiStartRecord);
+        if (pricingUiStartRecord) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiStartRecord(pricingUiStartRecord.dataset.pricingUiStartRecord || "buy");
+          return true;
+        }
+        const pricingUiCancelRecord = path.find((node) => node?.dataset?.pricingUiCancelRecord !== undefined);
+        if (pricingUiCancelRecord) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePricingUiCancelRecord();
+          return true;
+        }
         const pricingUiAddRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined);
         if (pricingUiAddRule) {
           event.preventDefault();
@@ -4004,6 +4060,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return;
       }
 
+      const pricingUiCancelGroup = path.find((node) => node?.dataset?.pricingUiCancelGroup !== undefined);
+      if (pricingUiCancelGroup) {
+        event.preventDefault();
+        this._handlePricingUiCancelGroupEdit();
+        return;
+      }
+
+      const pricingUiStartRecord = path.find((node) => node?.dataset?.pricingUiStartRecord);
+      if (pricingUiStartRecord) {
+        event.preventDefault();
+        this._handlePricingUiStartRecord(pricingUiStartRecord.dataset.pricingUiStartRecord || "buy");
+        return;
+      }
+
+      const pricingUiCancelRecord = path.find((node) => node?.dataset?.pricingUiCancelRecord !== undefined);
+      if (pricingUiCancelRecord) {
+        event.preventDefault();
+        this._handlePricingUiCancelRecord();
+        return;
+      }
+
       const pricingUiSelectGroup = path.find((node) => node?.dataset?.pricingUiSelectGroup);
       if (pricingUiSelectGroup) {
         event.preventDefault();
@@ -4026,29 +4103,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const pricingUiAddRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined);
       if (pricingUiAddRule) {
         event.preventDefault();
-        const model = this._loadPricingUi();
-        const group = this._pricingUiActiveGroup(model);
-        if (!group) {
-          model.warning = "Add or select a rate group before adding records.";
-          this._savePricingUi(model);
-          this._render();
-          return;
-        }
-        const rule = this._readPricingUiRuleForm(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
-        const warning = this._pricingUiValidationForRule(group, rule);
-        if (warning) {
-          model.warning = warning;
-          this._savePricingUi(model);
-          this._render();
-          return;
-        }
-        group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
-        model.warning = "";
-        this._savePricingUi(model);
-        this._callPricingRecordService(group.group_id, rule);
-        this._resetPricingUiRuleDraft(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
-        this._holdRenderWindow();
-        this._render();
+        this._handlePricingUiAddRule(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
         return;
       }
 
@@ -4314,6 +4369,7 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._batterySelectorOpen = false;
     panel._pricingGroupSelectorOpen = false;
     panel._pricingGroupEditorOpen = false;
+    panel._pricingRecordEditorMode = "";
     panel._pricingTypeSelectorOpen = false;
     panel._pricingUiGroupDraft = {};
     panel._pricingUiRuleDrafts = {

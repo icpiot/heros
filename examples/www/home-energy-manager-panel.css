@@ -1338,21 +1338,33 @@
 
 .pricing-group-form__actions {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   width: 100%;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.pricing-group-form__actions .pricing-group-action--save {
-  grid-column: 1;
+.pricing-group-form__record-actions,
+.pricing-record-form__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
-.pricing-group-form__actions .pricing-group-action--add {
-  grid-column: 3;
-  justify-self: end;
-  margin-left: auto;
+.pricing-record-form__actions {
+  border-top: 1px solid var(--hem-panel-border);
+  margin: 0 16px 16px;
+  padding-top: 14px;
+}
+
+.pricing-rule__button--ghost {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--hem-panel-border);
+  color: var(--hem-panel-text);
+  box-shadow: none;
 }
 
 .pricing-group-selector-row {
