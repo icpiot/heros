@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "197";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "198";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1185,7 +1185,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     try {
       const parsed = this._loadStoredPricingUi();
       const backendModel = this._pricingUiFromBackendSchedule();
-      if (backendModel.backendAvailable && backendModel.groups.length === 0) {
+      if (backendModel.backendAvailable && backendModel.groups.length === 0 && (!Array.isArray(parsed.groups) || parsed.groups.length === 0)) {
         try {
           localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
           localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
