@@ -1246,17 +1246,15 @@
   min-width: 0;
 }
 
-.pricing-rule--summary .pricing-rule__meta dd,
 .pricing-rule--summary .pricing-rule__meta dt {
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.pricing-rule--summary .pricing-rule__meta dt {
   white-space: nowrap;
 }
 
 .pricing-rule--summary .pricing-rule__meta dd {
+  overflow: visible;
+  text-overflow: clip;
   white-space: normal;
   word-break: normal;
 }
