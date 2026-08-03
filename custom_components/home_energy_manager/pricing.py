@@ -674,10 +674,7 @@ class PricingSchedule:
             (existing for existing in self.groups if existing.effective_start_date == group.effective_start_date),
             None,
         )
-        if existing_by_id and existing_by_date and existing_by_id.group_id != existing_by_date.group_id:
-            raise ValueError("Pricing groups cannot share the same effective_start_date")
-
-        existing = existing_by_id or existing_by_date
+        existing = existing_by_date or existing_by_id
         if existing:
             group_payload = group.to_dict()
             group = PricingRateGroup.from_dict({

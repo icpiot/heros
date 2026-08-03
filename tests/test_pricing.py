@@ -487,3 +487,24 @@ def test_schedule_from_dict_repairs_duplicate_group_dates():
     assert schedule.groups[0].group_id == "old"
     assert schedule.groups[0].label == "New label"
     assert [record.record_id for record in schedule.groups[0].records] == ["flat-fit"]
+
+
+def test_group_upsert_effective_start_date_wins_over_stale_group_id():
+    schedule = PricingSchedule(groups=[
+        PricingRateGroup(group_id="stale-id", label="Other date", effective_start_date=date(2026, 7, 18)),
+        PricingRateGroup(group_id="date-match", label="Target date", effective_start_date=date(2026, 8, 1)),
+    ])
+
+    schedule.add_group(
+        PricingRateGroup(
+            group_id="stale-id",
+            label="Updated target date",
+            effective_start_date=date(2026, 8, 1),
+        )
+    )
+
+    assert len(schedule.groups) == 2
+    target = next(group for group in schedule.groups if group.effective_start_date == date(2026, 8, 1))
+    assert target.group_id == "date-match"
+    assert target.label == "Updated target date"
+    assert len({group.effective_start_date for group in schedule.groups}) == 2
