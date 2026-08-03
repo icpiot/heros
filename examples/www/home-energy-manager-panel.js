@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "188";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "189";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -748,6 +748,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return "Public holiday";
     }
     return String(day || "").slice(0, 3).toUpperCase();
+  }
+
+  _pricingWarningSection(message = "") {
+    const text = String(message || "").toLowerCase();
+    if (!text) {
+      return "";
+    }
+    if (text.includes("rule label") || text.includes("start time") || text.includes("end time") || text.includes("sell export rate") || text.includes("overlapping") || text.includes("record")) {
+      return "records";
+    }
+    return "group";
   }
 
   _renderHelpButton(section, label) {
@@ -2721,8 +2732,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       : `<article class="pricing-rule pricing-rule--empty"><strong>${emptyLabel}</strong><span>${emptyDescription}</span></article>`;
     const buyRuleCards = renderRuleCards(buyRules, "No buy records in selected group.", "Add buy/import time windows below.");
     const sellRuleCards = renderRuleCards(sellRules, "No sell records in selected group.", "Add a sell/feed-in record below.");
-    const warningMarkup = model.warning || overlapWarnings.length
-      ? `<div class="pricing-alert">${this._escapeHtml(model.warning || overlapWarnings.join("; "))}</div>`
+    const warningMessage = model.warning || overlapWarnings.join("; ");
+    const warningSection = this._pricingWarningSection(warningMessage);
+    const groupWarningMarkup = warningMessage && warningSection === "group"
+      ? `<div class="pricing-alert">${this._escapeHtml(warningMessage)}</div>`
+      : "";
+    const recordWarningMarkup = warningMessage && warningSection === "records"
+      ? `<div class="pricing-alert pricing-alert--records">${this._escapeHtml(warningMessage)}</div>`
       : "";
     return `
       <section class="pricing">
@@ -2756,7 +2772,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               ${groupCards}
             </div>
             <div class="pricing-rule pricing-rule--editor is-selected pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
-              ${warningMarkup}
+              ${groupWarningMarkup}
               <div class="pricing-section-heading">
                 <div>
                   <strong>Rate Group Details</strong>
@@ -2816,6 +2832,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <p>
                 Add records to the selected group only. Overlapping day/time windows are blocked before save.
               </p>
+              ${recordWarningMarkup}
               <div class="pricing-holiday-form pricing-record-form ${showRecordEditors ? "" : "is-hidden"}">
                 <form class="pricing-record-section pricing-record-section--buy pricing-buy-form" method="get" action="/home-energy-manager#hem_page=pricing">
                   <input type="hidden" name="hem_action" value="add_rule" />
