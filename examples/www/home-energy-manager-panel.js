@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "179";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "180";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -16,23 +16,27 @@ const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
 const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
 const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS = [
-  "Morning Peak",
-  "Evening Peak",
-  "Morning Shoulder",
-  "Afternoon Shoulder",
-  "Evening Shoulder",
-  "Overnight Off-Peak",
-  "Weekend Off-Peak",
-  "10am-2pm Super Off-Peak",
-  "Overnight EV Charging",
+  "Peak",
+  "Peak - Morning",
+  "Peak - Evening",
+  "Shoulder",
+  "Shoulder - Morning",
+  "Shoulder - Afternoon",
+  "Shoulder - Evening",
+  "Off-Peak",
+  "Off-Peak - Overnight",
+  "Off-Peak - Weekend",
+  "Super Off-Peak",
+  "Super Off-Peak - 10am-2pm",
+  "Super Off-Peak - Overnight EV Charging",
   "CL1",
   "CL2",
-  "Peak Demand",
-  "Anytime Demand",
-  "Standard FiT",
-  "Premium FiT",
-  "Time-varying FiT",
-  "11am-2pm Free Energy Window",
+  "Demand Charge - Peak",
+  "Demand Charge - Anytime",
+  "Feed-in Tariff - Standard",
+  "Feed-in Tariff - Premium",
+  "Feed-in Tariff - Time-varying",
+  "Free Energy Window - 11am-2pm",
 ];
 const HOME_ENERGY_MANAGER_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
@@ -1193,6 +1197,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
     }
     return normalized;
+  }
+
+  _handlePurchaseTariffOther(target) {
+    if (target?.dataset?.pricingPurchaseTariffSelect === undefined || target.value !== HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE) {
+      return false;
+    }
+    const customLabel = this._saveCustomPurchaseTariff(window.prompt("Enter purchase tariff label") || "");
+    if (customLabel) {
+      const existingOption = Array.from(target.options).find((item) => item.value === customLabel);
+      if (!existingOption) {
+        const option = document.createElement("option");
+        option.value = customLabel;
+        option.textContent = customLabel;
+        const otherOption = Array.from(target.options).find((item) => item.value === HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE);
+        target.insertBefore(option, otherOption || null);
+      }
+      target.value = customLabel;
+    } else {
+      target.value = "";
+    }
+    return true;
   }
 
   _renderPurchaseTariffSelector(value = "") {
@@ -3481,19 +3506,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._schedulePricingAutoCommit();
         return;
       }
-      if (target?.dataset?.pricingPurchaseTariffSelect !== undefined && target.value === HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE) {
-        const customLabel = this._saveCustomPurchaseTariff(window.prompt("Enter purchase tariff label") || "");
-        if (customLabel) {
-          const option = document.createElement("option");
-          option.value = customLabel;
-          option.textContent = customLabel;
-          const otherOption = Array.from(target.options).find((item) => item.value === HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE);
-          target.insertBefore(option, otherOption || null);
-          target.value = customLabel;
-        } else {
-          target.value = "";
-        }
-      }
+      this._handlePurchaseTariffOther(target);
       if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
         const recordType = target?.dataset?.pricingRecordType || "";
         this._syncPricingUiRuleDraft(recordType);
@@ -3949,6 +3962,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._schedulePricingAutoCommit();
         return;
       }
+      this._handlePurchaseTariffOther(target);
       if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
         const recordType = target?.dataset?.pricingRecordType || "";
         this._syncPricingUiRuleDraft(recordType);
