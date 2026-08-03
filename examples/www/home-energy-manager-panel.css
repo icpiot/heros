@@ -1225,7 +1225,8 @@
 }
 
 .pricing-rule--summary .pricing-rule__meta {
-  grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(120px, 0.9fr)) minmax(180px, 1fr);
+  grid-template-columns: minmax(260px, 1.6fr) repeat(2, minmax(150px, 0.75fr));
+  align-items: stretch;
 }
 
 .pricing-rule--summary .pricing-rule__rates {
@@ -1242,13 +1243,22 @@
 
 .pricing-rule--summary .pricing-rule__meta div {
   border: 1px solid var(--hem-panel-border);
+  min-width: 0;
 }
 
 .pricing-rule--summary .pricing-rule__meta dd,
 .pricing-rule--summary .pricing-rule__meta dt {
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.pricing-rule--summary .pricing-rule__meta dt {
+  white-space: nowrap;
+}
+
+.pricing-rule--summary .pricing-rule__meta dd {
+  white-space: normal;
+  word-break: normal;
 }
 
 .pricing-form label,

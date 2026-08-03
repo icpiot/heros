@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "206";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "207";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -746,6 +746,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return "Public holiday";
     }
     return String(day || "").toUpperCase();
+  }
+
+  _formatPricingTime(value, fallback = "") {
+    const text = String(value || fallback || "").trim();
+    const match = /^(\d{1,2}):(\d{2})$/.exec(text);
+    if (!match) {
+      return text;
+    }
+    const hour = Math.min(23, Math.max(0, Number(match[1])));
+    const minute = Math.min(59, Math.max(0, Number(match[2])));
+    const suffix = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${String(displayHour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${suffix}`;
   }
 
   _pricingSummaryDayLabel(day) {
@@ -2851,8 +2864,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
               </div>
               <dl class="pricing-rule__meta">
                 <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "Not set")}</dd></div>
-                <div><dt>Start</dt><dd>${this._escapeHtml(String(rule.start_time || "00:00"))}</dd></div>
-                <div><dt>End</dt><dd>${this._escapeHtml(String(rule.end_time || "23:59"))}</dd></div>
+                <div><dt>Start</dt><dd>${this._escapeHtml(this._formatPricingTime(rule.start_time, "00:00"))}</dd></div>
+                <div><dt>End</dt><dd>${this._escapeHtml(this._formatPricingTime(rule.end_time, "23:59"))}</dd></div>
               </dl>
               <div class="pricing-rule__rates">
                 ${rateBits.length ? rateBits.map((bit) => `<span>${this._escapeHtml(bit)}</span>`).join("") : "<span>No rates set yet</span>"}
@@ -2999,12 +3012,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       ${this._renderPurchaseTariffSelector(buyRuleDraft.label)}
                     </label>
                     <label class="pricing-record-form__time">
-                      <span>Start</span>
-                      <input type="time" name="start_time" data-pricing-record-type="buy" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(buyRuleDraft.start_time))}" />
+                      <span>Start (hh:mm AM/PM)</span>
+                      <input type="time" name="start_time" data-pricing-record-type="buy" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(buyRuleDraft.start_time))}" title="Use hh:mm AM/PM, e.g. 03:00 PM" aria-label="Buy start time, hh:mm AM/PM" />
                     </label>
                     <label class="pricing-record-form__time">
-                      <span>End</span>
-                      <input type="time" name="end_time" data-pricing-record-type="buy" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(buyRuleDraft.end_time))}" />
+                      <span>End (hh:mm AM/PM)</span>
+                      <input type="time" name="end_time" data-pricing-record-type="buy" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(buyRuleDraft.end_time))}" title="Use hh:mm AM/PM, e.g. 09:00 PM" aria-label="Buy end time, hh:mm AM/PM" />
                     </label>
                     <label class="pricing-record-form__rate">
                       <span>Import rate ($/kWh)</span>
@@ -3039,12 +3052,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
                       <input type="text" name="rule_label" data-pricing-record-type="sell" data-pricing-rule-field="label" value="${this._escapeHtml(String(sellRuleDraft.label || ""))}" placeholder="Feed-in Tariff 1" />
                     </label>
                     <label class="pricing-record-form__time">
-                      <span>Start</span>
-                      <input type="time" name="start_time" data-pricing-record-type="sell" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(sellRuleDraft.start_time))}" />
+                      <span>Start (hh:mm AM/PM)</span>
+                      <input type="time" name="start_time" data-pricing-record-type="sell" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(sellRuleDraft.start_time))}" title="Use hh:mm AM/PM, e.g. 12:00 AM" aria-label="Sell start time, hh:mm AM/PM" />
                     </label>
                     <label class="pricing-record-form__time">
-                      <span>End</span>
-                      <input type="time" name="end_time" data-pricing-record-type="sell" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(sellRuleDraft.end_time))}" />
+                      <span>End (hh:mm AM/PM)</span>
+                      <input type="time" name="end_time" data-pricing-record-type="sell" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(sellRuleDraft.end_time))}" title="Use hh:mm AM/PM, e.g. 11:59 PM" aria-label="Sell end time, hh:mm AM/PM" />
                     </label>
                     <label class="pricing-record-form__rate">
                       <span>Export rate ($/kWh)</span>
