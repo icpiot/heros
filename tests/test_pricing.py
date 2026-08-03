@@ -417,3 +417,39 @@ def test_duplicate_group_start_dates_are_rejected():
                 PricingRateGroup(group_id="two", effective_start_date=date(2026, 1, 1)),
             ]
         )
+
+
+def test_group_upsert_uses_effective_start_date_as_key_and_preserves_records():
+    schedule = PricingSchedule(groups=[
+        PricingRateGroup(
+            group_id="existing",
+            label="Old label",
+            effective_start_date=date(2026, 8, 1),
+            records=(
+                PricingRateRecord(
+                    record_id="peak",
+                    label="Peak",
+                    day_types=("mon",),
+                    start_time="15:00",
+                    end_time="21:00",
+                    import_rate=0.456,
+                ),
+            ),
+        ),
+    ])
+
+    schedule.add_group(
+        PricingRateGroup(
+            group_id="new-ui-draft",
+            label="Browser Test Group v149",
+            effective_start_date=date(2026, 8, 1),
+            pricing_type="fixed",
+            daily_connection_charge=0.149,
+        )
+    )
+
+    assert len(schedule.groups) == 1
+    assert schedule.groups[0].group_id == "existing"
+    assert schedule.groups[0].label == "Browser Test Group v149"
+    assert schedule.groups[0].daily_connection_charge == 0.149
+    assert [record.record_id for record in schedule.groups[0].records] == ["peak"]

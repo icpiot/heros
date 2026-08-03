@@ -669,10 +669,28 @@ class PricingSchedule:
             raise ValueError("Pricing groups cannot share the same effective_start_date")
 
     def add_group(self, group: PricingRateGroup) -> None:
-        replacing = [existing for existing in self.groups if existing.group_id == group.group_id]
-        if not replacing and any(existing.effective_start_date == group.effective_start_date for existing in self.groups):
+        existing_by_id = next((existing for existing in self.groups if existing.group_id == group.group_id), None)
+        existing_by_date = next(
+            (existing for existing in self.groups if existing.effective_start_date == group.effective_start_date),
+            None,
+        )
+        if existing_by_id and existing_by_date and existing_by_id.group_id != existing_by_date.group_id:
             raise ValueError("Pricing groups cannot share the same effective_start_date")
-        self.groups = [existing for existing in self.groups if existing.group_id != group.group_id]
+
+        existing = existing_by_id or existing_by_date
+        if existing:
+            group_payload = group.to_dict()
+            group = PricingRateGroup.from_dict({
+                **group_payload,
+                "group_id": existing.group_id,
+                "records": group_payload.get("records") or [record.to_dict() for record in existing.records],
+            })
+
+        self.groups = [
+            existing_group for existing_group in self.groups
+            if existing_group.group_id != group.group_id
+            and existing_group.effective_start_date != group.effective_start_date
+        ]
         self.groups.append(group)
         self.groups.sort(key=lambda item: item.effective_start_date or date.min)
         self._raise_for_duplicate_group_dates()
