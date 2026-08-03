@@ -793,11 +793,12 @@ class PricingSchedule:
                     rules.append(PricingRule.from_dict(entry))
         schedule = cls(
             rules=sorted(rules, key=lambda item: item.sort_key()),
-            groups=groups,
             holiday_dates=holiday_dates,
             holiday_source=_clean_text(payload.get("holiday_source")),
             region=_clean_text(payload.get("region")),
         )
+        for group in groups:
+            schedule.add_group(group)
         updated_at = _parse_datetime(payload.get("updated_at") or payload.get("updated"))
         schedule.updated_at = updated_at
         return schedule

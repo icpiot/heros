@@ -453,3 +453,37 @@ def test_group_upsert_uses_effective_start_date_as_key_and_preserves_records():
     assert schedule.groups[0].label == "Browser Test Group v149"
     assert schedule.groups[0].daily_connection_charge == 0.149
     assert [record.record_id for record in schedule.groups[0].records] == ["peak"]
+
+
+def test_schedule_from_dict_repairs_duplicate_group_dates():
+    schedule = PricingSchedule.from_dict({
+        "groups": [
+            {
+                "group_id": "old",
+                "label": "Old label",
+                "effective_start_date": "2026-08-01",
+                "records": [
+                    {
+                        "record_id": "flat-fit",
+                        "label": "Flat FIT",
+                        "flow": "export",
+                        "day_types": ["mon"],
+                        "start_time": "00:00",
+                        "end_time": "23:59",
+                        "export_rate": 0.08,
+                    },
+                ],
+            },
+            {
+                "group_id": "new",
+                "label": "New label",
+                "effective_start_date": "2026-08-01",
+                "pricing_type": "fixed",
+            },
+        ],
+    })
+
+    assert len(schedule.groups) == 1
+    assert schedule.groups[0].group_id == "old"
+    assert schedule.groups[0].label == "New label"
+    assert [record.record_id for record in schedule.groups[0].records] == ["flat-fit"]
