@@ -243,3 +243,101 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
     )
 
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_prefers_backend_over_local_draft():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HomeEnergyManagerPanel extends HTMLElement",
+          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        const storage = new Map([
+          ["home-energy-manager.panel.pricing.ui", JSON.stringify({
+            groups: [{ group_id: "local-only", label: "Local draft" }],
+            activeGroupId: "local-only",
+            warning: "stale local draft",
+          })],
+        ]);
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: {
+            get() { return false; },
+            define() {},
+          },
+          localStorage: {
+            getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+            setItem(key, value) { storage.set(key, String(value)); },
+            removeItem(key) { storage.delete(key); },
+          },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+
+        const panel = new context.HomeEnergyManagerPanel();
+        panel._connectionName = () => "Test Provider";
+        panel._pricingScheduleData = () => ({
+          available: true,
+          groups: [{
+            group_id: "backend-group",
+            label: "Backend group",
+            provider: "Test Provider",
+            plan_name: "",
+            effective_start_date: "2026-08-01",
+            pricing_type: "fixed",
+            daily_connection_charge: "0.149",
+            other_charges: "",
+            notes: "",
+            records: [],
+          }],
+          activeGroup: { group_id: "backend-group" },
+        });
+
+        const restored = panel._loadPricingUi();
+        const ok = restored.groups.length === 1
+          && restored.groups[0].group_id === "backend-group"
+          && restored.activeGroupId === "backend-group"
+          && !storage.has("home-energy-manager.panel.pricing.ui")
+          && !storage.has("home-energy-manager.panel.pricing.draft");
+
+        if (!ok) {
+          console.error(JSON.stringify({ restored, storage: [...storage.entries()] }, null, 2));
+          process.exit(1);
+        }
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
