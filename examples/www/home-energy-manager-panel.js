@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "183";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "184";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2626,6 +2626,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       || pricingEditorMode === "modify"
       || pricingEditorMode === "new"
       || !activeGroup.group_id;
+    const showRecordEditors = showGroupEditor && (Boolean(activeGroup.group_id) || pricingEditorMode === "new");
     const buyRuleDraft = {
       ...this._pricingUiRuleDefaults("buy"),
       ...(this._pricingUiRuleDrafts?.buy || {}),
@@ -2690,10 +2691,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <span>Other charges ${group.other_charges ? this._escapeHtml(String(group.other_charges)) : "Not set"}</span>
                   <span>Notes ${group.notes ? this._escapeHtml(String(group.notes)) : "Not set"}</span>
                 </div>
-                <div class="pricing-rule__actions pricing-rule__actions--inline">
-                  <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
-                  <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-new-group href="${this._pricingEditorHref("new")}">Add as new rate group</a>
-                </div>
+              <div class="pricing-rule__actions pricing-rule__actions--inline">
+                <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
+              </div>
               </div>
             </article>
           `;
@@ -2836,7 +2836,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <p>
                 Add records to the selected group only. Overlapping day/time windows are blocked before save.
               </p>
-              <div class="pricing-holiday-form pricing-record-form">
+              <div class="pricing-holiday-form pricing-record-form ${showRecordEditors ? "" : "is-hidden"}">
                 <form class="pricing-record-section pricing-record-section--buy pricing-buy-form" method="get" action="/home-energy-manager#hem_page=pricing">
                   <input type="hidden" name="hem_action" value="add_rule" />
                   <input type="hidden" name="hem_page" value="pricing" />

@@ -1438,7 +1438,8 @@
   min-width: 0;
   width: auto;
   justify-self: end;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
 }
 
 .pricing-rule__actions--inline .pricing-rule__button {
