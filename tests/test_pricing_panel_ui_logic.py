@@ -245,7 +245,7 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
 
 
-def test_pricing_panel_ui_prefers_backend_over_local_draft():
+def test_pricing_panel_ui_merges_backend_with_local_draft():
     script = textwrap.dedent(
         r"""
         const fs = require("fs");
@@ -327,11 +327,12 @@ def test_pricing_panel_ui_prefers_backend_over_local_draft():
         });
 
         const restored = panel._loadPricingUi();
-        const ok = restored.groups.length === 1
-          && restored.groups[0].group_id === "backend-group"
-          && restored.activeGroupId === "backend-group"
-          && !storage.has("home-energy-manager.panel.pricing.ui")
-          && !storage.has("home-energy-manager.panel.pricing.draft");
+        const backendGroup = restored.groups.find((group) => group.group_id === "backend-group");
+        const localGroup = restored.groups.find((group) => group.group_id === "local-only");
+        const ok = Boolean(backendGroup)
+          && Boolean(localGroup)
+          && restored.activeGroupId === "local-only"
+          && storage.has("home-energy-manager.panel.pricing.ui");
 
         if (!ok) {
           console.error(JSON.stringify({ restored, storage: [...storage.entries()] }, null, 2));
