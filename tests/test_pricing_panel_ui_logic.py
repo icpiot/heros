@@ -342,3 +342,88 @@ def test_pricing_panel_ui_merges_backend_with_local_draft():
     )
 
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_keeps_selected_future_group_active():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HomeEnergyManagerPanel extends HTMLElement",
+          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: {
+            get() { return false; },
+            define() {},
+          },
+          localStorage: {
+            getItem() { return null; },
+            setItem() {},
+            removeItem() {},
+          },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+
+        const panel = new context.HomeEnergyManagerPanel();
+        const selectedGroup = {
+          group_id: "future-group",
+          label: "Future Group",
+          provider: "Test Provider",
+          plan_name: "",
+          effective_start_date: "2026-09-01",
+          pricing_type: "dynamic",
+          daily_connection_charge: "",
+          other_charges: "",
+          notes: "",
+          rules: [],
+        };
+        const model = {
+          groups: [selectedGroup],
+          activeGroupId: "future-group",
+          warning: "",
+        };
+
+        const active = panel._pricingUiActiveGroup(model);
+        if (!active || active.group_id !== "future-group") {
+          console.error(JSON.stringify({ active }, null, 2));
+          process.exit(1);
+        }
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)

@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "198";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "199";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1339,11 +1339,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const groups = Array.isArray(model.groups) ? model.groups : [];
     const today = this._pricingTodayDate();
     const selected = groups.find((group) => String(group.group_id || "") === String(model.activeGroupId || ""));
-    if (selected && (!selected.effective_start_date || String(selected.effective_start_date) <= today)) {
+    if (selected) {
       return selected;
     }
     return this._pricingMostRecentActiveGroup(groups, today)
-      || selected
       || groups[0]
       || null;
   }
