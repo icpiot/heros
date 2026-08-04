@@ -1360,8 +1360,8 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  margin-left: auto;
+  justify-content: flex-start;
+  margin-left: 0;
 }
 
 .pricing-record-form__actions {
@@ -1372,11 +1372,11 @@
 
 .pricing-rule__button--ghost {
   background:
-    linear-gradient(var(--hem-panel-bg), var(--hem-panel-bg)) padding-box,
+    linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(255, 61, 214, 0.18)) padding-box,
     linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong)) border-box;
   border-color: transparent;
   color: var(--hem-panel-text);
-  box-shadow: 0 10px 24px rgba(0, 229, 255, 0.12);
+  box-shadow: 0 10px 24px rgba(0, 229, 255, 0.18);
 }
 
 .pricing-rule__button--ghost:hover,

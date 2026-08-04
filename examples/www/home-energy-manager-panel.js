@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "216";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "217";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -696,6 +696,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
       hem_editor: String(mode || "modify"),
     });
     return `/home-energy-manager?${params.toString()}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+  }
+
+  _setPricingEditorUrl(mode = "modify") {
+    try {
+      const normalizedMode = String(mode || "modify").trim().toLowerCase() || "modify";
+      const url = new URL(window.location.href);
+      url.searchParams.set("hem_page", "pricing");
+      url.searchParams.set("hem_editor", normalizedMode);
+      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+      window.history.replaceState({}, "", url.toString());
+    } catch (error) {
+      // Keep local editor state even if the browser blocks URL updates.
+    }
   }
 
   _clearPricingEditorUrl() {
@@ -1911,6 +1924,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (activeGroup?.pricing_type) {
       this._savePricingGroupDraftType(activeGroup.pricing_type);
     }
+    this._setPricingEditorUrl("modify");
     this._pricingGroupEditorOpen = true;
     this._pricingRecordEditorMode = "";
     this._holdRenderWindow(8000);
@@ -1927,6 +1941,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: this._connectionName(),
       pricing_type: this._pricingGroupDraftType() || "dynamic",
     };
+    this._setPricingEditorUrl("new");
     this._pricingGroupEditorOpen = true;
     this._pricingRecordEditorMode = "";
     this._holdRenderWindow(8000);
@@ -1944,6 +1959,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _handlePricingUiStartRecord(recordType = "buy") {
     const normalizedRecordType = String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy";
     this._pricingRecordEditorMode = normalizedRecordType;
+    this._setPricingEditorUrl(normalizedRecordType);
     this._resetPricingUiRuleDraft(normalizedRecordType);
     this._pricingGroupEditorOpen = true;
     this._holdRenderWindow(8000);
@@ -1974,6 +1990,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     };
     this._pricingUiRuleDraft = this._pricingUiRuleDrafts[recordType];
     this._pricingRecordEditorMode = recordType;
+    this._setPricingEditorUrl(recordType);
     this._pricingGroupEditorOpen = true;
     this._holdRenderWindow(8000);
     this._render();
@@ -1983,6 +2000,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const recordType = this._pricingRecordEditorMode || "buy";
     this._resetPricingUiRuleDraft(recordType);
     this._pricingRecordEditorMode = "";
+    this._setPricingEditorUrl("modify");
     this._pricingGroupEditorOpen = true;
     this._render();
   }
@@ -2885,9 +2903,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const showGroupEditor = this._pricingGroupEditorOpen
       || pricingEditorMode === "modify"
       || pricingEditorMode === "new"
+      || pricingEditorMode === "buy"
+      || pricingEditorMode === "sell"
       || !activeGroup.group_id;
     const recordEditorMode = showGroupEditor
-      ? (String(this._pricingRecordEditorMode || "").toLowerCase() === "sell" ? "sell" : String(this._pricingRecordEditorMode || "").toLowerCase() === "buy" ? "buy" : "")
+      ? (String(this._pricingRecordEditorMode || pricingEditorMode || "").toLowerCase() === "sell" ? "sell" : String(this._pricingRecordEditorMode || pricingEditorMode || "").toLowerCase() === "buy" ? "buy" : "")
       : "";
     const showBuyRecordEditor = recordEditorMode === "buy";
     const showSellRecordEditor = recordEditorMode === "sell";
