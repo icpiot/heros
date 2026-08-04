@@ -68,6 +68,11 @@ For setup pages such as Forecast Setup, a reliable dropdown needs:
 - fallback-controller initialization for the same open-state fields
 - a save-time translation when UI field names differ from persisted mapping keys
 
+If the page includes a broad mapping panel, keep that panel full-width on
+desktop and let the dropdown inherit the card width directly. That prevents the
+menu from collapsing into a narrow shared column and makes long entity lists
+usable.
+
 This prevents HA refresh renders from closing the menu before the selected value
 is committed and reflected in the visible control.
 

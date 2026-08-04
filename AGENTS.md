@@ -28,6 +28,7 @@
 - Avoid native `<select>` controls for panel setup workflows when a background render can interrupt the click/release cycle.
 - A held selector needs explicit open state, render-hold coverage in `_shouldHoldRender()`, delegated handlers for toggle/option/outside-click, and matching fallback-controller state.
 - When a UI field name differs from stored mapping keys, translate it before saving so the selected value appears immediately after release.
+- For setup screens that need broad mapping controls, keep the mapping card full-width on desktop and let the dropdown menu inherit that width instead of stacking it into a narrow shared column.
 
 ## Validation
 
