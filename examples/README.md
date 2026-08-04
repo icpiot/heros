@@ -53,6 +53,24 @@ Recommended approach:
 - configure settings from the integration's individual battery selector
 - prefer a per-battery/host-target setup for charge, discharge, and policy changes
 
+## Panel Dropdowns
+
+The sidebar panel is updated by frequent Home Assistant state pushes. Any panel
+dropdown that has to stay open while the user clicks, drags, or releases should
+use the same held custom selector pattern as the shared battery selector instead
+of a native `<select>`.
+
+For setup pages such as Forecast Setup, a reliable dropdown needs:
+
+- explicit open/closed component state
+- inclusion in the render-hold checks while active
+- delegated toggle, option, and outside-click handlers
+- fallback-controller initialization for the same open-state fields
+- a save-time translation when UI field names differ from persisted mapping keys
+
+This prevents HA refresh renders from closing the menu before the selected value
+is committed and reflected in the visible control.
+
 ## Historical Data Workflow
 
 The reporting card is designed to work without a manual download step.

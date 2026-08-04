@@ -22,6 +22,13 @@
 - Do not reintroduce references to the deleted repo.
 - If a file or script still contains stale legacy naming, update it to the current repo conventions.
 
+## Panel Interaction Rules
+
+- Panel pages receive frequent Home Assistant `hass` updates, so dropdowns that must stay open during selection should use the held custom selector pattern from the shared battery selector.
+- Avoid native `<select>` controls for panel setup workflows when a background render can interrupt the click/release cycle.
+- A held selector needs explicit open state, render-hold coverage in `_shouldHoldRender()`, delegated handlers for toggle/option/outside-click, and matching fallback-controller state.
+- When a UI field name differs from stored mapping keys, translate it before saving so the selected value appears immediately after release.
+
 ## Validation
 
 - Run the relevant tests before handing back changes.
