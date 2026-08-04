@@ -787,6 +787,16 @@
   width: 100%;
 }
 
+.pricing-loading {
+  border: 1px solid rgba(0, 229, 255, 0.42);
+  border-radius: 16px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(63, 145, 255, 0.08));
+  color: var(--hem-panel-text);
+  font-weight: 800;
+  box-shadow: 0 12px 28px rgba(0, 229, 255, 0.12);
+}
+
 .pricing-group-editor {
   display: grid;
   gap: 6px;
@@ -1361,10 +1371,19 @@
 }
 
 .pricing-rule__button--ghost {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: var(--hem-panel-border);
+  background:
+    linear-gradient(var(--hem-panel-bg), var(--hem-panel-bg)) padding-box,
+    linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong)) border-box;
+  border-color: transparent;
   color: var(--hem-panel-text);
-  box-shadow: none;
+  box-shadow: 0 10px 24px rgba(0, 229, 255, 0.12);
+}
+
+.pricing-rule__button--ghost:hover,
+.pricing-rule__button--ghost:focus {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 14px 30px rgba(0, 229, 255, 0.22);
+  filter: brightness(1.06);
+  outline: none;
 }
 
 .pricing-group-selector-row {

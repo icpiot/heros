@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "212";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "213";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -89,6 +89,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._pricingFocusedField = null;
     this._pricingFocusHoldUntil = 0;
     this._pricingFileLoadKey = "";
+    this._pricingFileLoading = false;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
     this._boundLocationChange = this._handleLocationChange.bind(this);
@@ -1226,6 +1227,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     this._pricingFileLoadKey = loadKey;
+    this._pricingFileLoading = true;
+    this._render();
     window.fetch(url, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) {
@@ -1235,13 +1238,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
       })
       .then((payload) => {
         const model = this._pricingUiFromScheduleData(this._pricingScheduleDataFromPayload(payload));
+        this._pricingFileLoading = false;
         this._savePricingUiFromBackend(model);
         if (this._page === "pricing" && !this._shouldHoldRender()) {
           this._render();
         }
       })
       .catch((error) => {
+        this._pricingFileLoading = false;
         console.debug("Pricing file not ready; using HA state fallback", error);
+        if (this._page === "pricing" && !this._shouldHoldRender()) {
+          this._render();
+        }
       });
   }
 
@@ -2837,6 +2845,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: pricingEditorMode === "new" ? this._connectionName() : (activeGroup.provider || this._connectionName()),
       ...(this._pricingUiGroupDraft || {}),
     };
+    const editableGroupId = String(activeGroup.group_id || groupDraft.group_id || "").trim();
+    const loadingMarkup = this._pricingFileLoading
+      ? `<div class="pricing-loading" role="status">Loading saved pricing data from file...</div>`
+      : "";
     const renderDaySelector = (recordType) => `
       <div class="pricing-field-group pricing-record-section__days">
         <span>${recordType === "sell" ? "Sell days" : "Buy days"}</span>
@@ -2969,6 +2981,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </article>
           `).join("")}
         </section>
+        ${loadingMarkup}
 
         <section class="grid pricing__grid pricing__grid--active-groups">
           <article class="panel-card panel-card--wide">
@@ -3031,8 +3044,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 notes: groupDraft.notes,
               })}">Save active group</a>
               <div class="pricing-group-form__record-actions">
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="buy" ${activeGroup.group_id ? "" : "disabled"}>+ Add buy price</button>
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="sell" ${activeGroup.group_id ? "" : "disabled"}>+ Add sell price</button>
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="buy" ${editableGroupId ? "" : "disabled"}>+ Add buy price</button>
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="sell" ${editableGroupId ? "" : "disabled"}>+ Add sell price</button>
                 <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button>
               </div>
               </div>
@@ -4386,6 +4399,7 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._pricingFocusedField = null;
     panel._pricingFocusHoldUntil = 0;
     panel._pricingFileLoadKey = "";
+    panel._pricingFileLoading = false;
     panel._pricingAutoCommitTimer = null;
     panel._lastPricingAutoCommitSignature = "";
     HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, panel);
