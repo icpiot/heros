@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "239";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "240";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1275,14 +1275,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._saveForecastDraftFromInputs();
   }
 
+  _forecastMappingKeyForField(key) {
+    return {
+      forecast_provider: "provider",
+      forecast_generation_today_entity: "today",
+      forecast_generation_tomorrow_entity: "tomorrow",
+      solar_forecast_entity: "now",
+    }[key] || key;
+  }
+
   _saveForecastField(key, value) {
     const current = this._loadForecastMapping();
+    const mappingKey = this._forecastMappingKeyForField(key);
     const next = {
       provider: current.provider || "none",
       today: current.today || "",
       tomorrow: current.tomorrow || "",
       now: current.now || "",
-      [key]: String(value || ""),
+      [mappingKey]: String(value || ""),
     };
     this._saveForecastMapping(next);
     this._forecastSelectorOpenKey = "";
