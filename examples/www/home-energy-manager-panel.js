@@ -2,12 +2,13 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "224";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "225";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
 const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
+const HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY = "home-energy-manager.panel.entry_id";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui";
 const HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY = "home-energy-manager.panel.pricing.purchase_tariffs";
@@ -101,6 +102,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
+    this._rememberEntryId(this._config?.entry_id);
     this._syncStoredState();
     this._render();
   }
@@ -127,6 +129,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   set panel(panel) {
     this._panel = panel;
     this._config = panel?.config || this._config;
+    this._rememberEntryId(this._config?.entry_id);
     this._syncStoredState();
     this._render();
   }
@@ -486,7 +489,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _loadPricingDraft() {
     try {
-      return JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY) || "{}") || {};
+      const scopedKey = this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
+      const scopedValue = localStorage.getItem(scopedKey);
+      const legacyValue = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
+      if (!scopedValue && legacyValue) {
+        localStorage.setItem(scopedKey, legacyValue);
+      }
+      return JSON.parse(scopedValue || legacyValue || "{}") || {};
     } catch (error) {
       return {};
     }
@@ -494,7 +503,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _savePricingDraft(draft) {
     try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY, JSON.stringify(draft || {}));
+      localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY), JSON.stringify(draft || {}));
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -502,7 +511,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _clearPricingDraft() {
     try {
-      localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
+      localStorage.removeItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY));
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -1032,7 +1041,45 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _entryId() {
     const entryId = String(this._config?.entry_id || "").trim();
-    return entryId && entryId !== "frontend_panel_registered" ? entryId : undefined;
+    if (entryId && entryId !== "frontend_panel_registered") {
+      this._rememberEntryId(entryId);
+      return entryId;
+    }
+    const remembered = this._storedEntryId();
+    return remembered && remembered !== "frontend_panel_registered" ? remembered : undefined;
+  }
+
+  _rememberEntryId(entryId) {
+    const normalized = String(entryId || "").trim();
+    if (!normalized || normalized === "frontend_panel_registered") {
+      return;
+    }
+    this._lastKnownEntryId = normalized;
+    try {
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY, normalized);
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _storedEntryId() {
+    if (this._lastKnownEntryId) {
+      return this._lastKnownEntryId;
+    }
+    try {
+      const remembered = String(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY) || "").trim();
+      if (remembered) {
+        this._lastKnownEntryId = remembered;
+      }
+      return remembered;
+    } catch (error) {
+      return "";
+    }
+  }
+
+  _pricingStorageKey(baseKey) {
+    const entryId = this._entryId() || this._storedEntryId() || "default";
+    return `${baseKey}.${entryId}`;
   }
 
   _stateForConfiguredEntity(configKey, fallbackKey, domain = "sensor", fallback = "Unavailable") {
@@ -1314,7 +1361,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _loadStoredPricingUi() {
     try {
-      const parsed = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY) || "{}") || {};
+      const scopedKey = this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
+      const scopedValue = localStorage.getItem(scopedKey);
+      const legacyValue = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
+      if (!scopedValue && legacyValue) {
+        localStorage.setItem(scopedKey, legacyValue);
+      }
+      const parsed = JSON.parse(scopedValue || legacyValue || "{}") || {};
       return this._stabilizePricingUiModel({
         ...this._pricingUiDefaults(),
         ...parsed,
@@ -1331,8 +1384,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const backendModel = this._pricingUiFromBackendSchedule();
       if (backendModel.backendAvailable && backendModel.groups.length === 0 && (!Array.isArray(parsed.groups) || parsed.groups.length === 0)) {
         try {
-          localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
-          localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
+          localStorage.removeItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY));
+          localStorage.removeItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY));
         } catch (storageError) {
           // Ignore storage failures in private browsing / restricted environments.
         }
@@ -1400,7 +1453,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _savePricingUi(model) {
     try {
       const now = Date.now();
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify(this._stabilizePricingUiModel({
+      localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY), JSON.stringify(this._stabilizePricingUiModel({
         ...this._pricingUiDefaults(),
         ...(model || {}),
         groups: Array.isArray(model?.groups) ? model.groups : [],
@@ -1435,7 +1488,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const activeGroupIdToSave = groupsToSave.length > 0
         ? String(model?.activeGroupId || existing.activeGroupId || groupsToSave[0]?.group_id || "")
         : "";
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify(this._stabilizePricingUiModel({
+      localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY), JSON.stringify(this._stabilizePricingUiModel({
         ...this._pricingUiDefaults(),
         ...(model || {}),
         groups: groupsToSave,
@@ -1482,7 +1535,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _purchaseTariffOptions() {
     let customOptions = [];
     try {
-      customOptions = JSON.parse(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY) || "[]") || [];
+      const scopedKey = this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY);
+      const scopedValue = localStorage.getItem(scopedKey);
+      const legacyValue = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY);
+      if (!scopedValue && legacyValue) {
+        localStorage.setItem(scopedKey, legacyValue);
+      }
+      customOptions = JSON.parse(scopedValue || legacyValue || "[]") || [];
     } catch (error) {
       customOptions = [];
     }
@@ -1500,7 +1559,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const options = this._purchaseTariffOptions();
     if (!options.includes(normalized)) {
       try {
-        localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY, JSON.stringify([...options, normalized]));
+        localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY), JSON.stringify([...options, normalized]));
       } catch (error) {
         // The typed label can still be used for this record even if storage is blocked.
       }
@@ -1570,7 +1629,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingGroupDraftType() {
     try {
-      return localStorage.getItem(`${HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY}.draft_type`) || "dynamic";
+      return localStorage.getItem(`${this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY)}.draft_type`) || "dynamic";
     } catch (error) {
       return "dynamic";
     }
@@ -1643,7 +1702,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _savePricingGroupDraftType(value) {
     const pricingType = String(value || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic";
     try {
-      localStorage.setItem(`${HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY}.draft_type`, pricingType);
+      localStorage.setItem(`${this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY)}.draft_type`, pricingType);
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
