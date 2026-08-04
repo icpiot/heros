@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "229";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "230";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -4084,14 +4084,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
         <nav class="panel-nav" aria-label="Home Energy Manager (HEM) sections">
           ${availablePages.map((page) => `
-              <button
-                type="button"
+              <a
                 class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"
                 data-page="${page.value}"
+                href="${this._pageHref(page.value)}"
               >
                 <span class="panel-nav__icon">${page.icon}</span>
                 <span>${page.label}</span>
-              </button>
+              </a>
           `).join("")}
         </nav>
 
