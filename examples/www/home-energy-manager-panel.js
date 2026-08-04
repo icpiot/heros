@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "240";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "241";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -3259,7 +3259,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastSetupPage() {
     const forecastState = this._forecastMappingState();
-    const forecastProvider = String(forecastState.provider || "none");
+    const forecastProvider = String(forecastState.stored?.provider || forecastState.provider || "none");
     const providerProfiles = [
       {
         label: "Forecast.Solar",
