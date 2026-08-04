@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "215";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "216";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -3103,8 +3103,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 notes: groupDraft.notes,
               })}">Save active group</a>
               <div class="pricing-group-form__record-actions">
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="buy" ${editableGroupId ? "" : "disabled"}>+ Add buy price</button>
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="sell" ${editableGroupId ? "" : "disabled"}>+ Add sell price</button>
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="buy">+ Add buy price</button>
+                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="sell">+ Add sell price</button>
                 <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button>
               </div>
               </div>
