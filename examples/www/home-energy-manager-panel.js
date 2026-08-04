@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "233";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "234";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -78,6 +78,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._renderHoldUntil = 0;
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
+    this._forecastSelectorHoldUntil = 0;
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
     this._pricingRecordEditorMode = "";
@@ -118,6 +119,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     if (this._isSharedBatterySelectorHeld()) {
+      this._holdRenderWindow(5000);
+      return;
+    }
+    if (this._isForecastSelectorHeld()) {
       this._holdRenderWindow(5000);
       return;
     }
@@ -173,6 +178,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _holdBatterySelectorWindow(duration = 8000) {
     this._batterySelectorHoldUntil = Math.max(this._batterySelectorHoldUntil, Date.now() + duration);
+    this._holdRenderWindow(duration);
+  }
+
+  _holdForecastWindow(duration = 8000) {
+    this._forecastSelectorHoldUntil = Math.max(this._forecastSelectorHoldUntil, Date.now() + duration);
     this._holdRenderWindow(duration);
   }
 
@@ -501,6 +511,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       return {};
     }
+  }
+
+  _isForecastSelectorHeld() {
+    if (Date.now() < this._forecastSelectorHoldUntil) {
+      return true;
+    }
+    if (!this.shadowRoot) {
+      return false;
+    }
+    const selector = this.shadowRoot.querySelector("[data-forecast-field]");
+    if (!selector) {
+      return false;
+    }
+    const activeElement = this.shadowRoot.activeElement || selector.ownerDocument?.activeElement;
+    return activeElement === selector || activeElement?.closest?.("[data-forecast-field]") || selector.matches(":focus") || selector.matches(":focus-within");
   }
 
   _savePricingDraft(draft) {
@@ -1211,7 +1236,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       now: this.shadowRoot.querySelector('[data-forecast-field="solar_forecast_entity"]')?.value || "",
     };
     this._saveForecastMapping(mapping);
-    this._render();
+    this._holdForecastWindow(2500);
+    this._queueDeferredRender();
   }
 
   _saveForecastSetup() {
@@ -4244,6 +4270,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll('[data-forecast-field]').forEach((field) => {
       field.onchange = (event) => {
         event.preventDefault();
+        this._holdForecastWindow(5000);
         this._saveForecastDraftFromInputs();
       };
     });
@@ -4452,6 +4479,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       if (event.target?.closest?.(".pricing-group-card") || this._isPricingInteractionTarget(event.target)) {
         return;
       }
+      if (event.target?.dataset?.forecastField !== undefined) {
+        this._holdForecastWindow();
+        return;
+      }
       if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption || this._isPricingInteractionTarget(event.target)) {
         if (event.target?.dataset?.sharedSettingsTargetToggle || event.target?.dataset?.sharedSettingsTargetOption) {
           this._holdBatterySelectorWindow();
@@ -4463,6 +4494,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("focusout", (event) => {
       if (this._isPricingInteractionTarget(event.target)) {
+        this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 400);
+        this._queueDeferredRender();
+        return;
+      }
+      if (event.target?.dataset?.forecastField !== undefined) {
         this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 400);
         this._queueDeferredRender();
       }
@@ -4495,6 +4531,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
         await this._selectSharedBatteryOption(option);
         this._render();
         return;
+      }
+
+      const forecastField = path.find((node) => node?.dataset?.forecastField !== undefined);
+      if (forecastField) {
+        this._holdForecastWindow();
       }
 
       if (this._batterySelectorOpen && !path.some((node) => node?.classList?.contains?.("shared-selector"))) {
