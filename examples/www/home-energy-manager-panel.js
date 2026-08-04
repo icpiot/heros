@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "225";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "226";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2087,6 +2087,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const recordType = String(rule.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
     this._pricingUiGroupDraft = { ...group };
+    this._resetPricingUiRuleDraft("buy");
+    this._resetPricingUiRuleDraft("sell");
     this._pricingUiRuleDrafts = {
       ...(this._pricingUiRuleDrafts || {}),
       [recordType]: {
@@ -2172,7 +2174,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._savePricingUi(model);
     this._resetPricingUiRuleDraft(rule.record_type);
     this._pricingRecordEditorMode = "";
-    this._pricingGroupEditorOpen = true;
+    this._pricingUiGroupDraft = {};
+    this._pricingGroupEditorOpen = false;
+    this._clearPricingEditorUrl();
     this._holdRenderWindow();
     this._render();
     try {
