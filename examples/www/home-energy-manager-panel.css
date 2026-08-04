@@ -769,12 +769,19 @@
 }
 
 .forecast__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 14px;
   margin-top: 4px;
   align-items: start;
 }
 
 .forecast__grid > .panel-card:first-child {
   min-height: 100%;
+}
+
+.forecast__grid > .panel-card:last-child {
+  min-width: 0;
 }
 
 .forecast-form {
@@ -800,6 +807,7 @@
 .forecast-field .shared-selector__picker {
   min-width: 0;
   width: 100%;
+  max-width: 100%;
 }
 
 .forecast-field__control {
@@ -808,6 +816,8 @@
 
 .forecast-field__menu {
   max-height: 320px;
+  min-width: 100%;
+  width: 100%;
   z-index: 1200;
 }
 
