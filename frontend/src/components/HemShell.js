@@ -1,15 +1,16 @@
 import { LitElement, css, html } from "lit";
 
 const pages = [
-  ["overview", "▦", "Overview"],
-  ["policy", "▥", "Policy"],
-  ["report", "▤", "Report"],
-  ["battery", "▣", "Battery"],
-  ["solar", "☀", "Solar"],
-  ["forecast", "☁", "Forecast"],
-  ["history", "↺", "History"],
-  ["pricing", "$", "Pricing"],
-  ["settings", "⚙", "Settings"],
+  ["overview", "Overview", "Overview"],
+  ["policy", "Policy", "Policy"],
+  ["report", "Report", "Report"],
+  ["battery", "Battery", "Battery"],
+  ["solar", "Solar", "Solar"],
+  ["forecast", "Forecast", "Forecast"],
+  ["forecast-setup", "Setup", "Forecast Setup"],
+  ["history", "History", "History"],
+  ["pricing", "Pricing", "Pricing"],
+  ["settings", "Settings", "Settings"],
 ];
 
 export class HemShell extends LitElement {

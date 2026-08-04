@@ -38,6 +38,7 @@ export class HemSettingsPage extends LitElement {
   render() {
     const cards = [
       { id: "settings-connection", template: this._renderConnectionCard() },
+      { id: "settings-forecast", template: this._renderForecastCard() },
       { id: "settings-theme", template: this._renderThemeCard() },
       { id: "settings-data", template: this._renderDataCard() },
       { id: "settings-entities", template: this._renderEntitiesCard() },
@@ -100,6 +101,23 @@ export class HemSettingsPage extends LitElement {
           <button type="button">Classic</button>
         </div>
         <p>Theme controls live on Settings in the standalone app.</p>
+      </hem-card>
+    `;
+  }
+
+  _renderForecastCard() {
+    const forecast = this.hemState?.forecast ?? {};
+    const providerCount = forecast.providers?.length ?? 0;
+    return html`
+      <hem-card>
+        <p class="card-label">Forecast</p>
+        <h3>Mapping setup</h3>
+        <section class="rule-list">
+          <article><strong>Provider</strong><span>${forecast.providerLabel || "Not set"}</span></article>
+          <article><strong>Profiles</strong><span>${providerCount} popular mappings</span></article>
+          <article><strong>Snapshot</strong><span>${forecast.snapshotAt || "Not recorded"}</span></article>
+        </section>
+        <p>Use the Forecast page to map entities from Forecast.Solar, Solcast, or template sensors.</p>
       </hem-card>
     `;
   }

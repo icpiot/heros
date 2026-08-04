@@ -3,6 +3,7 @@ import { createMockHemDataProvider } from "./services/hemDataProvider.js";
 import "./components/HemShell.js";
 import "./pages/BatteryPage.js";
 import "./pages/ForecastPage.js";
+import "./pages/ForecastSetupPage.js";
 import "./pages/HistoryPage.js";
 import "./pages/OverviewPage.js";
 import "./pages/PolicyPage.js";
@@ -61,6 +62,10 @@ export class HemApp extends LitElement {
 
     if (this.activePage === "forecast") {
       return html`<hem-forecast-page .hemState=${this.hemState}></hem-forecast-page>`;
+    }
+
+    if (this.activePage === "forecast-setup") {
+      return html`<hem-forecast-setup-page .hemState=${this.hemState}></hem-forecast-setup-page>`;
     }
 
     if (this.activePage === "history") {

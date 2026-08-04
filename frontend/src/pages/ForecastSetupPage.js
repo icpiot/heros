@@ -4,12 +4,12 @@ import "../components/HemCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
-  FORECAST_LAYOUT_STORAGE_KEY,
-  FORECAST_LAYOUT_VERSION,
-  forecastDefaultLayout,
-} from "../layout/forecastLayout.js";
+  FORECAST_SETUP_LAYOUT_STORAGE_KEY,
+  FORECAST_SETUP_LAYOUT_VERSION,
+  forecastSetupDefaultLayout,
+} from "../layout/forecastSetupLayout.js";
 
-export class HemForecastPage extends LitElement {
+export class HemForecastSetupPage extends LitElement {
   static properties = {
     hemState: { type: Object },
     editingLayout: { type: Boolean },
@@ -21,9 +21,9 @@ export class HemForecastPage extends LitElement {
     this.editingLayout = false;
     this._handleLayoutAction = this._handleLayoutAction.bind(this);
     this.repository = new LocalStorageLayoutRepository({
-      storageKey: FORECAST_LAYOUT_STORAGE_KEY,
-      version: FORECAST_LAYOUT_VERSION,
-      defaultLayout: forecastDefaultLayout,
+      storageKey: FORECAST_SETUP_LAYOUT_STORAGE_KEY,
+      version: FORECAST_SETUP_LAYOUT_VERSION,
+      defaultLayout: forecastSetupDefaultLayout,
     });
     this.layoutController = new LayoutController(this.repository);
     this.layout = this.layoutController.layout;
@@ -38,26 +38,25 @@ export class HemForecastPage extends LitElement {
   render() {
     const forecast = this.hemState?.forecast ?? {};
     const cards = [
-      { id: "forecast-summary", template: this._renderSummaryCard(forecast) },
-      { id: "forecast-solar", template: this._renderSolarCard(forecast) },
-      { id: "forecast-battery", template: this._renderBatteryCard(forecast) },
-      { id: "forecast-load", template: this._renderLoadCard(forecast) },
-      { id: "forecast-pricing", template: this._renderPricingCard(forecast) },
+      { id: "forecast-setup-summary", template: this._renderSummaryCard(forecast) },
+      { id: "forecast-setup-providers", template: this._renderProvidersCard(forecast) },
+      { id: "forecast-setup-mapping", template: this._renderMappingCard(forecast) },
+      { id: "forecast-setup-data", template: this._renderDataCard(forecast) },
     ];
 
     return html`
       <section class="page-head">
-        <p class="eyebrow">Forecast</p>
-        <h2>Forecast workspace</h2>
-        <p>Mapped forecast values from Forecast.Solar or another configured integration.</p>
+        <p class="eyebrow">Forecast setup</p>
+        <h2>Forecast mapping workspace</h2>
+        <p>Choose a provider profile, map the required sensors, and keep Forecast tab values consistent.</p>
       </section>
 
       <section class=${this.editingLayout ? "layout-toolbar editing" : "layout-toolbar"}>
         <div>
-          <strong>${this.editingLayout ? "Forecast layout editing is active" : "Forecast layout"}</strong>
-          <span>${this.editingLayout ? "Drag and resize cards, then save." : "Use Edit Layout to arrange forecast cards."}</span>
+          <strong>${this.editingLayout ? "Forecast setup editing is active" : "Forecast setup layout"}</strong>
+          <span>${this.editingLayout ? "Drag and resize cards, then save." : "Use Edit Layout to arrange mapping cards."}</span>
         </div>
-        <nav aria-label="Forecast layout editor controls">
+        <nav aria-label="Forecast setup layout editor controls">
           ${this.editingLayout
             ? html`
                 <button data-layout-action="save" type="button">Save Layout</button>
@@ -78,70 +77,80 @@ export class HemForecastPage extends LitElement {
   }
 
   _renderSummaryCard(forecast) {
-    const capture = forecast.capture ?? {};
     return html`
       <hem-card>
-        <p class="card-label">Today outlook</p>
-        <h3>${forecast.providerLabel || "No provider mapped"}</h3>
-        <strong class="hero-value">${capture.todayKwh ?? "—"} kWh</strong>
-        <p>${forecast.nextAction || "Map forecast entities in setup to unlock planning."}</p>
+        <p class="card-label">Selected provider</p>
+        <h3>${forecast.providerLabel || "Not configured"}</h3>
+        <strong class="hero-value">${forecast.status || "Waiting for a mapping"}</strong>
+        <p>${forecast.nextAction || "Pick a provider profile and map its sensors to HEM fields."}</p>
       </hem-card>
     `;
   }
 
-  _renderSolarCard(forecast) {
-    const capture = forecast.capture ?? {};
+  _renderProvidersCard(forecast) {
+    const providers = forecast.providers ?? [];
     return html`
       <hem-card>
-        <p class="card-label">Solar forecast</p>
-        <h3>Peak ${capture.nowKw ?? "—"} kW now</h3>
-        ${this._bars([36, 61, 90, 82, 50, 18])}
-      </hem-card>
-    `;
-  }
-
-  _renderBatteryCard(forecast) {
-    const capture = forecast.capture ?? {};
-    return html`
-      <hem-card>
-        <p class="card-label">Battery forecast</p>
-        <h3>Reserve at sunset</h3>
-        <section class="mini-grid">
-          <article><span>Today</span><strong>${capture.todayKwh ?? "—"} kWh</strong></article>
-          <article><span>Tomorrow</span><strong>${capture.tomorrowKwh ?? "—"} kWh</strong></article>
-          <article><span>Confidence</span><strong>${forecast.confidence || "Unknown"}</strong></article>
+        <p class="card-label">Popular mappings</p>
+        <h3>Provider presets</h3>
+        <section class="provider-list">
+          ${providers.map((provider) => html`
+            <article class=${provider.id === forecast.provider ? "provider active" : "provider"}>
+              <div>
+                <strong>${provider.label}</strong>
+                <p>${provider.description}</p>
+              </div>
+              <span>${provider.strength}</span>
+            </article>
+          `)}
         </section>
       </hem-card>
     `;
   }
 
-  _renderLoadCard(forecast) {
-    const capture = forecast.capture ?? {};
+  _renderMappingCard(forecast) {
+    const mapping = forecast.mapping ?? {};
+    const labels = {
+      today: "Forecast today",
+      tomorrow: "Forecast tomorrow",
+      thisHour: "This hour",
+      nextHour: "Next hour",
+      now: "Power now",
+      peakToday: "Peak time today",
+      peakTomorrow: "Peak time tomorrow",
+    };
     return html`
       <hem-card>
-        <p class="card-label">Load forecast</p>
-        <h3>Planning against demand</h3>
-        <section class="mini-grid">
-          <article><span>This hour</span><strong>${capture.thisHourKwh ?? "—"} kWh</strong></article>
-          <article><span>Next hour</span><strong>${capture.nextHourKwh ?? "—"} kWh</strong></article>
-          <article><span>Snapshot</span><strong>${forecast.snapshotAt || "—"}</strong></article>
+        <p class="card-label">Entity mapping</p>
+        <h3>What HEM reads</h3>
+        <section class="rule-list">
+          ${Object.entries(labels).map(([key, label]) => html`
+            <article>
+              <strong>${label}</strong>
+              <span>${mapping[key] || "Not set"}</span>
+            </article>
+          `)}
         </section>
       </hem-card>
     `;
   }
 
-  _renderPricingCard(forecast) {
+  _renderDataCard(forecast) {
+    const capture = forecast.capture ?? {};
     return html`
       <hem-card>
-        <p class="card-label">Price window</p>
-        <h3>${forecast.mapping?.today ? "Use mapped forecast with pricing" : "Waiting for forecast mapping"}</h3>
-        <p>Charge when the cheapest window lines up with a predicted solar shortfall.</p>
+        <p class="card-label">Captured values</p>
+        <h3>Forecast.Solar example</h3>
+        <section class="rule-list">
+          <article><strong>Today</strong><span>${capture.todayKwh ?? "—"} kWh</span></article>
+          <article><strong>Tomorrow</strong><span>${capture.tomorrowKwh ?? "—"} kWh</span></article>
+          <article><strong>This hour</strong><span>${capture.thisHourKwh ?? "—"} kWh</span></article>
+          <article><strong>Next hour</strong><span>${capture.nextHourKwh ?? "—"} kWh</span></article>
+          <article><strong>Power now</strong><span>${capture.nowKw ?? "—"} kW</span></article>
+          <article><strong>Snapshot</strong><span>${forecast.snapshotAt || "Not recorded"}</span></article>
+        </section>
       </hem-card>
     `;
-  }
-
-  _bars(values) {
-    return html`<section class="spark-bars">${values.map((height) => html`<span style="height:${height}%"></span>`)}</section>`;
   }
 
   _handleLayoutAction(event) {
@@ -211,7 +220,8 @@ export class HemForecastPage extends LitElement {
 
     .eyebrow,
     .card-label,
-    .mini-grid span {
+    .rule-list span,
+    .provider span {
       color: var(--hem-accent);
       font-size: 0.72rem;
       font-weight: 900;
@@ -241,8 +251,8 @@ export class HemForecastPage extends LitElement {
 
     .hero-value {
       display: block;
-      font-size: clamp(2.4rem, 6vw, 4.8rem);
-      line-height: 1;
+      font-size: clamp(2.1rem, 5vw, 3.4rem);
+      line-height: 1.1;
       margin: 14px 0;
     }
 
@@ -269,33 +279,41 @@ export class HemForecastPage extends LitElement {
       color: var(--hem-text);
     }
 
-    .mini-grid {
+    .rule-list,
+    .provider-list {
       display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
       margin-top: 16px;
     }
 
-    .mini-grid article {
+    .rule-list article,
+    .provider {
       background: rgba(6, 13, 26, 0.72);
       border: 1px solid rgba(0, 229, 255, 0.18);
       border-radius: 14px;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
       padding: 12px;
     }
 
-    .spark-bars {
-      align-items: end;
-      display: flex;
-      gap: 10px;
-      height: 130px;
-      margin-top: 18px;
+    .provider {
+      align-items: flex-start;
+      flex-direction: column;
     }
 
-    .spark-bars span {
-      background: linear-gradient(180deg, var(--hem-accent-2), var(--hem-accent));
-      border-radius: 999px 999px 4px 4px;
-      flex: 1;
-      min-width: 16px;
+    .provider.active {
+      border-color: rgba(37, 255, 210, 0.72);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.12);
+    }
+
+    .provider strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .provider p {
+      margin: 0;
     }
 
     @media (max-width: 860px) {
@@ -307,12 +325,8 @@ export class HemForecastPage extends LitElement {
       nav {
         justify-content: flex-start;
       }
-
-      .mini-grid {
-        grid-template-columns: 1fr;
-      }
     }
   `;
 }
 
-customElements.define("hem-forecast-page", HemForecastPage);
+customElements.define("hem-forecast-setup-page", HemForecastSetupPage);
