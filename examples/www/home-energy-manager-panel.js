@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "219";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "220";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -25,6 +25,9 @@ const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS = [
   "Shoulder - Afternoon",
   "Shoulder - Evening",
   "Off-Peak",
+  "Off-Peak - Morning",
+  "Off-Peak - Afternoon",
+  "Off-Peak - Evening",
   "Off-Peak - Overnight",
   "Off-Peak - Weekend",
   "Super Off-Peak",
