@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "214";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "215";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1988,6 +1988,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   async _handlePricingUiDeleteGroup(groupId) {
+    if (!window.confirm("Delete this rate group and all of its saved buy/sell records?")) {
+      return;
+    }
     const model = this._loadPricingUi();
     const previousModel = JSON.parse(JSON.stringify(model));
     const deleteGroupId = String(groupId || "");
@@ -2050,6 +2053,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   async _handlePricingUiDeleteRule(ruleId) {
+    if (!window.confirm("Delete this saved pricing record?")) {
+      return;
+    }
     const model = this._loadPricingUi();
     const previousModel = JSON.parse(JSON.stringify(model));
     const group = this._pricingUiActiveGroup(model);
@@ -2938,6 +2944,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <span>${this._escapeHtml(String(group.provider || "Provider not set"))}${group.plan_name ? ` · ${this._escapeHtml(String(group.plan_name))}` : ""}</span>
                 </div>
                 <div class="pricing-rule__actions">
+                  <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
                   <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete group</button>
                 </div>
               </div>
@@ -2953,9 +2960,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <span>Other charges ${group.other_charges ? this._escapeHtml(String(group.other_charges)) : "Not set"}</span>
                   <span>Notes ${group.notes ? this._escapeHtml(String(group.notes)) : "Not set"}</span>
                 </div>
-              <div class="pricing-rule__actions pricing-rule__actions--inline">
-                <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
-              </div>
               </div>
             </article>
           `;
