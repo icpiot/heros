@@ -41,6 +41,7 @@ from .const import (
     CONF_FORECAST_GENERATION_TODAY_ENTITY,
     CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
+    CONF_PANEL_THEME,
     CONF_RECOVERY_ENABLED,
     CONF_HEARTBEAT_INTERVAL,
     CONF_MAX_DATA_AGE,
@@ -84,6 +85,7 @@ from .const import (
     SERVICE_PRICING_REMOVE_GROUP,
     SERVICE_PRICING_UPSERT_RECORD,
     SERVICE_PRICING_REMOVE_RECORD,
+    SERVICE_SET_PANEL_THEME,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -140,7 +142,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=234"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=236"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -203,6 +205,7 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_FORECAST_GENERATION_TODAY_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TODAY_ENTITY, ""),
             CONF_FORECAST_GENERATION_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
             CONF_SOLAR_FORECAST_ENTITY: entry.data.get(CONF_SOLAR_FORECAST_ENTITY, ""),
+            "theme": entry.data.get(CONF_PANEL_THEME, PANEL_CONFIG["theme"]),
             **PANEL_CUSTOM_CONFIG,
         },
         show_in_sidebar=True,
@@ -977,6 +980,23 @@ def _register_services(hass: HomeAssistant) -> None:
         else:
             _LOGGER.error("No ByteWatt integrations found to toggle diagnostics")
 
+    async def handle_set_panel_theme(call: ServiceCall) -> None:
+        entry_id = _resolve_entry_id(hass, call)
+        theme = str(call.data.get(CONF_PANEL_THEME) or "").strip()
+        if not theme:
+            raise HomeAssistantError("panel_theme is required")
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is None:
+            raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+        hass.config_entries.async_update_entry(
+            entry,
+            data={
+                **entry.data,
+                CONF_PANEL_THEME: theme,
+            },
+        )
+        await hass.config_entries.async_reload(entry.entry_id)
+
     async def handle_ensure_report_history(call: ServiceCall) -> None:
         target_entry = call.data.get(ATTR_ENTRY_ID)
         scope_key = str(call.data.get("scope_key") or "all").strip() or "all"
@@ -1282,6 +1302,10 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_TOGGLE_DIAGNOSTICS, handle_toggle_diagnostics,
         schema=vol.Schema({vol.Optional("enable"): cv.boolean, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_PANEL_THEME, handle_set_panel_theme,
+        schema=vol.Schema({vol.Required(CONF_PANEL_THEME): cv.string, **_entry_id_opt}),
     )
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_UPSERT_RULE, handle_pricing_upsert_rule,

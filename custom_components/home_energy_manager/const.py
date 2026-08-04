@@ -57,6 +57,7 @@ SERVICE_PRICING_UPSERT_GROUP = "pricing_upsert_group"
 SERVICE_PRICING_REMOVE_GROUP = "pricing_remove_group"
 SERVICE_PRICING_UPSERT_RECORD = "pricing_upsert_record"
 SERVICE_PRICING_REMOVE_RECORD = "pricing_remove_record"
+SERVICE_SET_PANEL_THEME = "set_panel_theme"
 
 # Service attributes
 ATTR_END_DISCHARGE = "end_discharge"
@@ -192,6 +193,7 @@ CONF_FORECAST_PROVIDER = "forecast_provider"
 CONF_FORECAST_GENERATION_TODAY_ENTITY = "forecast_generation_today_entity"
 CONF_FORECAST_GENERATION_TOMORROW_ENTITY = "forecast_generation_tomorrow_entity"
 CONF_SOLAR_FORECAST_ENTITY = "solar_forecast_entity"
+CONF_PANEL_THEME = "panel_theme"
 
 FORECAST_PROVIDER_NONE = "none"
 FORECAST_PROVIDER_FORECAST_SOLAR = "forecast_solar"

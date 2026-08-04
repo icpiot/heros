@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "235";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "236";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -316,11 +316,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _loadTheme() {
-    try {
-      return localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_THEME_KEY) || this._config.theme || "midnight";
-    } catch (error) {
-      return this._config.theme || "midnight";
-    }
+    return this._config.theme || "midnight";
   }
 
   _loadPage() {
@@ -383,11 +379,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _saveTheme(theme) {
-    try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_THEME_KEY, theme);
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
+    if (!this._hass) {
+      return;
     }
+    this._hass.callService("home_energy_manager", "set_panel_theme", {
+      entry_id: this._entryId(),
+      panel_theme: theme,
+    }).catch((error) => {
+      console.error("Failed to save panel theme", error);
+    });
   }
 
   _savePage(page) {
