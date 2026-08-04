@@ -12,6 +12,7 @@ const HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY = "home-energy-manager.panel.entry_
 const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
 const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui";
 const HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY = "home-energy-manager.panel.pricing.purchase_tariffs";
+const HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY = "home-energy-manager.panel.forecast.mapping";
 const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS = 120000;
@@ -1156,6 +1157,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastMappingState() {
     const candidates = this._forecastEntityCandidates();
+    const stored = this._loadForecastMapping();
     const mapping = [
       ["today", "forecast_generation_today_entity"],
       ["tomorrow", "forecast_generation_tomorrow_entity"],
@@ -1176,7 +1178,101 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: this._config?.forecast_provider || "none",
       mapping,
       candidates,
+      stored,
     };
+  }
+
+  _loadForecastMapping() {
+    try {
+      const raw = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  _saveForecastMapping(mapping) {
+    try {
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY, JSON.stringify(mapping || {}));
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _saveForecastDraftFromInputs() {
+    if (!this.shadowRoot) {
+      return;
+    }
+    const mapping = {
+      provider: this.shadowRoot.querySelector('[data-forecast-field="forecast_provider"]')?.value || "none",
+      today: this.shadowRoot.querySelector('[data-forecast-field="forecast_generation_today_entity"]')?.value || "",
+      tomorrow: this.shadowRoot.querySelector('[data-forecast-field="forecast_generation_tomorrow_entity"]')?.value || "",
+      now: this.shadowRoot.querySelector('[data-forecast-field="solar_forecast_entity"]')?.value || "",
+    };
+    this._saveForecastMapping(mapping);
+    this._render();
+  }
+
+  _saveForecastSetup() {
+    this._saveForecastDraftFromInputs();
+  }
+
+  _forecastResolvedEntityId(item) {
+    return String(item?.entityId || item?.entity_id || "").trim();
+  }
+
+  _forecastEntityOptions(forecastState) {
+    const seen = new Set();
+    return this._states()
+      .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+      .filter((entity) => {
+        if (seen.has(entity.entity_id)) {
+          return false;
+        }
+        seen.add(entity.entity_id);
+        return true;
+      })
+      .map((entity) => ({
+        value: entity.entity_id,
+        label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .concat([
+        {
+          value: "",
+          label: "Not set",
+        },
+      ]);
+  }
+
+  _forecastSelectField(key, label, options, selectedValue) {
+    const selected = String(selectedValue || "").trim();
+    return `
+      <label class="forecast-field">
+        <span>${this._escapeHtml(label)}</span>
+        <select data-forecast-field="${this._escapeHtml(key)}">
+          ${options.map((option) => `
+            <option value="${this._escapeHtml(option.value)}" ${String(option.value) === selected ? "selected" : ""}>
+              ${this._escapeHtml(option.label)}
+            </option>
+          `).join("")}
+        </select>
+      </label>
+    `;
+  }
+
+  _forecastSelectedItem(forecastState, slot) {
+    const storedId = String(forecastState?.stored?.[slot] || "").trim();
+    const discovered = forecastState?.mapping?.find((item) => item.slot === slot);
+    if (storedId) {
+      const byId = this._states().find((entity) => entity.entity_id === storedId);
+      if (byId) {
+        return { ...byId, entity_id: byId.entity_id };
+      }
+      return { entity_id: storedId, state: "Unavailable", attributes: {} };
+    }
+    return discovered ? { ...discovered.entity, entity_id: discovered.entity.entity_id } : null;
   }
 
   _forecastEntityDisplay(item) {
@@ -2972,11 +3068,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastPage() {
     const forecastState = this._forecastMappingState();
+    const selected = forecastState.stored || {};
     const forecastItems = [
       { label: "Forecast provider", value: forecastState.provider },
-      { label: "Forecast today", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
-      { label: "Forecast tomorrow", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
-      { label: "Solar forecast", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
+      { label: "Forecast today", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "today")) },
+      { label: "Forecast tomorrow", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "tomorrow")) },
+      { label: "Solar forecast", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "now")) },
     ];
     return `
       <section class="forecast">
@@ -3014,9 +3111,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Today entity", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
-                { label: "Tomorrow entity", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
-                { label: "Solar forecast entity", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
+                { label: "Today entity", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "today")) },
+                { label: "Tomorrow entity", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "tomorrow")) },
+                { label: "Solar forecast entity", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "now")) },
                 { label: "Forecast page", value: this._pageLabel() },
               ])}
             </ul>
@@ -3032,9 +3129,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Discovered today", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
-                { label: "Discovered tomorrow", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
-                { label: "Discovered solar", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
+                { label: "Discovered today", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "today")) },
+                { label: "Discovered tomorrow", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "tomorrow")) },
+                { label: "Discovered solar", value: this._forecastEntityValue(this._forecastSelectedItem(forecastState, "now")) },
                 { label: "Source count", value: String(Object.values(forecastState.candidates).filter(Boolean).length || 0) },
               ])}
             </ul>
@@ -3045,7 +3142,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _forecastSetupPage() {
-    const forecastProvider = String(this._config?.forecast_provider || "none");
+    const forecastState = this._forecastMappingState();
+    const forecastProvider = String(forecastState.provider || "none");
     const providerProfiles = [
       {
         label: "Forecast.Solar",
@@ -3081,15 +3179,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
           <article class="forecast-tile">
             <span>Today entity</span>
-            <strong>${this._forecastEntityDisplay(forecastState.mapping.find((item) => item.slot === "today"))}</strong>
+            <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, "today"))}</strong>
           </article>
           <article class="forecast-tile">
             <span>Tomorrow entity</span>
-            <strong>${this._forecastEntityDisplay(forecastState.mapping.find((item) => item.slot === "tomorrow"))}</strong>
+            <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, "tomorrow"))}</strong>
           </article>
           <article class="forecast-tile">
             <span>Solar forecast entity</span>
-            <strong>${this._forecastEntityDisplay(forecastState.mapping.find((item) => item.slot === "now"))}</strong>
+            <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, "now"))}</strong>
           </article>
         </section>
 
@@ -3108,22 +3206,26 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
           <article class="panel-card">
             <div class="panel-card__header">
-              <h2>How to use it</h2>
+              <h2>Map sensors</h2>
               <span>Workflow</span>
             </div>
             <p>
-              Pick the provider profile, then point the fields at the matching Home Assistant
-              sensor entities. If another integration exposes different entity names, add a
-              template sensor in Home Assistant and map that instead.
+              Pick the provider profile, then choose the matching Home Assistant sensor entities
+              and save the mapping locally. If another integration exposes different entity names,
+              add a template sensor in Home Assistant and map that instead.
             </p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList([
-                { label: "Today", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
-                { label: "Tomorrow", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
-                { label: "Live solar", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
-                { label: "Forecast page", value: this._pageLabel() },
-              ])}
-            </ul>
+            <div class="forecast-form">
+              ${this._forecastSelectField("forecast_provider", "Provider", [
+                { value: "none", label: "No provider" },
+                { value: "forecast_solar", label: "Forecast.Solar" },
+                { value: "solcast", label: "Solcast" },
+                { value: "other", label: "Other / template" },
+              ], forecastProvider)}
+              ${this._forecastSelectField("forecast_generation_today_entity", "Today", this._forecastEntityOptions(forecastState), this._forecastSelectedItem(forecastState, "today")?.entity_id || "")}
+              ${this._forecastSelectField("forecast_generation_tomorrow_entity", "Tomorrow", this._forecastEntityOptions(forecastState), this._forecastSelectedItem(forecastState, "tomorrow")?.entity_id || "")}
+              ${this._forecastSelectField("solar_forecast_entity", "Live solar", this._forecastEntityOptions(forecastState), this._forecastSelectedItem(forecastState, "now")?.entity_id || "")}
+              <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
+            </div>
           </article>
         </section>
       </section>
@@ -4094,6 +4196,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._setPage(pageButton.dataset.page);
           return true;
         }
+        const forecastSave = path.find((node) => node?.dataset?.forecastSave !== undefined);
+        if (forecastSave) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._saveForecastSetup();
+          return true;
+        }
         return false;
       };
       ["pointerdown", "mousedown", "click"].forEach((eventName) => {
@@ -4126,6 +4235,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
         event.preventDefault();
         this._saveSettingsFocus(button.dataset.settingsFocus || "entities");
         this._render();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-forecast-field]').forEach((field) => {
+      field.onchange = (event) => {
+        event.preventDefault();
+        this._saveForecastDraftFromInputs();
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-forecast-save]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        this._saveForecastSetup();
       };
     });
 
