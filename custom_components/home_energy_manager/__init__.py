@@ -142,7 +142,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=237"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=238"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -316,6 +316,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if not hass.services.has_service(DOMAIN, SERVICE_FORCE_RECONNECT):
         _register_services(hass)
+    elif not hass.services.has_service(DOMAIN, SERVICE_SET_PANEL_THEME):
+        hass.services.async_register(
+            DOMAIN, SERVICE_SET_PANEL_THEME, handle_set_panel_theme,
+            schema=vol.Schema({vol.Required(CONF_PANEL_THEME): cv.string, **_entry_id_opt}),
+        )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
