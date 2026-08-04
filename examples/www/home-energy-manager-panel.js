@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "220";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "221";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2000,7 +2000,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _handlePricingUiStartRecord(recordType = "buy") {
+    const model = this._loadPricingUi();
+    const activeGroup = this._pricingUiActiveGroup(model);
     const normalizedRecordType = String(recordType || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    if (activeGroup?.group_id) {
+      model.activeGroupId = String(activeGroup.group_id || model.activeGroupId || "");
+      this._savePricingUi(model);
+      this._pricingUiGroupDraft = { ...activeGroup };
+    }
     this._pricingRecordEditorMode = normalizedRecordType;
     this._setPricingEditorUrl(normalizedRecordType);
     this._resetPricingUiRuleDraft(normalizedRecordType);
@@ -2104,6 +2111,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       existingRules.push(rule);
     }
     group.rules = existingRules;
+    model.activeGroupId = String(group.group_id || model.activeGroupId || "");
     model.warning = "";
     this._savePricingUi(model);
     this._resetPricingUiRuleDraft(rule.record_type);
