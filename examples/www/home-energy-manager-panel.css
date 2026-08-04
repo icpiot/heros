@@ -791,6 +791,26 @@
   font-weight: 600;
 }
 
+.forecast-field.shared-selector {
+  grid-template-columns: 1fr;
+  width: 100%;
+  padding-top: 0;
+}
+
+.forecast-field .shared-selector__picker {
+  min-width: 0;
+  width: 100%;
+}
+
+.forecast-field__control {
+  min-width: 0;
+}
+
+.forecast-field__menu {
+  max-height: 320px;
+  z-index: 1200;
+}
+
 .forecast-field span {
   color: var(--hem-panel-text);
 }

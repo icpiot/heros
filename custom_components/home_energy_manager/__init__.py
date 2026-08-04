@@ -142,7 +142,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=238"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=239"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -317,10 +317,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if not hass.services.has_service(DOMAIN, SERVICE_FORCE_RECONNECT):
         _register_services(hass)
     elif not hass.services.has_service(DOMAIN, SERVICE_SET_PANEL_THEME):
-        hass.services.async_register(
-            DOMAIN, SERVICE_SET_PANEL_THEME, handle_set_panel_theme,
-            schema=vol.Schema({vol.Required(CONF_PANEL_THEME): cv.string, **_entry_id_opt}),
-        )
+        _register_panel_theme_service(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -772,6 +769,36 @@ def _pricing_store_for(hass: HomeAssistant, call: ServiceCall) -> tuple[PricingS
 
 def _notify_pricing_changed(hass: HomeAssistant, entry_id: str) -> None:
     async_dispatcher_send(hass, signal_pricing_changed(entry_id))
+
+
+def _register_panel_theme_service(hass: HomeAssistant) -> None:
+    """Register the panel theme service when older service tables are already loaded."""
+    if hass.services.has_service(DOMAIN, SERVICE_SET_PANEL_THEME):
+        return
+
+    async def handle_set_panel_theme(call: ServiceCall) -> None:
+        entry_id = _resolve_entry_id(hass, call)
+        theme = str(call.data.get(CONF_PANEL_THEME) or "").strip()
+        if not theme:
+            raise HomeAssistantError("panel_theme is required")
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is None:
+            raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+        hass.config_entries.async_update_entry(
+            entry,
+            data={
+                **entry.data,
+                CONF_PANEL_THEME: theme,
+            },
+        )
+        await hass.config_entries.async_reload(entry.entry_id)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_PANEL_THEME,
+        handle_set_panel_theme,
+        schema=vol.Schema({vol.Required(CONF_PANEL_THEME): cv.string, vol.Optional(ATTR_ENTRY_ID): cv.string}),
+    )
 
 
 async def _submit_battery_service(

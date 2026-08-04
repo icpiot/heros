@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "238";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "239";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -79,6 +79,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
     this._forecastSelectorHoldUntil = 0;
+    this._forecastSelectorOpenKey = "";
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
     this._pricingRecordEditorMode = "";
@@ -186,6 +187,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _holdForecastWindow(duration = 8000) {
     this._forecastSelectorHoldUntil = Math.max(this._forecastSelectorHoldUntil, Date.now() + duration);
     this._holdRenderWindow(duration);
+  }
+
+  _openForecastSelector(key) {
+    this._forecastSelectorOpenKey = String(key || "");
+    this._holdForecastWindow();
+    this._render();
+  }
+
+  _closeForecastSelector() {
+    this._forecastSelectorOpenKey = "";
+    this._holdForecastWindow(600);
+    this._render();
   }
 
   _isPricingInteractionTarget(target) {
@@ -520,7 +533,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _isForecastInteractionTarget(target) {
-    return target?.dataset?.forecastField !== undefined;
+    return target?.dataset?.forecastField !== undefined
+      || target?.dataset?.forecastFieldToggle !== undefined
+      || target?.dataset?.forecastFieldOption !== undefined;
   }
 
   _isForecastSelectorHeld() {
@@ -534,7 +549,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (this._isForecastInteractionTarget(activeElement)) {
       return true;
     }
-    const selector = this.shadowRoot.querySelector("[data-forecast-field]");
+    const selector = this.shadowRoot.querySelector("[data-forecast-field], [data-forecast-field-toggle], [data-forecast-field-option]");
     if (!selector) {
       return false;
     }
@@ -1260,6 +1275,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._saveForecastDraftFromInputs();
   }
 
+  _saveForecastField(key, value) {
+    const current = this._loadForecastMapping();
+    const next = {
+      provider: current.provider || "none",
+      today: current.today || "",
+      tomorrow: current.tomorrow || "",
+      now: current.now || "",
+      [key]: String(value || ""),
+    };
+    this._saveForecastMapping(next);
+    this._forecastSelectorOpenKey = "";
+    this._holdForecastWindow(1000);
+    this._render();
+  }
+
   _forecastResolvedEntityId(item) {
     return String(item?.entityId || item?.entity_id || "").trim();
   }
@@ -1290,17 +1320,45 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastSelectField(key, label, options, selectedValue) {
     const selected = String(selectedValue || "").trim();
+    const selectedOption = options.find((option) => String(option.value) === selected);
+    const selectedLabel = selectedOption?.label || "Not set";
+    const isOpen = this._forecastSelectorOpenKey === key;
     return `
-      <label class="forecast-field">
-        <span>${this._escapeHtml(label)}</span>
-        <select data-forecast-field="${this._escapeHtml(key)}">
-          ${options.map((option) => `
-            <option value="${this._escapeHtml(option.value)}" ${String(option.value) === selected ? "selected" : ""}>
-              ${this._escapeHtml(option.label)}
-            </option>
-          `).join("")}
-        </select>
-      </label>
+      <div class="forecast-field shared-selector">
+        <input type="hidden" data-forecast-field="${this._escapeHtml(key)}" value="${this._escapeHtml(selected)}" />
+        <div class="shared-selector__label">${this._escapeHtml(label)}</div>
+        <div class="shared-selector__picker">
+          <button
+            type="button"
+            class="shared-selector__control forecast-field__control"
+            aria-haspopup="listbox"
+            aria-expanded="${isOpen ? "true" : "false"}"
+            data-forecast-field-toggle="${this._escapeHtml(key)}"
+          >
+            <span>${this._escapeHtml(selectedLabel)}</span>
+          </button>
+          ${isOpen ? `
+            <div class="shared-selector__menu forecast-field__menu" role="listbox" aria-label="${this._escapeHtml(label)}">
+              ${options.map((option) => {
+                const optionValue = String(option.value);
+                const selectedClass = optionValue === selected ? "is-selected" : "";
+                return `
+                  <button
+                    type="button"
+                    class="shared-selector__option ${selectedClass}"
+                    role="option"
+                    aria-selected="${optionValue === selected ? "true" : "false"}"
+                    data-forecast-field-option="${this._escapeHtml(key)}"
+                    data-forecast-field-value="${this._escapeHtml(optionValue)}"
+                  >
+                    ${this._escapeHtml(option.label)}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          ` : ""}
+        </div>
+      </div>
     `;
   }
 
@@ -4251,6 +4309,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._saveForecastSetup();
           return true;
         }
+        const forecastOption = path.find((node) => node?.dataset?.forecastFieldOption !== undefined);
+        if (forecastOption) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._saveForecastField(
+            forecastOption.dataset.forecastFieldOption,
+            forecastOption.dataset.forecastFieldValue || "",
+          );
+          return true;
+        }
+        const forecastToggle = path.find((node) => node?.dataset?.forecastFieldToggle !== undefined);
+        if (forecastToggle) {
+          event.preventDefault();
+          event.stopPropagation();
+          const key = forecastToggle.dataset.forecastFieldToggle || "";
+          if (this._forecastSelectorOpenKey === key) {
+            this._closeForecastSelector();
+          } else {
+            this._openForecastSelector(key);
+          }
+          return true;
+        }
         return false;
       };
       ["pointerdown", "mousedown", "click"].forEach((eventName) => {
@@ -4472,6 +4552,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return;
       }
       const path = event.composedPath?.() || [];
+      if (path.some((node) => this._isForecastInteractionTarget(node))) {
+        this._holdForecastWindow();
+        return;
+      }
       if (path.some((node) => node?.classList?.contains?.("pricing-group-card"))) {
         return;
       }
@@ -4552,6 +4636,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const forecastField = path.find((node) => node?.dataset?.forecastField !== undefined);
       if (forecastField) {
         this._holdForecastWindow();
+      }
+
+      if (this._forecastSelectorOpenKey && !path.some((node) => node?.classList?.contains?.("forecast-field"))) {
+        this._closeForecastSelector();
+        return;
       }
 
       if (this._batterySelectorOpen && !path.some((node) => node?.classList?.contains?.("shared-selector"))) {
@@ -4993,6 +5082,8 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._renderHoldUntil = 0;
     panel._batterySelectorHoldUntil = 0;
     panel._batterySelectorOpen = false;
+    panel._forecastSelectorHoldUntil = 0;
+    panel._forecastSelectorOpenKey = "";
     panel._pricingGroupSelectorOpen = false;
     panel._pricingGroupEditorOpen = false;
     panel._pricingRecordEditorMode = "";
