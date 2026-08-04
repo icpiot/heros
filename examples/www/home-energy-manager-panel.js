@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "213";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "214";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1222,7 +1222,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!url) {
       return;
     }
-    const loadKey = `${url.split("?")[0]}:${Math.floor(Date.now() / 3000)}`;
+    const loadKey = url.split("?")[0];
     if (this._pricingFileLoadKey === loadKey) {
       return;
     }
@@ -1251,6 +1251,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._render();
         }
       });
+  }
+
+  _invalidatePricingFileLoad() {
+    this._pricingFileLoadKey = "";
+  }
+
+  _refreshPricingFileSoon(delayMs = 1200) {
+    if (this._page !== "pricing") {
+      return;
+    }
+    window.setTimeout(() => {
+      this._invalidatePricingFileLoad();
+      this._ensurePricingFileLoaded();
+    }, delayMs);
   }
 
   _pricingUiDefaults() {
@@ -1857,6 +1871,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingGroupService(group);
+      this._refreshPricingFileSoon();
     } catch (error) {
       this._savePricingUi(previousModel);
       this._render();
@@ -1935,6 +1950,35 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
   }
 
+  _handlePricingUiModifyRule(ruleId) {
+    const model = this._loadPricingUi();
+    const group = this._pricingUiActiveGroup(model);
+    if (!group) {
+      return;
+    }
+    const editRuleId = String(ruleId || "");
+    const rule = (Array.isArray(group.rules) ? group.rules : []).find((item) => String(item?.rule_id || "") === editRuleId);
+    if (!rule) {
+      return;
+    }
+    const recordType = String(rule.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    this._pricingUiRuleDrafts = {
+      ...(this._pricingUiRuleDrafts || {}),
+      [recordType]: {
+        ...this._pricingUiRuleDefaults(recordType),
+        ...rule,
+        rule_id: editRuleId,
+        record_type: recordType,
+        day_types: Array.isArray(rule.day_types) ? [...rule.day_types] : this._pricingUiRuleDefaults(recordType).day_types,
+      },
+    };
+    this._pricingUiRuleDraft = this._pricingUiRuleDrafts[recordType];
+    this._pricingRecordEditorMode = recordType;
+    this._pricingGroupEditorOpen = true;
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
   _handlePricingUiCancelRecord() {
     const recordType = this._pricingRecordEditorMode || "buy";
     this._resetPricingUiRuleDraft(recordType);
@@ -1956,6 +2000,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingRemoveGroupService(deleteGroupId);
+      this._refreshPricingFileSoon();
     } catch (error) {
       this._savePricingUi(previousModel);
       this._render();
@@ -1973,14 +2018,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     const rule = this._readPricingUiRuleForm(recordType);
-    const warning = this._pricingUiValidationForRule(group, rule);
+    const warning = this._pricingUiValidationForRule(group, rule, rule.rule_id);
     if (warning) {
       model.warning = warning;
       this._savePricingUi(model);
       this._render();
       return;
     }
-    group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
+    const existingRules = Array.isArray(group.rules) ? [...group.rules] : [];
+    const existingIndex = existingRules.findIndex((item) => String(item?.rule_id || "") === String(rule.rule_id || ""));
+    if (existingIndex >= 0) {
+      existingRules[existingIndex] = rule;
+    } else {
+      existingRules.push(rule);
+    }
+    group.rules = existingRules;
     model.warning = "";
     this._savePricingUi(model);
     this._resetPricingUiRuleDraft(rule.record_type);
@@ -1990,6 +2042,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingRecordService(group.group_id, rule);
+      this._refreshPricingFileSoon();
     } catch (error) {
       this._savePricingUi(previousModel);
       this._render();
@@ -2010,6 +2063,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingRemoveRecordService(group.group_id, deleteRuleId);
+      this._refreshPricingFileSoon();
     } catch (error) {
       this._savePricingUi(previousModel);
       this._render();
@@ -2927,6 +2981,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected")}</span>
                 </div>
                 <div class="pricing-rule__actions">
+                  <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify record</button>
                   <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
                 </div>
               </div>
@@ -3065,6 +3120,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <input type="hidden" name="hem_action" value="add_rule" />
                   <input type="hidden" name="hem_page" value="pricing" />
                   <input type="hidden" name="record_type" value="buy" />
+                  <input type="hidden" name="rule_id" data-pricing-record-type="buy" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(buyRuleDraft.rule_id || ""))}" />
                   <div class="pricing-record-section__heading">
                     <div>
                       <strong>Buy Electricity</strong>
@@ -3102,6 +3158,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <input type="hidden" name="hem_action" value="add_rule" />
                   <input type="hidden" name="hem_page" value="pricing" />
                   <input type="hidden" name="record_type" value="sell" />
+                  <input type="hidden" name="rule_id" data-pricing-record-type="sell" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(sellRuleDraft.rule_id || ""))}" />
                   <div class="pricing-record-section__heading">
                     <div>
                       <strong>Sell Electricity</strong>
@@ -3802,6 +3859,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-modify-rule]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiModifyRule(button.dataset.pricingUiModifyRule);
+      };
+    });
+
     if (this._delegatedHandlersBound) {
       return;
     }
@@ -4129,6 +4194,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
           const ruleId = String(pricingUiDeleteRule.dataset.pricingUiDeleteRule || "");
           this._handlePricingUiDeleteRule(ruleId);
         }
+        return;
+      }
+
+      const pricingUiModifyRule = path.find((node) => node?.dataset?.pricingUiModifyRule);
+      if (pricingUiModifyRule) {
+        event.preventDefault();
+        const ruleId = String(pricingUiModifyRule.dataset.pricingUiModifyRule || "");
+        this._handlePricingUiModifyRule(ruleId);
         return;
       }
 
