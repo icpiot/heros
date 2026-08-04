@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "222";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "223";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2943,13 +2943,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingPage() {
     this._ensurePricingFileLoaded();
-    if (!this._hass) {
-      const storedModel = this._loadStoredPricingUi();
-      if (Array.isArray(storedModel.groups) && storedModel.groups.length > 0) {
-        return this._pricingPageWithModel(storedModel);
-      }
-    }
-    return this._pricingPageWithModel(this._loadPricingUi());
+    const storedModel = this._loadStoredPricingUi();
+    const liveModel = this._loadPricingUi();
+    const storedGroups = Array.isArray(storedModel.groups) ? storedModel.groups : [];
+    const liveGroups = Array.isArray(liveModel.groups) ? liveModel.groups : [];
+    const pageModel = storedGroups.length > liveGroups.length
+      ? {
+          ...liveModel,
+          ...storedModel,
+          groups: storedGroups,
+          activeGroupId: String(storedModel.activeGroupId || liveModel.activeGroupId || storedGroups[0]?.group_id || ""),
+        }
+      : liveModel;
+    return this._pricingPageWithModel(pageModel);
   }
 
   _pricingPageWithModel(model) {
