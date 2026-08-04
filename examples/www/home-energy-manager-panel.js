@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "226";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "227";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -59,6 +59,7 @@ const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "battery", label: "Battery", icon: "▣" },
   { value: "solar", label: "Solar", icon: "☀" },
   { value: "forecast", label: "Forecast", icon: "⛅" },
+  { value: "forecast_setup", label: "Setup", icon: "⚑" },
   { value: "history", label: "History", icon: "↺" },
   { value: "pricing", label: "Pricing", icon: "$" },
   { value: "settings", label: "Settings", icon: "⚙" },
@@ -2931,6 +2932,92 @@ class HomeEnergyManagerPanel extends HTMLElement {
     `;
   }
 
+  _forecastSetupPage() {
+    const forecastProvider = String(this._config?.forecast_provider || "none");
+    const providerProfiles = [
+      {
+        label: "Forecast.Solar",
+        description: "Native HA solar forecast entities with today, tomorrow, hour-ahead, and now values.",
+      },
+      {
+        label: "Solcast",
+        description: "A solar forecast integration that can feed the same mapped HEM fields.",
+      },
+      {
+        label: "Weather or template sensors",
+        description: "Any integration that exposes forecast values through helpers or template sensors.",
+      },
+    ];
+    return `
+      <section class="forecast">
+        <article class="panel-card panel-card--wide forecast__hero">
+          <div class="panel-card__header">
+            <h2>Forecast Setup</h2>
+            <span>Provider mappings</span>
+          </div>
+          <p>
+            Choose the forecast provider you already have installed, then map the sensor
+            entities that represent today, tomorrow, and the live solar estimate. HEM treats
+            the provider as a source of entities, not a hard dependency.
+          </p>
+        </article>
+
+        <section class="forecast__tiles">
+          <article class="forecast-tile">
+            <span>Selected provider</span>
+            <strong>${forecastProvider}</strong>
+          </article>
+          <article class="forecast-tile">
+            <span>Today entity</span>
+            <strong>${this._configuredEntityId("forecast_generation_today_entity") || "Not set"}</strong>
+          </article>
+          <article class="forecast-tile">
+            <span>Tomorrow entity</span>
+            <strong>${this._configuredEntityId("forecast_generation_tomorrow_entity") || "Not set"}</strong>
+          </article>
+          <article class="forecast-tile">
+            <span>Solar forecast entity</span>
+            <strong>${this._configuredEntityId("solar_forecast_entity") || "Not set"}</strong>
+          </article>
+        </section>
+
+        <section class="grid forecast__grid">
+          <article class="panel-card panel-card--wide pricing-editor-card pricing-group-card">
+            <div class="panel-card__header">
+              <h2>Popular mappings</h2>
+              <span>Supported sources</span>
+            </div>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(providerProfiles.map((profile) => ({
+                label: profile.label,
+                value: profile.description,
+              })))}
+            </ul>
+          </article>
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>How to use it</h2>
+              <span>Workflow</span>
+            </div>
+            <p>
+              Pick the provider profile, then point the fields at the matching Home Assistant
+              sensor entities. If another integration exposes different entity names, add a
+              template sensor in Home Assistant and map that instead.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
+                { label: "Tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
+                { label: "Live solar", value: this._stateForConfiguredEntity("solar_forecast_entity", "solar_forecast") },
+                { label: "Forecast page", value: this._pageLabel() },
+              ])}
+            </ul>
+          </article>
+        </section>
+      </section>
+    `;
+  }
+
   _historyPage() {
     const historyItems = [
       { label: "Solar generated today", value: this._formattedState("pv_generated_today") },
@@ -3575,6 +3662,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return this._pricingPage();
       case "forecast":
         return this._forecastPage();
+      case "forecast_setup":
+        return this._forecastSetupPage();
       case "debug":
         return this._debugPage();
       case "settings":
