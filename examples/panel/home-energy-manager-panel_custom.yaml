@@ -4,7 +4,7 @@
   sidebar_title: HEM
   sidebar_icon: mdi:solar-power-variant
   url_path: home-energy-manager
-  module_url: /local/community/home-energy-manager/home-energy-manager-panel.js?v=230
+  module_url: /local/community/home-energy-manager/home-energy-manager-panel.js?v=231
   config:
     title: Home Energy Manager (HEM)
     subtitle: Live energy control, custom theming, and provider-aware dashboards.
