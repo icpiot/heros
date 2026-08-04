@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "231";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "232";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1272,7 +1272,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       }
       return { entity_id: storedId, state: "Unavailable", attributes: {} };
     }
-    return discovered ? { ...discovered.entity, entity_id: discovered.entity.entity_id } : null;
+    if (discovered?.entity) {
+      return { ...discovered.entity, entity_id: discovered.entity.entity_id };
+    }
+    if (discovered?.entityId) {
+      return { entity_id: discovered.entityId, state: "Unavailable", attributes: {} };
+    }
+    return null;
   }
 
   _forecastEntityDisplay(item) {
