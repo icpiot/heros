@@ -1091,6 +1091,108 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._formattedState(fallbackKey, domain, fallback);
   }
 
+  _forecastEntityCandidates() {
+    const states = this._states();
+    const priorities = [
+      {
+        key: "today",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(today|energy_today|production_today|pv_today)$/i,
+          /(^|\.).*?(today|energy_today|production_today|pv_today).*?(forecast|solar|solcast)/i,
+        ],
+      },
+      {
+        key: "tomorrow",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow)$/i,
+          /(^|\.).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow).*?(forecast|solar|solcast)/i,
+        ],
+      },
+      {
+        key: "thisHour",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(this_hour|current_hour|hour).*?(forecast|energy|production)/i,
+          /(^|\.).*?(this_hour|current_hour|hour).*?(forecast|solar|solcast)/i,
+        ],
+      },
+      {
+        key: "nextHour",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|energy|production)/i,
+          /(^|\.).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|solar|solcast)/i,
+        ],
+      },
+      {
+        key: "now",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(now|power_now|current_power|forecast_now)/i,
+          /(^|\.).*?(now|power_now|current_power).*?(forecast|solar|solcast)/i,
+        ],
+      },
+      {
+        key: "peakToday",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*today|today.*peak|highest.*today)/i,
+        ],
+      },
+      {
+        key: "peakTomorrow",
+        patterns: [
+          /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*tomorrow|tomorrow.*peak|highest.*tomorrow)/i,
+        ],
+      },
+    ];
+
+    const pick = (patterns) => states.find((entity) => (
+      entity?.entity_id?.startsWith("sensor.")
+      && patterns.some((pattern) => pattern.test(entity.entity_id))
+    ));
+
+    return priorities.reduce((result, item) => {
+      result[item.key] = pick(item.patterns) || null;
+      return result;
+    }, {});
+  }
+
+  _forecastMappingState() {
+    const candidates = this._forecastEntityCandidates();
+    const mapping = [
+      ["today", "forecast_generation_today_entity"],
+      ["tomorrow", "forecast_generation_tomorrow_entity"],
+      ["thisHour", "forecast_generation_today_entity"],
+      ["nextHour", "forecast_generation_tomorrow_entity"],
+      ["now", "solar_forecast_entity"],
+      ["peakToday", "solar_forecast_entity"],
+      ["peakTomorrow", "solar_forecast_entity"],
+    ].map(([slot, configKey]) => ({
+      slot,
+      entityId: this._configuredEntityId(configKey) || candidates[slot]?.entity_id || "",
+      entity: this._configuredEntityId(configKey)
+        ? this._hass?.states?.[this._configuredEntityId(configKey)]
+        : candidates[slot],
+    }));
+
+    return {
+      provider: this._config?.forecast_provider || "none",
+      mapping,
+      candidates,
+    };
+  }
+
+  _forecastEntityDisplay(item) {
+    if (!item) {
+      return "Unavailable";
+    }
+    return item.entity_id || "Not set";
+  }
+
+  _forecastEntityValue(item) {
+    if (!item) {
+      return "Unavailable";
+    }
+    return `${item.entity_id || "Not set"} · ${this._formatEntityState(item, "Unavailable")}`;
+  }
+
   _managedEntities() {
     return this._states().filter((entity) => (
       /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity.entity_id)
@@ -2869,11 +2971,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _forecastPage() {
+    const forecastState = this._forecastMappingState();
     const forecastItems = [
-      { label: "Forecast provider", value: this._config?.forecast_provider || "none" },
-      { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
-      { label: "Forecast tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
-      { label: "Solar forecast", value: this._stateForConfiguredEntity("solar_forecast_entity", "solar_forecast") },
+      { label: "Forecast provider", value: forecastState.provider },
+      { label: "Forecast today", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
+      { label: "Forecast tomorrow", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
+      { label: "Solar forecast", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
     ];
     return `
       <section class="forecast">
@@ -2905,14 +3008,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Configured entities</span>
             </div>
             <p>
-              The panel reads the forecast entity IDs you choose during installation so the
-              Solar page can show forecast data without assuming a single vendor.
+              The panel reads forecast entity IDs from the current Home Assistant state so the
+              Solar and Forecast pages can work with Forecast.Solar, Solcast, or template
+              sensors without assuming a single vendor.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Today entity", value: this._configuredEntityId("forecast_generation_today_entity") || "Not set" },
-                { label: "Tomorrow entity", value: this._configuredEntityId("forecast_generation_tomorrow_entity") || "Not set" },
-                { label: "Solar forecast entity", value: this._configuredEntityId("solar_forecast_entity") || "Not set" },
+                { label: "Today entity", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
+                { label: "Tomorrow entity", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
+                { label: "Solar forecast entity", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
                 { label: "Forecast page", value: this._pageLabel() },
               ])}
             </ul>
@@ -2923,9 +3027,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Live data</span>
             </div>
             <p>
-              If you use forecast.solar or another integration, wire those sensor entities in
-              here once and the panel will surface them on both the forecast and solar pages.
+              If you use Forecast.Solar or another integration, the panel will discover matching
+              sensor entities automatically and use them unless you explicitly map different ones.
             </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Discovered today", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
+                { label: "Discovered tomorrow", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
+                { label: "Discovered solar", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
+                { label: "Source count", value: String(Object.values(forecastState.candidates).filter(Boolean).length || 0) },
+              ])}
+            </ul>
           </article>
         </section>
       </section>
@@ -2969,15 +3081,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
           <article class="forecast-tile">
             <span>Today entity</span>
-            <strong>${this._configuredEntityId("forecast_generation_today_entity") || "Not set"}</strong>
+            <strong>${this._forecastEntityDisplay(forecastState.mapping.find((item) => item.slot === "today"))}</strong>
           </article>
           <article class="forecast-tile">
             <span>Tomorrow entity</span>
-            <strong>${this._configuredEntityId("forecast_generation_tomorrow_entity") || "Not set"}</strong>
+            <strong>${this._forecastEntityDisplay(forecastState.mapping.find((item) => item.slot === "tomorrow"))}</strong>
           </article>
           <article class="forecast-tile">
             <span>Solar forecast entity</span>
-            <strong>${this._configuredEntityId("solar_forecast_entity") || "Not set"}</strong>
+            <strong>${this._forecastEntityDisplay(forecastState.mapping.find((item) => item.slot === "now"))}</strong>
           </article>
         </section>
 
@@ -3006,9 +3118,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList([
-                { label: "Today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
-                { label: "Tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
-                { label: "Live solar", value: this._stateForConfiguredEntity("solar_forecast_entity", "solar_forecast") },
+                { label: "Today", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "today")) },
+                { label: "Tomorrow", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "tomorrow")) },
+                { label: "Live solar", value: this._forecastEntityValue(forecastState.mapping.find((item) => item.slot === "now")) },
                 { label: "Forecast page", value: this._pageLabel() },
               ])}
             </ul>
