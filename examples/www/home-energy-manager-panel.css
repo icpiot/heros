@@ -1375,8 +1375,10 @@
     linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(255, 61, 214, 0.18)) padding-box,
     linear-gradient(135deg, var(--hem-panel-accent), var(--hem-panel-accent-strong)) border-box;
   border-color: transparent;
-  color: var(--hem-panel-text);
+  color: #06111f;
   box-shadow: 0 10px 24px rgba(0, 229, 255, 0.18);
+  font-weight: 900;
+  letter-spacing: 0.01em;
 }
 
 .pricing-rule__button--ghost:hover,

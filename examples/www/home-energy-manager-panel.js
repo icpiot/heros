@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "217";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "218";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1397,9 +1397,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const existing = this._loadStoredPricingUi();
       const existingLocalUpdatedAt = Number(existing.localUpdatedAt || 0);
       const existingPendingWriteUntil = Number(existing.pendingWriteUntil || 0);
+      const incomingGroups = Array.isArray(model?.groups) ? model.groups : [];
+      const existingGroups = Array.isArray(existing.groups) ? existing.groups : [];
       if (
-        Array.isArray(existing.groups)
-        && existing.groups.length > 0
+        existingGroups.length > 0
         && (
           Date.now() < existingPendingWriteUntil
           || (existingLocalUpdatedAt > 0 && (!Number.isFinite(backendUpdatedAt) || existingLocalUpdatedAt > backendUpdatedAt))
@@ -1407,10 +1408,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ) {
         return;
       }
+      const groupsToSave = incomingGroups.length === 0 && existingGroups.length > 0
+        ? existingGroups
+        : incomingGroups;
+      const activeGroupIdToSave = groupsToSave.length > 0
+        ? String(model?.activeGroupId || existing.activeGroupId || groupsToSave[0]?.group_id || "")
+        : "";
       localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY, JSON.stringify({
         ...this._pricingUiDefaults(),
         ...(model || {}),
-        groups: Array.isArray(model?.groups) ? model.groups : [],
+        groups: groupsToSave,
+        activeGroupId: activeGroupIdToSave,
         localUpdatedAt: Number.isFinite(backendUpdatedAt) ? backendUpdatedAt : Date.now(),
         pendingWriteUntil: 0,
       }));
@@ -1978,6 +1986,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     const recordType = String(rule.record_type || "buy").toLowerCase() === "sell" ? "sell" : "buy";
+    this._pricingUiGroupDraft = { ...group };
     this._pricingUiRuleDrafts = {
       ...(this._pricingUiRuleDrafts || {}),
       [recordType]: {
@@ -2081,6 +2090,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     const deleteRuleId = String(ruleId || "");
+    this._pricingUiGroupDraft = { ...group };
+    this._pricingGroupEditorOpen = true;
+    this._pricingRecordEditorMode = "";
+    this._setPricingEditorUrl("modify");
     group.rules = (Array.isArray(group.rules) ? group.rules : []).filter((rule) => String(rule.rule_id || "") !== deleteRuleId);
     model.warning = "";
     this._savePricingUi(model);
@@ -2963,7 +2976,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                   <strong>${this._escapeHtml(String(group.label || "Unnamed rate group"))}</strong>
                   <span>${this._escapeHtml(String(group.provider || "Provider not set"))}${group.plan_name ? ` · ${this._escapeHtml(String(group.plan_name))}` : ""}</span>
                 </div>
-                <div class="pricing-rule__actions">
+                <div class="pricing-rule__actions ${showGroupEditor ? "is-hidden" : ""}">
                   <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
                   <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete group</button>
                 </div>
