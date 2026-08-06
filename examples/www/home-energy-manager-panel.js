@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "246";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "247";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -59,7 +59,6 @@ const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "report", label: "Report", icon: "▤" },
   { value: "battery", label: "Battery", icon: "▣" },
   { value: "solar", label: "Solar", icon: "☀" },
-  { value: "forecast", label: "Forecast", icon: "⛅" },
   { value: "forecast_setup", label: "Setup", icon: "⚑" },
   { value: "history", label: "History", icon: "↺" },
   { value: "pricing", label: "Pricing", icon: "$" },
@@ -601,6 +600,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _normalizePage(page) {
     const availablePages = this._availablePages();
     const requested = String(page || "overview").trim().toLowerCase();
+    if (requested === "forecast") {
+      return "solar";
+    }
     return availablePages.some((item) => item.value === requested) ? requested : "overview";
   }
 
@@ -3200,14 +3202,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Feed in today", value: this._formattedState("feed_in_today") },
       { label: "Self consumption", value: this._formattedState("self_consumption") },
       { label: "Self sufficiency", value: this._formattedState("self_sufficiency") },
-      { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
-      { label: "Forecast tomorrow", value: this._stateForConfiguredEntity("forecast_generation_tomorrow_entity", "forecast_generation_tomorrow") },
+      { label: "Battery charged from solar", value: this._formattedState("battery_charged_today") },
     ];
     const solarSummary = [
       { label: "Solar now", value: this._formattedState("pv_power") },
       { label: "Grid now", value: this._formattedState("grid_consumption") },
       { label: "Feed in today", value: this._formattedState("feed_in_today") },
-      { label: "Forecast today", value: this._stateForConfiguredEntity("forecast_generation_today_entity", "forecast_generation_today") },
+      { label: "Battery charged", value: this._formattedState("battery_charged_today") },
     ];
     return `
       <section class="solar">
@@ -4083,8 +4084,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return this._historyPage();
       case "pricing":
         return this._pricingPage();
-      case "forecast":
-        return this._forecastPage();
       case "forecast_setup":
         return this._forecastSetupPage();
       case "debug":

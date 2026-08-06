@@ -40,9 +40,11 @@ def test_panel_reads_configuration_from_home_assistant_panel_property():
     assert "this._config = panel?.config || this._config" in panel_source
 
 
-def test_panel_exposes_forecast_page_and_configured_entity_lookup():
+def test_panel_routes_forecast_setup_and_configured_entity_lookup():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    assert "_forecastPage()" in panel_source
+    assert '{ value: "forecast", label: "Forecast"' not in panel_source
+    assert 'requested === "forecast"' in panel_source
+    assert 'return "solar"' in panel_source
     assert "_configuredEntityId(key)" in panel_source
     assert "_stateForConfiguredEntity" in panel_source
     assert "Forecast Wiring" in panel_source
