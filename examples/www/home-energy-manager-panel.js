@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "242";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "244";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1213,7 +1213,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastMappingState() {
     const candidates = this._forecastEntityCandidates();
+    const configured = {
+      provider: this._config?.forecast_provider || "none",
+      today: this._configuredEntityId("forecast_generation_today_entity") || "",
+      tomorrow: this._configuredEntityId("forecast_generation_tomorrow_entity") || "",
+      now: this._configuredEntityId("solar_forecast_entity") || "",
+    };
     const stored = this._loadForecastMapping();
+    const storedWithConfigFallback = {
+      provider: stored.provider || configured.provider,
+      today: stored.today || configured.today,
+      tomorrow: stored.tomorrow || configured.tomorrow,
+      now: stored.now || configured.now,
+    };
     const mapping = [
       ["today", "forecast_generation_today_entity"],
       ["tomorrow", "forecast_generation_tomorrow_entity"],
@@ -1224,18 +1236,67 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ["peakTomorrow", "solar_forecast_entity"],
     ].map(([slot, configKey]) => ({
       slot,
-      entityId: this._configuredEntityId(configKey) || candidates[slot]?.entity_id || "",
-      entity: this._configuredEntityId(configKey)
-        ? this._hass?.states?.[this._configuredEntityId(configKey)]
+      entityId: this._configuredEntityId(configKey) || storedWithConfigFallback[slot] || candidates[slot]?.entity_id || "",
+      entity: this._configuredEntityId(configKey) || storedWithConfigFallback[slot]
+        ? this._hass?.states?.[this._configuredEntityId(configKey) || storedWithConfigFallback[slot]]
         : candidates[slot],
     }));
 
     return {
-      provider: this._config?.forecast_provider || "none",
+      provider: configured.provider,
       mapping,
       candidates,
-      stored,
+      stored: storedWithConfigFallback,
     };
+  }
+
+  _forecastProviderSensorPatterns(provider) {
+    switch (String(provider || "none")) {
+      case "forecast_solar":
+        return [
+          /(^|\.)forecast_?solar/i,
+          /(^|\.)(solar_)?forecast/i,
+          /(^|\.)(forecast_generation_today|forecast_generation_tomorrow|solar_forecast)/i,
+        ];
+      case "solcast":
+        return [
+          /(^|\.)solcast/i,
+          /(^|\.)(forecast_generation_today|forecast_generation_tomorrow|solar_forecast)/i,
+        ];
+      case "other":
+      case "none":
+      default:
+        return [
+          /(^|\.)(forecast_generation_today|forecast_generation_tomorrow|solar_forecast)/i,
+        ];
+    }
+  }
+
+  _forecastEntityCandidatesForProvider(forecastState) {
+    const provider = String(forecastState?.stored?.provider || forecastState?.provider || "none");
+    const patterns = this._forecastProviderSensorPatterns(provider);
+    const seen = new Set();
+    return this._states()
+      .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+      .filter((entity) => patterns.some((pattern) => pattern.test(entity.entity_id)))
+      .filter((entity) => {
+        if (seen.has(entity.entity_id)) {
+          return false;
+        }
+        seen.add(entity.entity_id);
+        return true;
+      })
+      .map((entity) => ({
+        value: entity.entity_id,
+        label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .concat([
+        {
+          value: "",
+          label: "Not set",
+        },
+      ]);
   }
 
   _loadForecastMapping() {
@@ -1305,6 +1366,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _forecastEntityOptions(forecastState) {
+    const providerFiltered = this._forecastEntityCandidatesForProvider(forecastState);
+    if (providerFiltered.length > 1) {
+      return providerFiltered;
+    }
     const seen = new Set();
     return this._states()
       .filter((entity) => entity?.entity_id?.startsWith("sensor."))
@@ -4214,7 +4279,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="status">
           <div class="status__banner">${connectionLabel}</div>
           ${statusMeta}
-          ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
+          ${["pricing", "forecast_setup"].includes(this._page) ? "" : this._renderSharedBatterySelector()}
         </section>
 
         ${this._pageContent()}
