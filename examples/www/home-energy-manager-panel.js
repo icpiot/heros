@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "244";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "245";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1226,6 +1226,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
       tomorrow: stored.tomorrow || configured.tomorrow,
       now: stored.now || configured.now,
     };
+    const shouldSeedStoredMapping = Boolean(
+      storedWithConfigFallback.provider !== "none"
+      || storedWithConfigFallback.today
+      || storedWithConfigFallback.tomorrow
+      || storedWithConfigFallback.now
+    ) && (
+      storedWithConfigFallback.provider !== stored.provider
+      || storedWithConfigFallback.today !== stored.today
+      || storedWithConfigFallback.tomorrow !== stored.tomorrow
+      || storedWithConfigFallback.now !== stored.now
+    );
+    if (shouldSeedStoredMapping) {
+      this._saveForecastMapping(storedWithConfigFallback);
+    }
     const mapping = [
       ["today", "forecast_generation_today_entity"],
       ["tomorrow", "forecast_generation_tomorrow_entity"],
