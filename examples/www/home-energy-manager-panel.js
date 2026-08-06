@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "245";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "246";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1257,7 +1257,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }));
 
     return {
-      provider: configured.provider,
+      provider: storedWithConfigFallback.provider || configured.provider,
       mapping,
       candidates,
       stored: storedWithConfigFallback,
@@ -1381,30 +1381,37 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastEntityOptions(forecastState) {
     const providerFiltered = this._forecastEntityCandidatesForProvider(forecastState);
-    if (providerFiltered.length > 1) {
-      return providerFiltered;
-    }
+    const sourceOptions = providerFiltered.length > 1
+      ? providerFiltered
+      : this._states()
+          .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+          .map((entity) => ({
+            value: entity.entity_id,
+            label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
+          }));
+    const selectedIds = ["today", "tomorrow", "now"]
+      .map((slot) => String(forecastState?.stored?.[slot] || "").trim())
+      .filter(Boolean);
+    const options = [];
     const seen = new Set();
-    return this._states()
-      .filter((entity) => entity?.entity_id?.startsWith("sensor."))
-      .filter((entity) => {
-        if (seen.has(entity.entity_id)) {
-          return false;
-        }
-        seen.add(entity.entity_id);
-        return true;
-      })
-      .map((entity) => ({
-        value: entity.entity_id,
-        label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
-      }))
+    [...sourceOptions, ...selectedIds.map((entityId) => ({
+      value: entityId,
+      label: `${entityId} · configured`,
+    }))].forEach((option) => {
+      const value = String(option?.value || "").trim();
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+      options.push({
+        value,
+        label: option?.label || value || "Not set",
+      });
+    });
+    return options
+      .filter((option) => option.value)
       .sort((a, b) => a.label.localeCompare(b.label))
-      .concat([
-        {
-          value: "",
-          label: "Not set",
-        },
-      ]);
+      .concat([{ value: "", label: "Not set" }]);
   }
 
   _forecastSelectField(key, label, options, selectedValue) {
@@ -3339,6 +3346,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _forecastSetupPage() {
     const forecastState = this._forecastMappingState();
     const forecastProvider = String(forecastState.stored?.provider || forecastState.provider || "none");
+    const discoveredCount = Object.values(forecastState.candidates).filter(Boolean).length || 0;
+    const mappedCount = ["today", "tomorrow", "now"].filter((slot) => String(forecastState.stored?.[slot] || "").trim()).length;
+    const setupStatus = mappedCount
+      ? `Loaded ${mappedCount} saved forecast mapping${mappedCount === 1 ? "" : "s"}. Discovering ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`
+      : `No saved forecast mappings yet. Discovered ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`;
     const providerProfiles = [
       {
         label: "Forecast.Solar",
@@ -3386,6 +3398,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </article>
         </section>
 
+        <div class="pricing-loading forecast-loading" role="status">${setupStatus}</div>
+
         <section class="grid forecast__grid">
           <article class="panel-card panel-card--wide pricing-editor-card pricing-group-card">
             <div class="panel-card__header">
@@ -3405,9 +3419,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Workflow</span>
             </div>
             <p>
-              Pick the provider profile, then choose the matching Home Assistant sensor entities
-              and save the mapping locally. If another integration exposes different entity names,
-              add a template sensor in Home Assistant and map that instead.
+              Pick the provider profile, then choose the matching Home Assistant sensor entities.
+              Saved or configured mappings are shown immediately, even while HA is still
+              refreshing the entity list in the background.
             </p>
             <div class="forecast-form">
               ${this._forecastSelectField("forecast_provider", "Provider", [
