@@ -192,6 +192,15 @@ CONF_HOST_SYS_SN = "host_sys_sn"
 CONF_FORECAST_PROVIDER = "forecast_provider"
 CONF_FORECAST_GENERATION_TODAY_ENTITY = "forecast_generation_today_entity"
 CONF_FORECAST_GENERATION_TOMORROW_ENTITY = "forecast_generation_tomorrow_entity"
+CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY = "forecast_generation_this_hour_entity"
+CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY = "forecast_generation_next_hour_entity"
+CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY = "forecast_generation_remaining_today_entity"
+CONF_FORECAST_POWER_NOW_ENTITY = "forecast_power_now_entity"
+CONF_FORECAST_POWER_IN_1_HOUR_ENTITY = "forecast_power_in_1_hour_entity"
+CONF_FORECAST_POWER_IN_12_HOURS_ENTITY = "forecast_power_in_12_hours_entity"
+CONF_FORECAST_POWER_IN_24_HOURS_ENTITY = "forecast_power_in_24_hours_entity"
+CONF_FORECAST_PEAK_TODAY_ENTITY = "forecast_peak_today_entity"
+CONF_FORECAST_PEAK_TOMORROW_ENTITY = "forecast_peak_tomorrow_entity"
 CONF_SOLAR_FORECAST_ENTITY = "solar_forecast_entity"
 CONF_PANEL_THEME = "panel_theme"
 
@@ -201,7 +210,7 @@ FORECAST_PROVIDER_OTHER = "other"
 
 # Config entry schema version — bump and add an async_migrate_entry branch
 # whenever you change the shape of entry.data.
-CURRENT_ENTRY_VERSION = 2
+CURRENT_ENTRY_VERSION = 3
 
 # Maximum number of feed-in slots the inverter supports (per the
 # timePeriodLimit field on getFeedStrategyList — confirmed against a HAR

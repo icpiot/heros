@@ -36,6 +36,15 @@
           "forecast_provider": "Forecast provider",
           "forecast_generation_today_entity": "Forecast today entity",
           "forecast_generation_tomorrow_entity": "Forecast tomorrow entity",
+          "forecast_generation_this_hour_entity": "Forecast this hour entity",
+          "forecast_generation_next_hour_entity": "Forecast next hour entity",
+          "forecast_generation_remaining_today_entity": "Forecast remaining today entity",
+          "forecast_power_now_entity": "Forecast power now entity",
+          "forecast_power_in_1_hour_entity": "Forecast power in 1 hour entity",
+          "forecast_power_in_12_hours_entity": "Forecast power in 12 hours entity",
+          "forecast_power_in_24_hours_entity": "Forecast power in 24 hours entity",
+          "forecast_peak_today_entity": "Forecast peak time today entity",
+          "forecast_peak_tomorrow_entity": "Forecast peak time tomorrow entity",
           "solar_forecast_entity": "Solar forecast entity"
         }
       }

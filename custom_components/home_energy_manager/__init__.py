@@ -40,6 +40,15 @@ from .const import (
     CONF_FORECAST_PROVIDER,
     CONF_FORECAST_GENERATION_TODAY_ENTITY,
     CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
+    CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY,
+    CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY,
+    CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY,
+    CONF_FORECAST_POWER_NOW_ENTITY,
+    CONF_FORECAST_POWER_IN_1_HOUR_ENTITY,
+    CONF_FORECAST_POWER_IN_12_HOURS_ENTITY,
+    CONF_FORECAST_POWER_IN_24_HOURS_ENTITY,
+    CONF_FORECAST_PEAK_TODAY_ENTITY,
+    CONF_FORECAST_PEAK_TOMORROW_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_PANEL_THEME,
     CONF_RECOVERY_ENABLED,
@@ -142,7 +151,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=247"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=248"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -156,6 +165,15 @@ PANEL_CONFIG = {
     "forecast_provider": "none",
     "forecast_generation_today_entity": "",
     "forecast_generation_tomorrow_entity": "",
+    "forecast_generation_this_hour_entity": "",
+    "forecast_generation_next_hour_entity": "",
+    "forecast_generation_remaining_today_entity": "",
+    "forecast_power_now_entity": "",
+    "forecast_power_in_1_hour_entity": "",
+    "forecast_power_in_12_hours_entity": "",
+    "forecast_power_in_24_hours_entity": "",
+    "forecast_peak_today_entity": "",
+    "forecast_peak_tomorrow_entity": "",
     "solar_forecast_entity": "",
 }
 PANEL_CUSTOM_CONFIG = {
@@ -204,6 +222,15 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_FORECAST_PROVIDER: entry.data.get(CONF_FORECAST_PROVIDER, "none"),
             CONF_FORECAST_GENERATION_TODAY_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TODAY_ENTITY, ""),
             CONF_FORECAST_GENERATION_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
+            CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, ""),
+            CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, ""),
+            CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, ""),
+            CONF_FORECAST_POWER_NOW_ENTITY: entry.data.get(CONF_FORECAST_POWER_NOW_ENTITY, ""),
+            CONF_FORECAST_POWER_IN_1_HOUR_ENTITY: entry.data.get(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, ""),
+            CONF_FORECAST_POWER_IN_12_HOURS_ENTITY: entry.data.get(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, ""),
+            CONF_FORECAST_POWER_IN_24_HOURS_ENTITY: entry.data.get(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, ""),
+            CONF_FORECAST_PEAK_TODAY_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TODAY_ENTITY, ""),
+            CONF_FORECAST_PEAK_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY, ""),
             CONF_SOLAR_FORECAST_ENTITY: entry.data.get(CONF_SOLAR_FORECAST_ENTITY, ""),
             "theme": entry.data.get(CONF_PANEL_THEME, PANEL_CONFIG["theme"]),
             **PANEL_CUSTOM_CONFIG,
@@ -588,6 +615,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Host inverter selection step was added). Try to populate them
     automatically when only one inverter exists; otherwise raise a repair
     issue prompting the user to reconfigure.
+
+    v2 → v3: adds the extended forecast mapping slots so Solar Setup can
+    preserve the richer forecast.solar metrics on reload.
     """
     _LOGGER.info("Migrating ByteWatt entry from v%s to v%s", entry.version, CURRENT_ENTRY_VERSION)
 
@@ -658,6 +688,22 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             unique_id=unique_id,
             version=CURRENT_ENTRY_VERSION,
         )
+    elif entry.version < 3:
+        new_data = dict(entry.data)
+        new_data.setdefault(CONF_FORECAST_PROVIDER, "none")
+        new_data.setdefault(CONF_FORECAST_GENERATION_TODAY_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_NOW_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_PEAK_TODAY_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_PEAK_TOMORROW_ENTITY, "")
+        new_data.setdefault(CONF_SOLAR_FORECAST_ENTITY, "")
+        hass.config_entries.async_update_entry(entry, data=new_data, version=CURRENT_ENTRY_VERSION)
 
     return True
 

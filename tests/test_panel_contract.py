@@ -75,6 +75,8 @@ def test_config_flow_collects_forecast_setup():
     assert "forecast_provider" in config_flow_source
     assert "CONF_FORECAST_GENERATION_TODAY_ENTITY" in config_flow_source
     assert "CONF_SOLAR_FORECAST_ENTITY" in config_flow_source
+    assert "CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY" in config_flow_source
+    assert "CONF_FORECAST_POWER_IN_24_HOURS_ENTITY" in config_flow_source
 
 
 def test_integration_forwards_select_platform():

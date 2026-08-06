@@ -24,6 +24,15 @@ from .const import (
     CONF_HOST_SYS_SN,
     CONF_FORECAST_GENERATION_TODAY_ENTITY,
     CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
+    CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY,
+    CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY,
+    CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY,
+    CONF_FORECAST_POWER_NOW_ENTITY,
+    CONF_FORECAST_POWER_IN_1_HOUR_ENTITY,
+    CONF_FORECAST_POWER_IN_12_HOURS_ENTITY,
+    CONF_FORECAST_POWER_IN_24_HOURS_ENTITY,
+    CONF_FORECAST_PEAK_TODAY_ENTITY,
+    CONF_FORECAST_PEAK_TOMORROW_ENTITY,
     CONF_FORECAST_PROVIDER,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_HISTORY_BACKFILL_YEARS,
@@ -224,6 +233,15 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if provider == FORECAST_PROVIDER_NONE:
                 self._user_input.pop(CONF_FORECAST_GENERATION_TODAY_ENTITY, None)
                 self._user_input.pop(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_POWER_NOW_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_PEAK_TODAY_ENTITY, None)
+                self._user_input.pop(CONF_FORECAST_PEAK_TOMORROW_ENTITY, None)
                 self._user_input.pop(CONF_SOLAR_FORECAST_ENTITY, None)
             return self._create_entry()
 
@@ -246,6 +264,42 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
                     default=self._user_input.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_POWER_NOW_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_POWER_NOW_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_POWER_IN_1_HOUR_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_POWER_IN_12_HOURS_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_POWER_IN_24_HOURS_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_PEAK_TODAY_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_PEAK_TODAY_ENTITY, ""),
+                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
+                vol.Optional(
+                    CONF_FORECAST_PEAK_TOMORROW_ENTITY,
+                    default=self._user_input.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY, ""),
                 ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
                 vol.Optional(
                     CONF_SOLAR_FORECAST_ENTITY,

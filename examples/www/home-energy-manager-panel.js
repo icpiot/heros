@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "247";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "248";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -64,6 +64,127 @@ const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "pricing", label: "Pricing", icon: "$" },
   { value: "settings", label: "Settings", icon: "⚙" },
   { value: "debug", label: "Debug", icon: "◫" },
+];
+
+const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
+  {
+    slot: "today",
+    configKey: "forecast_generation_today_entity",
+    label: "Today",
+    fallbackKey: "forecast_generation_today",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(today|energy_today|production_today|pv_today)$/i,
+      /(^|\.).*?(today|energy_today|production_today|pv_today).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "tomorrow",
+    configKey: "forecast_generation_tomorrow_entity",
+    label: "Tomorrow",
+    fallbackKey: "forecast_generation_tomorrow",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow)$/i,
+      /(^|\.).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "thisHour",
+    configKey: "forecast_generation_this_hour_entity",
+    label: "This hour",
+    fallbackKey: "forecast_generation_this_hour",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(this_hour|current_hour|hour).*?(forecast|energy|production)/i,
+      /(^|\.).*?(this_hour|current_hour|hour).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "nextHour",
+    configKey: "forecast_generation_next_hour_entity",
+    label: "Next hour",
+    fallbackKey: "forecast_generation_next_hour",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|energy|production)/i,
+      /(^|\.).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "remainingToday",
+    configKey: "forecast_generation_remaining_today_entity",
+    label: "Remaining today",
+    fallbackKey: "forecast_generation_remaining_today",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(remaining|rest|left).*?(today)/i,
+      /(^|\.).*?(remaining|rest|left).*?(today).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "powerNow",
+    configKey: "forecast_power_now_entity",
+    label: "Power now",
+    fallbackKey: "forecast_power_now",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(power_?now|current_?power|now)$/i,
+      /(^|\.).*?(power_?now|current_?power|now).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "powerIn1Hour",
+    configKey: "forecast_power_in_1_hour_entity",
+    label: "Power in 1 hour",
+    fallbackKey: "forecast_power_in_1_hour",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(power.*(1_?hour|in_?1_?hour)|in_?1_?hour|1h)/i,
+      /(^|\.).*?(power.*(1_?hour|in_?1_?hour)|in_?1_?hour|1h).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "powerIn12Hours",
+    configKey: "forecast_power_in_12_hours_entity",
+    label: "Power in 12 hours",
+    fallbackKey: "forecast_power_in_12_hours",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(power.*(12_?hours?|in_?12_?hours?)|in_?12_?hours?|12h)/i,
+      /(^|\.).*?(power.*(12_?hours?|in_?12_?hours?)|in_?12_?hours?|12h).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "powerIn24Hours",
+    configKey: "forecast_power_in_24_hours_entity",
+    label: "Power in 24 hours",
+    fallbackKey: "forecast_power_in_24_hours",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(power.*(24_?hours?|in_?24_?hours?)|in_?24_?hours?|24h)/i,
+      /(^|\.).*?(power.*(24_?hours?|in_?24_?hours?)|in_?24_?hours?|24h).*?(forecast|solar|solcast)/i,
+    ],
+  },
+  {
+    slot: "peakToday",
+    configKey: "forecast_peak_today_entity",
+    label: "Peak time today",
+    fallbackKey: "forecast_peak_today",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*today|today.*peak|highest.*today)/i,
+    ],
+  },
+  {
+    slot: "peakTomorrow",
+    configKey: "forecast_peak_tomorrow_entity",
+    label: "Peak time tomorrow",
+    fallbackKey: "forecast_peak_tomorrow",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*tomorrow|tomorrow.*peak|highest.*tomorrow)/i,
+    ],
+  },
+  {
+    slot: "now",
+    configKey: "solar_forecast_entity",
+    label: "Live solar",
+    fallbackKey: "solar_forecast",
+    patterns: [
+      /(^|\.)(forecast_?solar|solcast|solar).*?(now|power_now|current_power|forecast_now)/i,
+      /(^|\.).*?(now|power_now|current_power).*?(forecast|solar|solcast)/i,
+    ],
+  },
 ];
 
 class HomeEnergyManagerPanel extends HTMLElement {
@@ -1152,110 +1273,50 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastEntityCandidates() {
     const states = this._states();
-    const priorities = [
-      {
-        key: "today",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(today|energy_today|production_today|pv_today)$/i,
-          /(^|\.).*?(today|energy_today|production_today|pv_today).*?(forecast|solar|solcast)/i,
-        ],
-      },
-      {
-        key: "tomorrow",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow)$/i,
-          /(^|\.).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow).*?(forecast|solar|solcast)/i,
-        ],
-      },
-      {
-        key: "thisHour",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(this_hour|current_hour|hour).*?(forecast|energy|production)/i,
-          /(^|\.).*?(this_hour|current_hour|hour).*?(forecast|solar|solcast)/i,
-        ],
-      },
-      {
-        key: "nextHour",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|energy|production)/i,
-          /(^|\.).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|solar|solcast)/i,
-        ],
-      },
-      {
-        key: "now",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(now|power_now|current_power|forecast_now)/i,
-          /(^|\.).*?(now|power_now|current_power).*?(forecast|solar|solcast)/i,
-        ],
-      },
-      {
-        key: "peakToday",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*today|today.*peak|highest.*today)/i,
-        ],
-      },
-      {
-        key: "peakTomorrow",
-        patterns: [
-          /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*tomorrow|tomorrow.*peak|highest.*tomorrow)/i,
-        ],
-      },
-    ];
-
     const pick = (patterns) => states.find((entity) => (
       entity?.entity_id?.startsWith("sensor.")
       && patterns.some((pattern) => pattern.test(entity.entity_id))
     ));
 
-    return priorities.reduce((result, item) => {
-      result[item.key] = pick(item.patterns) || null;
+    return HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = pick(item.patterns) || null;
       return result;
     }, {});
   }
 
   _forecastMappingState() {
     const candidates = this._forecastEntityCandidates();
-    const configured = {
+    const configured = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = this._configuredEntityId(item.configKey) || "";
+      return result;
+    }, {
       provider: this._config?.forecast_provider || "none",
-      today: this._configuredEntityId("forecast_generation_today_entity") || "",
-      tomorrow: this._configuredEntityId("forecast_generation_tomorrow_entity") || "",
-      now: this._configuredEntityId("solar_forecast_entity") || "",
-    };
+    });
     const stored = this._loadForecastMapping();
-    const storedWithConfigFallback = {
+    const storedWithConfigFallback = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = stored[item.slot] || configured[item.slot] || "";
+      return result;
+    }, {
       provider: stored.provider || configured.provider,
-      today: stored.today || configured.today,
-      tomorrow: stored.tomorrow || configured.tomorrow,
-      now: stored.now || configured.now,
-    };
+    });
     const shouldSeedStoredMapping = Boolean(
       storedWithConfigFallback.provider !== "none"
       || storedWithConfigFallback.today
       || storedWithConfigFallback.tomorrow
-      || storedWithConfigFallback.now
+      || HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.some((item) => storedWithConfigFallback[item.slot])
     ) && (
       storedWithConfigFallback.provider !== stored.provider
-      || storedWithConfigFallback.today !== stored.today
-      || storedWithConfigFallback.tomorrow !== stored.tomorrow
-      || storedWithConfigFallback.now !== stored.now
+      || HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.some((item) => storedWithConfigFallback[item.slot] !== stored[item.slot])
     );
     if (shouldSeedStoredMapping) {
       this._saveForecastMapping(storedWithConfigFallback);
     }
-    const mapping = [
-      ["today", "forecast_generation_today_entity"],
-      ["tomorrow", "forecast_generation_tomorrow_entity"],
-      ["thisHour", "forecast_generation_today_entity"],
-      ["nextHour", "forecast_generation_tomorrow_entity"],
-      ["now", "solar_forecast_entity"],
-      ["peakToday", "solar_forecast_entity"],
-      ["peakTomorrow", "solar_forecast_entity"],
-    ].map(([slot, configKey]) => ({
-      slot,
-      entityId: this._configuredEntityId(configKey) || storedWithConfigFallback[slot] || candidates[slot]?.entity_id || "",
-      entity: this._configuredEntityId(configKey) || storedWithConfigFallback[slot]
-        ? this._hass?.states?.[this._configuredEntityId(configKey) || storedWithConfigFallback[slot]]
-        : candidates[slot],
+    const mapping = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => ({
+      slot: item.slot,
+      entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || candidates[item.slot]?.entity_id || "",
+      entity: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]
+        ? this._hass?.states?.[this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]]
+        : candidates[item.slot],
     }));
 
     return {
@@ -1272,18 +1333,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
         return [
           /(^|\.)forecast_?solar/i,
           /(^|\.)(solar_)?forecast/i,
-          /(^|\.)(forecast_generation_today|forecast_generation_tomorrow|solar_forecast)/i,
+          /(^|\.)(forecast_generation|solar_forecast|forecast_power|forecast_peak)/i,
         ];
       case "solcast":
         return [
           /(^|\.)solcast/i,
-          /(^|\.)(forecast_generation_today|forecast_generation_tomorrow|solar_forecast)/i,
+          /(^|\.)(forecast_generation|solar_forecast|forecast_power|forecast_peak)/i,
         ];
       case "other":
       case "none":
       default:
         return [
-          /(^|\.)(forecast_generation_today|forecast_generation_tomorrow|solar_forecast)/i,
+          /(^|\.)(forecast_generation|solar_forecast|forecast_power|forecast_peak)/i,
         ];
     }
   }
@@ -1339,10 +1400,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const mapping = {
       provider: this.shadowRoot.querySelector('[data-forecast-field="forecast_provider"]')?.value || "none",
-      today: this.shadowRoot.querySelector('[data-forecast-field="forecast_generation_today_entity"]')?.value || "",
-      tomorrow: this.shadowRoot.querySelector('[data-forecast-field="forecast_generation_tomorrow_entity"]')?.value || "",
-      now: this.shadowRoot.querySelector('[data-forecast-field="solar_forecast_entity"]')?.value || "",
     };
+    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+      mapping[item.slot] = this.shadowRoot.querySelector(`[data-forecast-field="${item.configKey}"]`)?.value || "";
+    });
     this._saveForecastMapping(mapping);
     this._holdForecastWindow(2500);
     this._queueDeferredRender();
@@ -1353,11 +1414,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _forecastMappingKeyForField(key) {
+    const entityField = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.find((item) => item.configKey === key);
+    if (entityField) {
+      return entityField.slot;
+    }
     return {
       forecast_provider: "provider",
-      forecast_generation_today_entity: "today",
-      forecast_generation_tomorrow_entity: "tomorrow",
-      solar_forecast_entity: "now",
     }[key] || key;
   }
 
@@ -1366,11 +1428,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const mappingKey = this._forecastMappingKeyForField(key);
     const next = {
       provider: current.provider || "none",
-      today: current.today || "",
-      tomorrow: current.tomorrow || "",
-      now: current.now || "",
       [mappingKey]: String(value || ""),
     };
+    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+      if (!(item.slot in next)) {
+        next[item.slot] = current[item.slot] || "";
+      }
+    });
     this._saveForecastMapping(next);
     this._forecastSelectorOpenKey = "";
     this._holdForecastWindow(1000);
@@ -1391,8 +1455,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
             value: entity.entity_id,
             label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
           }));
-    const selectedIds = ["today", "tomorrow", "now"]
-      .map((slot) => String(forecastState?.stored?.[slot] || "").trim())
+    const selectedIds = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS
+      .map((item) => String(forecastState?.stored?.[item.slot] || "").trim())
       .filter(Boolean);
     const options = [];
     const seen = new Set();
@@ -3348,14 +3412,16 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const forecastState = this._forecastMappingState();
     const forecastProvider = String(forecastState.stored?.provider || forecastState.provider || "none");
     const discoveredCount = Object.values(forecastState.candidates).filter(Boolean).length || 0;
-    const mappedCount = ["today", "tomorrow", "now"].filter((slot) => String(forecastState.stored?.[slot] || "").trim()).length;
+    const mappedCount = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS
+      .filter((item) => String(forecastState.stored?.[item.slot] || "").trim())
+      .length;
     const setupStatus = mappedCount
       ? `Loaded ${mappedCount} saved forecast mapping${mappedCount === 1 ? "" : "s"}. Discovering ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`
       : `No saved forecast mappings yet. Discovered ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`;
     const providerProfiles = [
       {
         label: "Forecast.Solar",
-        description: "Native HA solar forecast entities with today, tomorrow, hour-ahead, and now values.",
+        description: "Native HA solar forecast entities with today, tomorrow, hourly, remaining, power, and peak values.",
       },
       {
         label: "Solcast",
@@ -3375,8 +3441,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
           <p>
             Choose the forecast provider you already have installed, then map the sensor
-            entities that represent today, tomorrow, and the live solar estimate. HEM treats
-            the provider as a source of entities, not a hard dependency.
+            entities that represent the broader forecast.solar outputs such as today,
+            tomorrow, hourly production, remaining production, power estimates, and peak
+            times. HEM treats the provider as a source of entities, not a hard dependency.
           </p>
         </article>
 
@@ -3385,18 +3452,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Selected provider</span>
             <strong>${forecastProvider}</strong>
           </article>
-          <article class="forecast-tile">
-            <span>Today entity</span>
-            <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, "today"))}</strong>
-          </article>
-          <article class="forecast-tile">
-            <span>Tomorrow entity</span>
-            <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, "tomorrow"))}</strong>
-          </article>
-          <article class="forecast-tile">
-            <span>Solar forecast entity</span>
-            <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, "now"))}</strong>
-          </article>
+          ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => `
+            <article class="forecast-tile">
+              <span>${item.label} entity</span>
+              <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, item.slot))}</strong>
+            </article>
+          `).join("")}
         </section>
 
         <div class="pricing-loading forecast-loading" role="status">${setupStatus}</div>
@@ -3431,9 +3492,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 { value: "solcast", label: "Solcast" },
                 { value: "other", label: "Other / template" },
               ], forecastProvider)}
-              ${this._forecastSelectField("forecast_generation_today_entity", "Today", this._forecastEntityOptions(forecastState), this._forecastSelectedItem(forecastState, "today")?.entity_id || "")}
-              ${this._forecastSelectField("forecast_generation_tomorrow_entity", "Tomorrow", this._forecastEntityOptions(forecastState), this._forecastSelectedItem(forecastState, "tomorrow")?.entity_id || "")}
-              ${this._forecastSelectField("solar_forecast_entity", "Live solar", this._forecastEntityOptions(forecastState), this._forecastSelectedItem(forecastState, "now")?.entity_id || "")}
+              ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => this._forecastSelectField(
+                item.configKey,
+                item.label,
+                this._forecastEntityOptions(forecastState),
+                this._forecastSelectedItem(forecastState, item.slot)?.entity_id || "",
+              )).join("")}
               <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
             </div>
           </article>
@@ -3915,9 +3979,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <ul class="key-list key-list--compact">
             ${this._valueList([
               { label: "Forecast provider", value: this._config?.forecast_provider || "none" },
-              { label: "Today entity", value: this._configuredEntityId("forecast_generation_today_entity") || "Not set" },
-              { label: "Tomorrow entity", value: this._configuredEntityId("forecast_generation_tomorrow_entity") || "Not set" },
-              { label: "Solar forecast entity", value: this._configuredEntityId("solar_forecast_entity") || "Not set" },
+              ...HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => ({
+                label: `${item.label} entity`,
+                value: this._configuredEntityId(item.configKey) || "Not set",
+              })),
             ])}
           </ul>
         </article>
