@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "269";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "270";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1922,6 +1922,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._batteryProviderKey(provider) !== "other";
   }
 
+  _batteryProviderLabel(provider) {
+    switch (this._batteryProviderKey(provider)) {
+      case "bytewatt_local":
+        return "ByteWatt Local";
+      case "other":
+        return "Other / template";
+      case "bytewatt_web":
+      default:
+        return "ByteWatt Web";
+    }
+  }
+
+  _batteryFieldStoredValue(provider, item, stored = {}, configured = {}) {
+    const value = String(stored[item.slot] || configured[item.slot] || "").trim();
+    return this._batteryFieldLocked(provider) && this._isHemManagedEntity({ entity_id: value }) ? "" : value;
+  }
+
   _isHemManagedEntity(entity) {
     return /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity?.entity_id || "");
   }
@@ -1972,18 +1989,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
     const stored = this._loadBatteryMapping();
     const storedWithConfigFallback = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
-      result[item.slot] = stored[item.slot] || configured[item.slot] || "";
+      result[item.slot] = this._batteryFieldStoredValue(result.provider, item, stored, configured);
       return result;
     }, {
       provider: this._batteryProviderKey(stored.provider || configured.provider),
     });
-    const mapping = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => ({
-      slot: item.slot,
-      entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || "",
-      entity: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]
-        ? this._hass?.states?.[this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]]
-        : null,
-    }));
+    const mapping = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => {
+      const entityId = storedWithConfigFallback[item.slot] || "";
+      return {
+        slot: item.slot,
+        entityId,
+        entity: entityId ? this._hass?.states?.[entityId] : null,
+      };
+    });
     return {
       provider: this._batteryProviderKey(storedWithConfigFallback.provider || configured.provider),
       mapping,
@@ -2020,7 +2038,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
       const existing = String(current[item.slot] || "").trim();
-      if (existing) {
+      if (existing && (!this._batteryFieldLocked(next.provider) || !this._isHemManagedEntity({ entity_id: existing }))) {
         next[item.slot] = existing;
         return;
       }
@@ -2063,7 +2081,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       battery_provider: this._batteryProviderKey(mapping?.provider),
     };
     HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
-      payload[item.configKey] = String(mapping?.[item.slot] || "");
+      const value = String(mapping?.[item.slot] || "").trim();
+      payload[item.configKey] = this._batteryFieldLocked(payload.battery_provider) && this._isHemManagedEntity({ entity_id: value })
+        ? ""
+        : value;
     });
     return payload;
   }
@@ -2181,18 +2202,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return discovered?.entity || null;
   }
 
-  _batterySelectField(key, label, options, selectedValue) {
-    let disabled = false;
-    let helperText = "";
-    if (typeof arguments[4] === "boolean") {
-      disabled = arguments[4];
-    }
-    if (typeof arguments[5] === "string") {
-      helperText = arguments[5];
-    }
+  _batterySelectField(key, label, options, selectedValue, disabled = false, helperText = "", displayValue = "") {
     const selected = String(selectedValue || "").trim();
     const selectedOption = options.find((option) => String(option.value) === selected);
-    const selectedLabel = selectedOption?.label || "Not set";
+    const selectedLabel = String(displayValue || selectedOption?.label || "Not set");
     const isOpen = this._batterySelectorOpenKey === key;
     return `
       <div class="forecast-field shared-selector${disabled ? " is-locked" : ""}">
@@ -4220,6 +4233,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               this._batterySelectedItem(batteryState, item.slot)?.entity_id || "",
               batteryDefaultsLocked,
               "",
+              batteryDefaultsLocked ? `${this._batteryProviderLabel(batteryProvider)} -> HEM ${item.label}` : "",
             )).join("")}
           </div>
           <div class="setup-actions">
