@@ -171,7 +171,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=267"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=268"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -195,7 +195,7 @@ PANEL_CONFIG = {
     "forecast_peak_today_entity": "",
     "forecast_peak_tomorrow_entity": "",
     "solar_forecast_entity": "",
-    "battery_provider": "bytewatt",
+    "battery_provider": "bytewatt_web",
     "battery_percentage_entity": "",
     "battery_power_entity": "",
     "battery_temperature_entity": "",
@@ -276,7 +276,7 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_FORECAST_PEAK_TODAY_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TODAY_ENTITY, ""),
             CONF_FORECAST_PEAK_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY, ""),
             CONF_SOLAR_FORECAST_ENTITY: entry.data.get(CONF_SOLAR_FORECAST_ENTITY, ""),
-            CONF_BATTERY_PROVIDER: entry.data.get(CONF_BATTERY_PROVIDER, "bytewatt"),
+            CONF_BATTERY_PROVIDER: entry.data.get(CONF_BATTERY_PROVIDER, "bytewatt_web"),
             CONF_BATTERY_POWER_ENTITY: entry.data.get(CONF_BATTERY_POWER_ENTITY, ""),
             CONF_BATTERY_TEMPERATURE_ENTITY: entry.data.get(CONF_BATTERY_TEMPERATURE_ENTITY, ""),
             CONF_BATTERY_VOLTAGE_ENTITY: entry.data.get(CONF_BATTERY_VOLTAGE_ENTITY, ""),
@@ -980,7 +980,7 @@ async def _handle_set_battery_mapping(hass: HomeAssistant, call: ServiceCall) ->
         raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
     new_data = {
         **entry.data,
-        CONF_BATTERY_PROVIDER: str(call.data.get(CONF_BATTERY_PROVIDER) or "bytewatt").strip() or "bytewatt",
+        CONF_BATTERY_PROVIDER: str(call.data.get(CONF_BATTERY_PROVIDER) or "bytewatt_web").strip() or "bytewatt_web",
         CONF_BATTERY_PERCENTAGE_ENTITY: str(call.data.get(CONF_BATTERY_PERCENTAGE_ENTITY) or "").strip(),
         CONF_BATTERY_POWER_ENTITY: str(call.data.get(CONF_BATTERY_POWER_ENTITY) or "").strip(),
         CONF_BATTERY_TEMPERATURE_ENTITY: str(call.data.get(CONF_BATTERY_TEMPERATURE_ENTITY) or "").strip(),

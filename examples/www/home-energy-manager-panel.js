@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "267";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "268";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1883,9 +1883,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
     `;
   }
 
+  _batteryProviderKey(provider) {
+    const value = String(provider || "bytewatt_web").trim();
+    return value === "bytewatt" ? "bytewatt_web" : value;
+  }
+
   _batteryProviderSensorPatterns(provider) {
-    switch (String(provider || "bytewatt")) {
-      case "bytewatt":
+    switch (this._batteryProviderKey(provider)) {
+      case "bytewatt_web":
+      case "bytewatt_local":
         return [
           /(^|\.)battery_?(soc|state_?of_?charge|percentage|charge|level)$/i,
           /(^|\.).*battery.*(soc|state of charge|percentage|charge|level)/i,
@@ -1913,11 +1919,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batteryFieldLocked(provider) {
-    return String(provider || "bytewatt") !== "other";
+    return this._batteryProviderKey(provider) !== "other";
   }
 
   _batteryEntityCandidatesForProvider(batteryState) {
-    const provider = String(batteryState?.stored?.provider || batteryState?.provider || "bytewatt");
+    const provider = this._batteryProviderKey(batteryState?.stored?.provider || batteryState?.provider);
     const patterns = this._batteryProviderSensorPatterns(provider);
     const seen = new Set();
     return this._states()
@@ -1953,14 +1959,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
       result[item.slot] = this._configuredEntityId(item.configKey) || "";
       return result;
     }, {
-      provider: this._config?.battery_provider || "bytewatt",
+      provider: this._batteryProviderKey(this._config?.battery_provider),
     });
     const stored = this._loadBatteryMapping();
     const storedWithConfigFallback = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = stored[item.slot] || configured[item.slot] || "";
       return result;
     }, {
-      provider: stored.provider || configured.provider,
+      provider: this._batteryProviderKey(stored.provider || configured.provider),
     });
     const mapping = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => ({
       slot: item.slot,
@@ -1970,7 +1976,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         : null,
     }));
     return {
-      provider: storedWithConfigFallback.provider || configured.provider,
+      provider: this._batteryProviderKey(storedWithConfigFallback.provider || configured.provider),
       mapping,
       candidates: this._batteryEntityCandidatesForProvider({ stored: storedWithConfigFallback, provider: storedWithConfigFallback.provider }),
       stored: storedWithConfigFallback,
@@ -1996,7 +2002,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batterySeededMapping(provider, current = {}) {
-    const next = { provider: String(provider || "bytewatt") };
+    const next = { provider: this._batteryProviderKey(provider) };
     if (next.provider === "none") {
       HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
         next[item.slot] = String(current[item.slot] || "");
@@ -2032,7 +2038,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return null;
     }
     const mapping = {
-      provider: this.shadowRoot.querySelector('[data-battery-field="battery_provider"]')?.value || "bytewatt",
+      provider: this._batteryProviderKey(this.shadowRoot.querySelector('[data-battery-field="battery_provider"]')?.value),
     };
     HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
       mapping[item.slot] = this.shadowRoot.querySelector(`[data-battery-field="${item.configKey}"]`)?.value || "";
@@ -2046,7 +2052,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _batteryServicePayload(mapping) {
     const payload = {
-      battery_provider: String(mapping?.provider || "bytewatt"),
+      battery_provider: this._batteryProviderKey(mapping?.provider),
     };
     HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
       payload[item.configKey] = String(mapping?.[item.slot] || "");
@@ -2104,7 +2110,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const current = this._loadBatteryMapping();
     const mappingKey = this._batteryMappingKeyForField(key);
     const next = {
-      provider: current.provider || "bytewatt",
+      provider: this._batteryProviderKey(current.provider),
       [mappingKey]: String(value || ""),
     };
     HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
@@ -4122,7 +4128,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? `<div class="${this._forecastSaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._forecastSaveStatus.message)}</div>`
       : "";
     const batteryState = this._batteryMappingState();
-    const batteryProvider = String(batteryState.stored?.provider || batteryState.provider || "bytewatt");
+    const batteryProvider = this._batteryProviderKey(batteryState.stored?.provider || batteryState.provider);
     const batteryMappedCount = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS
       .filter((item) => String(batteryState.stored?.[item.slot] || "").trim())
       .length;
@@ -4194,11 +4200,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <div class="forecast-form" ${batteryOpen ? "" : "hidden"}>
             <p>
               Map the battery provider-specific sensors used across the Battery page. The defaults
-              auto-fill from live Home Assistant entities. Switch the provider to Other / template
-              when you want to customize the mapping manually.
+              auto-fill from live Home Assistant entities. Provider defaults are locked to keep the
+              common mapping stable; switch to Other / template when you want to customize fields manually.
             </p>
             ${this._batterySelectField("battery_provider", "Provider", [
-              { value: "bytewatt", label: "ByteWatt" },
+              { value: "bytewatt_web", label: "ByteWatt Web" },
+              { value: "bytewatt_local", label: "ByteWatt Local" },
               { value: "other", label: "Other / template" },
             ], batteryProvider)}
             ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => this._batterySelectField(
@@ -4207,7 +4214,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               this._batteryEntityOptions(batteryState),
               this._batterySelectedItem(batteryState, item.slot)?.entity_id || "",
               batteryDefaultsLocked,
-              batteryDefaultsLocked ? "Locked to provider defaults. Select Other / template to edit this field." : "",
+              "",
             )).join("")}
           </div>
           <div class="setup-actions">

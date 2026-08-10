@@ -239,12 +239,13 @@ set_battery_mapping:
   fields:
     battery_provider:
       name: Battery Provider
-      description: Provider profile selected by the user, such as bytewatt.
+      description: Provider profile selected by the user, such as ByteWatt Web, ByteWatt Local, or custom.
       required: true
       selector:
         select:
           options:
-            - "bytewatt"
+            - "bytewatt_web"
+            - "bytewatt_local"
             - "other"
     battery_percentage_entity:
       name: Battery Percentage Entity
