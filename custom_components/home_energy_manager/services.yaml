@@ -806,3 +806,110 @@ pricing_set_holidays:
       required: false
       selector:
         text:
+
+set_forecast_mapping:
+  name: Set Forecast Mapping
+  description: Persist the forecast provider and mapped Home Assistant forecast sensor entities.
+  fields:
+    forecast_provider:
+      name: Forecast Provider
+      description: Provider profile selected by the user, such as forecast_solar.
+      required: true
+      selector:
+        select:
+          options:
+            - "none"
+            - "forecast_solar"
+            - "solcast"
+            - "other"
+    forecast_generation_today_entity:
+      name: Today Entity
+      description: Sensor for estimated energy production today.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_generation_tomorrow_entity:
+      name: Tomorrow Entity
+      description: Sensor for estimated energy production tomorrow.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_generation_this_hour_entity:
+      name: This Hour Entity
+      description: Sensor for estimated energy production this hour.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_generation_next_hour_entity:
+      name: Next Hour Entity
+      description: Sensor for estimated energy production next hour.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_generation_remaining_today_entity:
+      name: Remaining Today Entity
+      description: Sensor for estimated energy production remaining today.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_power_now_entity:
+      name: Power Now Entity
+      description: Sensor for estimated power production now.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_power_in_1_hour_entity:
+      name: Power In 1 Hour Entity
+      description: Sensor for estimated power production in 1 hour.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_power_in_12_hours_entity:
+      name: Power In 12 Hours Entity
+      description: Sensor for estimated power production in 12 hours.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_power_in_24_hours_entity:
+      name: Power In 24 Hours Entity
+      description: Sensor for estimated power production in 24 hours.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_peak_today_entity:
+      name: Peak Time Today Entity
+      description: Sensor for highest power peak time today.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    forecast_peak_tomorrow_entity:
+      name: Peak Time Tomorrow Entity
+      description: Sensor for highest power peak time tomorrow.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    solar_forecast_entity:
+      name: Live Solar Entity
+      description: Sensor for live solar forecast or power now.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:

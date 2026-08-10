@@ -95,6 +95,7 @@ from .const import (
     SERVICE_PRICING_UPSERT_RECORD,
     SERVICE_PRICING_REMOVE_RECORD,
     SERVICE_SET_PANEL_THEME,
+    SERVICE_SET_FORECAST_MAPPING,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -151,7 +152,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=248"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=264"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -197,14 +198,18 @@ PANEL_PROVIDER_LABELS = {
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     hass.data.setdefault(DOMAIN, {})
+    # Register domain services at integration load time so the panel can call
+    # them even if the config entry setup path is still catching up.
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_PANEL_THEME):
+        _register_panel_theme_service(hass)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
+        _register_forecast_mapping_service(hass)
     return True
 
 
 def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Register the built-in sidebar panel and load its module."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if domain_data.get("frontend_panel_registered"):
-        return
 
     async_register_built_in_panel(
         hass,
@@ -298,6 +303,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "pricing_store": pricing_store,
     }
 
+    # Register the panel before network refreshes so HEM remains available even
+    # while backend data is still catching up during Home Assistant startup.
+    _register_frontend_panel(hass, entry)
+
     inverters: list[DiscoveredInverter] = []
     try:
         raw_inverters = await client.fetch_inverter_list()
@@ -343,8 +352,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if not hass.services.has_service(DOMAIN, SERVICE_FORCE_RECONNECT):
         _register_services(hass)
-    elif not hass.services.has_service(DOMAIN, SERVICE_SET_PANEL_THEME):
-        _register_panel_theme_service(hass)
+    else:
+        if not hass.services.has_service(DOMAIN, SERVICE_SET_PANEL_THEME):
+            _register_panel_theme_service(hass)
+        if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
+            _register_forecast_mapping_service(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -844,6 +856,62 @@ def _register_panel_theme_service(hass: HomeAssistant) -> None:
         SERVICE_SET_PANEL_THEME,
         handle_set_panel_theme,
         schema=vol.Schema({vol.Required(CONF_PANEL_THEME): cv.string, vol.Optional(ATTR_ENTRY_ID): cv.string}),
+    )
+
+
+async def _handle_set_forecast_mapping(hass: HomeAssistant, call: ServiceCall) -> None:
+    entry_id = _resolve_entry_id(hass, call)
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None:
+        raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+    new_data = {
+        **entry.data,
+        CONF_FORECAST_PROVIDER: str(call.data.get(CONF_FORECAST_PROVIDER) or "none").strip() or "none",
+        CONF_FORECAST_GENERATION_TODAY_ENTITY: str(call.data.get(CONF_FORECAST_GENERATION_TODAY_ENTITY) or "").strip(),
+        CONF_FORECAST_GENERATION_TOMORROW_ENTITY: str(call.data.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY) or "").strip(),
+        CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY: str(call.data.get(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY) or "").strip(),
+        CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY: str(call.data.get(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY) or "").strip(),
+        CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY: str(call.data.get(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY) or "").strip(),
+        CONF_FORECAST_POWER_NOW_ENTITY: str(call.data.get(CONF_FORECAST_POWER_NOW_ENTITY) or "").strip(),
+        CONF_FORECAST_POWER_IN_1_HOUR_ENTITY: str(call.data.get(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY) or "").strip(),
+        CONF_FORECAST_POWER_IN_12_HOURS_ENTITY: str(call.data.get(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY) or "").strip(),
+        CONF_FORECAST_POWER_IN_24_HOURS_ENTITY: str(call.data.get(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY) or "").strip(),
+        CONF_FORECAST_PEAK_TODAY_ENTITY: str(call.data.get(CONF_FORECAST_PEAK_TODAY_ENTITY) or "").strip(),
+        CONF_FORECAST_PEAK_TOMORROW_ENTITY: str(call.data.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY) or "").strip(),
+        CONF_SOLAR_FORECAST_ENTITY: str(call.data.get(CONF_SOLAR_FORECAST_ENTITY) or "").strip(),
+    }
+    hass.config_entries.async_update_entry(entry, data=new_data)
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _register_forecast_mapping_service(hass: HomeAssistant) -> None:
+    """Register the forecast mapping persistence service when service tables already exist."""
+    if hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
+        return
+
+    async def handle_set_forecast_mapping(call: ServiceCall) -> None:
+        await _handle_set_forecast_mapping(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_FORECAST_MAPPING,
+        handle_set_forecast_mapping,
+        schema=vol.Schema({
+            vol.Required(CONF_FORECAST_PROVIDER): cv.string,
+            vol.Optional(CONF_FORECAST_GENERATION_TODAY_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_GENERATION_TOMORROW_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_POWER_NOW_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_PEAK_TODAY_ENTITY): cv.string,
+            vol.Optional(CONF_FORECAST_PEAK_TOMORROW_ENTITY): cv.string,
+            vol.Optional(CONF_SOLAR_FORECAST_ENTITY): cv.string,
+            vol.Optional(ATTR_ENTRY_ID): cv.string,
+        }),
     )
 
 
@@ -1381,10 +1449,8 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_TOGGLE_DIAGNOSTICS, handle_toggle_diagnostics,
         schema=vol.Schema({vol.Optional("enable"): cv.boolean, **_entry_id_opt}),
     )
-    hass.services.async_register(
-        DOMAIN, SERVICE_SET_PANEL_THEME, handle_set_panel_theme,
-        schema=vol.Schema({vol.Required(CONF_PANEL_THEME): cv.string, **_entry_id_opt}),
-    )
+    _register_panel_theme_service(hass)
+    _register_forecast_mapping_service(hass)
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_UPSERT_RULE, handle_pricing_upsert_rule,
         schema=_pricing_rule_schema,

@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "248";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "264";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -75,6 +75,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(today|energy_today|production_today|pv_today)$/i,
       /(^|\.).*?(today|energy_today|production_today|pv_today).*?(forecast|solar|solcast)/i,
+      /(^|\.)energy_?production_?today$/i,
+      /(^|\.)production_?today$/i,
     ],
   },
   {
@@ -85,6 +87,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow)$/i,
       /(^|\.).*?(tomorrow|energy_tomorrow|production_tomorrow|pv_tomorrow).*?(forecast|solar|solcast)/i,
+      /(^|\.)energy_?production_?tomorrow$/i,
+      /(^|\.)production_?tomorrow$/i,
     ],
   },
   {
@@ -95,6 +99,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(this_hour|current_hour|hour).*?(forecast|energy|production)/i,
       /(^|\.).*?(this_hour|current_hour|hour).*?(forecast|solar|solcast)/i,
+      /(^|\.)energy_?current_?hour$/i,
+      /(^|\.)energy_?production_?current_?hour$/i,
     ],
   },
   {
@@ -105,6 +111,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|energy|production)/i,
       /(^|\.).*?(next_hour|hour_?ahead|in_?1_?hour|1h).*?(forecast|solar|solcast)/i,
+      /(^|\.)energy_?next_?hour$/i,
+      /(^|\.)energy_?production_?next_?hour$/i,
     ],
   },
   {
@@ -115,6 +123,9 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(remaining|rest|left).*?(today)/i,
       /(^|\.).*?(remaining|rest|left).*?(today).*?(forecast|solar|solcast)/i,
+      /(^|\.).*?(remaining|rest|left).*?(forecast|solar|solcast)/i,
+      /(^|\.).*?(today).*?(remaining|rest|left)/i,
+      /(^|\.)energy_?production_?today_?remaining$/i,
     ],
   },
   {
@@ -125,6 +136,7 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(power_?now|current_?power|now)$/i,
       /(^|\.).*?(power_?now|current_?power|now).*?(forecast|solar|solcast)/i,
+      /(^|\.)power_?production_?now$/i,
     ],
   },
   {
@@ -135,6 +147,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(power.*(1_?hour|in_?1_?hour)|in_?1_?hour|1h)/i,
       /(^|\.).*?(power.*(1_?hour|in_?1_?hour)|in_?1_?hour|1h).*?(forecast|solar|solcast)/i,
+      /(^|\.).*?(power|production).*(1_?hour|in_?1_?hour|1h|next_?hour|hour_?ahead).*?(forecast|solar|solcast)?/i,
+      /(^|\.).*?(1_?hour|next_?hour|hour_?ahead|1h).*?(power|production)/i,
     ],
   },
   {
@@ -145,6 +159,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(power.*(12_?hours?|in_?12_?hours?)|in_?12_?hours?|12h)/i,
       /(^|\.).*?(power.*(12_?hours?|in_?12_?hours?)|in_?12_?hours?|12h).*?(forecast|solar|solcast)/i,
+      /(^|\.)power_?production_?next_?12hours$/i,
+      /(^|\.)power_?production_?next_?12_?hours$/i,
     ],
   },
   {
@@ -155,6 +171,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(power.*(24_?hours?|in_?24_?hours?)|in_?24_?hours?|24h)/i,
       /(^|\.).*?(power.*(24_?hours?|in_?24_?hours?)|in_?24_?hours?|24h).*?(forecast|solar|solcast)/i,
+      /(^|\.)power_?production_?next_?24hours$/i,
+      /(^|\.)power_?production_?next_?24_?hours$/i,
     ],
   },
   {
@@ -164,6 +182,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     fallbackKey: "forecast_peak_today",
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*today|today.*peak|highest.*today)/i,
+      /(^|\.).*(peak|highest).*(today)/i,
+      /(^|\.).*(today).*(peak|highest)/i,
     ],
   },
   {
@@ -173,6 +193,8 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
     fallbackKey: "forecast_peak_tomorrow",
     patterns: [
       /(^|\.)(forecast_?solar|solcast|solar).*?(peak.*tomorrow|tomorrow.*peak|highest.*tomorrow)/i,
+      /(^|\.).*(peak|highest).*(tomorrow)/i,
+      /(^|\.).*(tomorrow).*(peak|highest)/i,
     ],
   },
   {
@@ -200,6 +222,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._batterySelectorOpen = false;
     this._forecastSelectorHoldUntil = 0;
     this._forecastSelectorOpenKey = "";
+    this._forecastSaveStatus = null;
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
     this._pricingRecordEditorMode = "";
@@ -1273,10 +1296,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastEntityCandidates() {
     const states = this._states();
-    const pick = (patterns) => states.find((entity) => (
-      entity?.entity_id?.startsWith("sensor.")
-      && patterns.some((pattern) => pattern.test(entity.entity_id))
-    ));
+    const pick = (patterns) => states.find((entity) => {
+      if (!entity?.entity_id?.startsWith("sensor.")) {
+        return false;
+      }
+      const haystack = [
+        entity.entity_id,
+        entity?.attributes?.friendly_name || "",
+        entity?.attributes?.name || "",
+        entity?.name || "",
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
+      return patterns.some((pattern) => pattern.test(haystack));
+    });
 
     return HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = pick(item.patterns) || null;
@@ -1313,10 +1346,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const mapping = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => ({
       slot: item.slot,
-      entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || candidates[item.slot]?.entity_id || "",
+      entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || "",
       entity: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]
         ? this._hass?.states?.[this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]]
-        : candidates[item.slot],
+        : null,
     }));
 
     return {
@@ -1334,6 +1367,31 @@ class HomeEnergyManagerPanel extends HTMLElement {
           /(^|\.)forecast_?solar/i,
           /(^|\.)(solar_)?forecast/i,
           /(^|\.)(forecast_generation|solar_forecast|forecast_power|forecast_peak)/i,
+          /(^|\.)energy_production/i,
+          /(^|\.)power_production/i,
+          /(^|\.)current_hour/i,
+          /(^|\.)next_hour/i,
+          /(^|\.)remaining_today/i,
+          /(^|\.)highest_peak_time/i,
+          /estimated energy production.*today/i,
+          /estimated energy production.*tomorrow/i,
+          /estimated energy production.*this hour/i,
+          /estimated energy production.*next hour/i,
+          /estimated energy production.*remaining today/i,
+          /estimated energy production.*remaining/i,
+          /estimated energy production.*left/i,
+          /estimated power production.*now/i,
+          /estimated power production.*in 1 hour/i,
+          /estimated power production.*1 hour/i,
+          /estimated power production.*in 1h/i,
+          /estimated power production.*in 12 hours/i,
+          /estimated power production.*in 24 hours/i,
+          /estimated power production.*peak.*today/i,
+          /estimated power production.*peak.*tomorrow/i,
+          /highest power peak time.*today/i,
+          /highest power peak time.*tomorrow/i,
+          /peak time.*today/i,
+          /peak time.*tomorrow/i,
         ];
       case "solcast":
         return [
@@ -1355,7 +1413,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const seen = new Set();
     return this._states()
       .filter((entity) => entity?.entity_id?.startsWith("sensor."))
-      .filter((entity) => patterns.some((pattern) => pattern.test(entity.entity_id)))
+      .filter((entity) => {
+        const haystack = [
+          entity?.entity_id || "",
+          entity?.attributes?.friendly_name || "",
+          entity?.attributes?.name || "",
+          entity?.name || "",
+        ]
+          .map((value) => String(value || "").toLowerCase())
+          .join(" ");
+        return patterns.some((pattern) => pattern.test(haystack));
+      })
       .filter((entity) => {
         if (seen.has(entity.entity_id)) {
           return false;
@@ -1374,6 +1442,38 @@ class HomeEnergyManagerPanel extends HTMLElement {
           label: "Not set",
         },
       ]);
+  }
+
+  _forecastInferProviderFromMapping(mapping = {}) {
+    const entityIds = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS
+      .map((item) => String(mapping?.[item.slot] || "").trim())
+      .filter(Boolean);
+    if (!entityIds.length) {
+      return "none";
+    }
+    const haystacks = entityIds.map((entityId) => {
+      const entity = this._hass?.states?.[entityId];
+      return [
+        entityId,
+        entity?.attributes?.friendly_name || "",
+        entity?.attributes?.name || "",
+        entity?.name || "",
+      ]
+        .map((value) => String(value || "").toLowerCase())
+        .join(" ");
+    });
+    const providers = ["forecast_solar", "solcast"];
+    let winner = { provider: "none", score: 0 };
+    providers.forEach((provider) => {
+      const patterns = this._forecastProviderSensorPatterns(provider);
+      const score = haystacks.reduce((total, haystack) => (
+        total + (patterns.some((pattern) => pattern.test(haystack)) ? 1 : 0)
+      ), 0);
+      if (score > winner.score) {
+        winner = { provider, score };
+      }
+    });
+    return winner.provider;
   }
 
   _loadForecastMapping() {
@@ -1396,7 +1496,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _saveForecastDraftFromInputs() {
     if (!this.shadowRoot) {
-      return;
+      return null;
     }
     const mapping = {
       provider: this.shadowRoot.querySelector('[data-forecast-field="forecast_provider"]')?.value || "none",
@@ -1404,13 +1504,91 @@ class HomeEnergyManagerPanel extends HTMLElement {
     HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
       mapping[item.slot] = this.shadowRoot.querySelector(`[data-forecast-field="${item.configKey}"]`)?.value || "";
     });
-    this._saveForecastMapping(mapping);
+    const seeded = this._forecastSeededMapping(mapping.provider, mapping);
+    this._saveForecastMapping(seeded);
     this._holdForecastWindow(2500);
     this._queueDeferredRender();
+    return seeded;
   }
 
-  _saveForecastSetup() {
-    this._saveForecastDraftFromInputs();
+  _forecastSeededMapping(provider, current = {}) {
+    const next = {
+      provider: String(provider || "none"),
+    };
+    if (next.provider === "none") {
+      HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+        next[item.slot] = String(current[item.slot] || "");
+      });
+      return next;
+    }
+    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+      const existing = String(current[item.slot] || "").trim();
+      if (existing) {
+        next[item.slot] = existing;
+        return;
+      }
+      const states = this._states().filter((entity) => entity?.entity_id?.startsWith("sensor."));
+      const candidate = states.find((entity) => {
+        const haystack = [
+          entity?.entity_id || "",
+          entity?.attributes?.friendly_name || "",
+          entity?.attributes?.name || "",
+          entity?.name || "",
+        ]
+          .map((value) => String(value || "").toLowerCase())
+          .join(" ");
+        return item.patterns.some((pattern) => pattern.test(haystack));
+      });
+      next[item.slot] = candidate?.entity_id || "";
+    });
+    return next;
+  }
+
+  _forecastServicePayload(mapping) {
+    const payload = {
+      forecast_provider: String(mapping?.provider || "none"),
+    };
+    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+      payload[item.configKey] = String(mapping?.[item.slot] || "");
+    });
+    return payload;
+  }
+
+  async _saveForecastSetup() {
+    const mapping = this._saveForecastDraftFromInputs();
+    if (!mapping || !this._hass) {
+      this._forecastSaveStatus = {
+        type: "error",
+        message: "Cannot save yet because Home Assistant is still loading HEM.",
+      };
+      this._render();
+      return;
+    }
+    const payload = this._forecastServicePayload(mapping);
+    try {
+      await this._hass.callService("home_energy_manager", "set_forecast_mapping", {
+        entry_id: this._entryId(),
+        ...payload,
+      });
+      this._config = {
+        ...this._config,
+        ...payload,
+      };
+      this._forecastSaveStatus = {
+        type: "success",
+        message: `Saved ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} forecast mapping(s).`,
+      };
+      this._holdForecastWindow(5000);
+      this._render();
+    } catch (error) {
+      console.error("Failed to persist forecast mapping", error);
+      this._forecastSaveStatus = {
+        type: "error",
+        message: this._formatErrorMessage(error, "Forecast mapping save failed."),
+      };
+      this._holdForecastWindow(5000);
+      this._render();
+    }
   }
 
   _forecastMappingKeyForField(key) {
@@ -1435,7 +1613,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
         next[item.slot] = current[item.slot] || "";
       }
     });
-    this._saveForecastMapping(next);
+    const seeded = mappingKey === "provider"
+      ? this._forecastSeededMapping(next.provider, next)
+      : next;
+    this._saveForecastMapping(seeded);
     this._forecastSelectorOpenKey = "";
     this._holdForecastWindow(1000);
     this._render();
@@ -3418,6 +3599,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const setupStatus = mappedCount
       ? `Loaded ${mappedCount} saved forecast mapping${mappedCount === 1 ? "" : "s"}. Discovering ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`
       : `No saved forecast mappings yet. Discovered ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`;
+    const saveStatus = this._forecastSaveStatus
+      ? `<div class="${this._forecastSaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._forecastSaveStatus.message)}</div>`
+      : "";
     const providerProfiles = [
       {
         label: "Forecast.Solar",
@@ -3447,61 +3631,35 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </p>
         </article>
 
-        <section class="forecast__tiles">
-          <article class="forecast-tile">
-            <span>Selected provider</span>
-            <strong>${forecastProvider}</strong>
-          </article>
-          ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => `
-            <article class="forecast-tile">
-              <span>${item.label} entity</span>
-              <strong>${this._forecastEntityDisplay(this._forecastSelectedItem(forecastState, item.slot))}</strong>
-            </article>
-          `).join("")}
-        </section>
-
         <div class="pricing-loading forecast-loading" role="status">${setupStatus}</div>
 
-        <section class="grid forecast__grid">
-          <article class="panel-card panel-card--wide pricing-editor-card pricing-group-card">
-            <div class="panel-card__header">
-              <h2>Popular mappings</h2>
-              <span>Supported sources</span>
-            </div>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(providerProfiles.map((profile) => ({
-                label: profile.label,
-                value: profile.description,
-              })))}
-            </ul>
-          </article>
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Map sensors</h2>
-              <span>Workflow</span>
-            </div>
-            <p>
-              Pick the provider profile, then choose the matching Home Assistant sensor entities.
-              Saved or configured mappings are shown immediately, even while HA is still
-              refreshing the entity list in the background.
-            </p>
-            <div class="forecast-form">
-              ${this._forecastSelectField("forecast_provider", "Provider", [
-                { value: "none", label: "No provider" },
-                { value: "forecast_solar", label: "Forecast.Solar" },
-                { value: "solcast", label: "Solcast" },
-                { value: "other", label: "Other / template" },
-              ], forecastProvider)}
-              ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => this._forecastSelectField(
-                item.configKey,
-                item.label,
-                this._forecastEntityOptions(forecastState),
-                this._forecastSelectedItem(forecastState, item.slot)?.entity_id || "",
-              )).join("")}
-              <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
-            </div>
-          </article>
-        </section>
+        <article class="panel-card panel-card--wide forecast__mapping-card">
+          <div class="panel-card__header">
+            <h2>Solar Forecast sensors.</h2>
+            <span>Workflow</span>
+          </div>
+          <p>
+            Pick the provider profile, then choose the matching Home Assistant sensor entities.
+            Saved or configured mappings are shown immediately, even while HA is still
+            refreshing the entity list in the background.
+          </p>
+          <div class="forecast-form">
+            ${this._forecastSelectField("forecast_provider", "Provider", [
+              { value: "none", label: "No provider" },
+              { value: "forecast_solar", label: "Forecast.Solar" },
+              { value: "solcast", label: "Solcast" },
+              { value: "other", label: "Other / template" },
+            ], forecastProvider)}
+            ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => this._forecastSelectField(
+              item.configKey,
+              item.label,
+              this._forecastEntityOptions(forecastState),
+              this._forecastSelectedItem(forecastState, item.slot)?.entity_id || "",
+            )).join("")}
+            <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
+            ${saveStatus}
+          </div>
+        </article>
       </section>
     `;
   }
@@ -5208,6 +5366,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
   }
+
+  _formatErrorMessage(error, fallback = "Action failed.") {
+    const message = error?.message || error?.body?.message || error?.error || "";
+    return String(message || fallback);
+  }
 }
 
 function bootstrapHomeEnergyManagerPanelFallback(root = document) {
@@ -5232,6 +5395,10 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
       return;
     }
     HOME_ENERGY_MANAGER_FALLBACK_HOSTS.add(host);
+    if (host instanceof HomeEnergyManagerPanel) {
+      HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, host);
+      return;
+    }
     const renderRoot = host instanceof HomeEnergyManagerPanel
       ? host.shadowRoot
       : host;

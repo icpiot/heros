@@ -58,6 +58,7 @@ SERVICE_PRICING_REMOVE_GROUP = "pricing_remove_group"
 SERVICE_PRICING_UPSERT_RECORD = "pricing_upsert_record"
 SERVICE_PRICING_REMOVE_RECORD = "pricing_remove_record"
 SERVICE_SET_PANEL_THEME = "set_panel_theme"
+SERVICE_SET_FORECAST_MAPPING = "set_forecast_mapping"
 
 # Service attributes
 ATTR_END_DISCHARGE = "end_discharge"
