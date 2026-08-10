@@ -1912,6 +1912,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _batteryFieldLocked(provider) {
+    return String(provider || "bytewatt") !== "other";
+  }
+
   _batteryEntityCandidatesForProvider(batteryState) {
     const provider = String(batteryState?.stored?.provider || batteryState?.provider || "bytewatt");
     const patterns = this._batteryProviderSensorPatterns(provider);
@@ -2165,25 +2169,35 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batterySelectField(key, label, options, selectedValue) {
+    let disabled = false;
+    let helperText = "";
+    if (typeof arguments[4] === "boolean") {
+      disabled = arguments[4];
+    }
+    if (typeof arguments[5] === "string") {
+      helperText = arguments[5];
+    }
     const selected = String(selectedValue || "").trim();
     const selectedOption = options.find((option) => String(option.value) === selected);
     const selectedLabel = selectedOption?.label || "Not set";
     const isOpen = this._batterySelectorOpenKey === key;
     return `
-      <div class="forecast-field shared-selector">
+      <div class="forecast-field shared-selector${disabled ? " is-locked" : ""}">
         <input type="hidden" data-battery-field="${this._escapeHtml(key)}" value="${this._escapeHtml(selected)}" />
         <div class="shared-selector__label">${this._escapeHtml(label)}</div>
         <div class="shared-selector__picker">
           <button
             type="button"
-            class="shared-selector__control forecast-field__control"
+            class="shared-selector__control forecast-field__control${disabled ? " is-locked" : ""}"
             aria-haspopup="listbox"
-            aria-expanded="${isOpen ? "true" : "false"}"
+            aria-expanded="${isOpen && !disabled ? "true" : "false"}"
+            aria-disabled="${disabled ? "true" : "false"}"
+            ${disabled ? "disabled" : ""}
             data-battery-field-toggle="${this._escapeHtml(key)}"
           >
             <span>${this._escapeHtml(selectedLabel)}</span>
           </button>
-          ${isOpen ? `
+          ${isOpen && !disabled ? `
             <div class="shared-selector__menu forecast-field__menu" role="listbox" aria-label="${this._escapeHtml(label)}">
               ${options.map((option) => {
                 const optionValue = String(option.value);
@@ -2204,6 +2218,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </div>
           ` : ""}
         </div>
+        ${helperText ? `<div class="forecast-field__helper">${this._escapeHtml(helperText)}</div>` : ""}
       </div>
     `;
   }
@@ -4116,7 +4131,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? `Loaded ${batteryMappedCount} saved battery mapping${batteryMappedCount === 1 ? "" : "s"}. Discovering ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`
       : `No saved battery mappings yet. Discovered ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`;
     const batteryOpen = this._batterySetupExpanded === true;
-    const batterySaveStatus = this._batterySaveStatus
+    const batteryDefaultsLocked = this._batteryFieldLocked(batteryProvider);
+    const batteryActionStatus = this._batterySaveStatus
       ? `<div class="${this._batterySaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._batterySaveStatus.message)}</div>`
       : "";
     return `
@@ -4161,10 +4177,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
               this._forecastEntityOptions(forecastState),
               this._forecastSelectedItem(forecastState, item.slot)?.entity_id || "",
             )).join("")}
-            <div class="setup-actions">
-              <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
-              ${forecastSaveStatus}
-            </div>
+          </div>
+          <div class="setup-actions">
+            <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
+            ${forecastSaveStatus || `<div class="pricing-loading forecast-loading" role="status">${this._escapeHtml(setupStatus)}</div>`}
           </div>
         </article>
 
@@ -4178,7 +4194,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <div class="forecast-form" ${batteryOpen ? "" : "hidden"}>
             <p>
               Map the battery provider-specific sensors used across the Battery page. The defaults
-              auto-fill from live Home Assistant entities, but you can override any field before saving.
+              auto-fill from live Home Assistant entities. Switch the provider to Other / template
+              when you want to customize the mapping manually.
             </p>
             ${this._batterySelectField("battery_provider", "Provider", [
               { value: "bytewatt", label: "ByteWatt" },
@@ -4189,11 +4206,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
               item.label,
               this._batteryEntityOptions(batteryState),
               this._batterySelectedItem(batteryState, item.slot)?.entity_id || "",
+              batteryDefaultsLocked,
+              batteryDefaultsLocked ? "Locked to provider defaults. Select Other / template to edit this field." : "",
             )).join("")}
-            <div class="setup-actions">
-              <button class="forecast-save" type="button" data-battery-save>Save Battery Mapping</button>
-              ${batterySaveStatus}
-            </div>
+          </div>
+          <div class="setup-actions">
+            <button class="forecast-save" type="button" data-battery-save>Save Battery Mapping</button>
+            ${batteryActionStatus}
           </div>
         </article>
       </section>

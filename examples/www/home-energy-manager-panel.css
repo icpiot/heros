@@ -805,6 +805,22 @@
   flex: 1 1 280px;
 }
 
+.forecast-field__helper {
+  margin-top: -2px;
+  color: var(--hem-panel-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.shared-selector.is-locked .shared-selector__label {
+  color: var(--hem-panel-text-muted);
+}
+
+.shared-selector__control.is-locked {
+  opacity: 0.82;
+  cursor: not-allowed;
+}
+
 .forecast-field {
   display: grid;
   gap: 8px;
