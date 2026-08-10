@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "271";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "272";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -414,9 +414,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._forecastSelectorHoldUntil = 0;
     this._forecastSelectorOpenKey = "";
     this._forecastSaveStatus = null;
+    this._forecastSetupDirty = false;
     this._forecastSetupExpanded = true;
     this._batterySetupExpanded = false;
     this._batterySaveStatus = null;
+    this._batterySetupDirty = false;
     this._batterySelectorOpenKey = "";
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
@@ -1773,6 +1775,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         type: "success",
         message: `Saved ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} forecast mapping(s).`,
       };
+      this._forecastSetupDirty = false;
+      this._clearForecastSaveStatusSoon();
       this._holdForecastWindow(5000);
       this._render();
     } catch (error) {
@@ -1812,6 +1816,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? this._forecastSeededMapping(next.provider, next)
       : next;
     this._saveForecastMapping(seeded);
+    this._forecastSetupDirty = true;
+    this._forecastSaveStatus = null;
     this._forecastSelectorOpenKey = "";
     this._holdForecastWindow(1000);
     this._render();
@@ -1952,7 +1958,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batteryProviderSourceLabel(provider, item) {
-    return `${this._batteryProviderLabel(provider)} data.${item.sourceKey || item.fallbackKey} -> HEM ${item.label}`;
+    return `Source data.${item.sourceKey || item.fallbackKey} -> Target sensor.home_energy_manager_${item.fallbackKey}`;
+  }
+
+  _clearForecastSaveStatusSoon() {
+    window.setTimeout(() => {
+      if (this._forecastSetupDirty) {
+        return;
+      }
+      this._forecastSaveStatus = null;
+      this._render();
+    }, 5000);
+  }
+
+  _clearBatterySaveStatusSoon() {
+    window.setTimeout(() => {
+      if (this._batterySetupDirty) {
+        return;
+      }
+      this._batterySaveStatus = null;
+      this._render();
+    }, 5000);
   }
 
   _batteryFieldStoredValue(provider, item, stored = {}, configured = {}) {
@@ -2134,6 +2160,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         type: "success",
         message: `Saved ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} battery mapping(s).`,
       };
+      this._batterySetupDirty = false;
+      this._clearBatterySaveStatusSoon();
       this._batterySetupExpanded = false;
       this._render();
     } catch (error) {
@@ -2172,6 +2200,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? this._batterySeededMapping(next.provider, next)
       : next;
     this._saveBatteryMapping(seeded);
+    this._batterySetupDirty = true;
+    this._batterySaveStatus = null;
     this._batterySelectorOpenKey = "";
     this._holdRenderWindow(1000);
     this._render();
@@ -4223,10 +4253,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
               this._forecastSelectedItem(forecastState, item.slot)?.entity_id || "",
             )).join("")}
           </div>
-          <div class="setup-actions">
-            <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
-            ${forecastSaveStatus || `<div class="pricing-loading forecast-loading" role="status">${this._escapeHtml(setupStatus)}</div>`}
-          </div>
+          ${this._forecastSetupDirty || forecastSaveStatus ? `
+            <div class="setup-actions">
+              ${this._forecastSetupDirty ? `<button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>` : ""}
+              ${forecastSaveStatus}
+            </div>
+          ` : ""}
         </article>
 
         <article class="panel-card panel-card--wide forecast__mapping-card">
@@ -4257,10 +4289,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
               batteryDefaultsLocked ? this._batteryProviderSourceLabel(batteryProvider, item) : "",
             )).join("")}
           </div>
-          <div class="setup-actions">
-            <button class="forecast-save" type="button" data-battery-save>Save Battery Mapping</button>
-            ${batteryActionStatus}
-          </div>
+          ${this._batterySetupDirty || batteryActionStatus ? `
+            <div class="setup-actions">
+              ${this._batterySetupDirty ? `<button class="forecast-save" type="button" data-battery-save>Save Battery Mapping</button>` : ""}
+              ${batteryActionStatus}
+            </div>
+          ` : ""}
         </article>
       </section>
     `;
