@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "268";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "269";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -1922,12 +1922,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._batteryProviderKey(provider) !== "other";
   }
 
+  _isHemManagedEntity(entity) {
+    return /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity?.entity_id || "");
+  }
+
+  _batteryProviderSourceSensors() {
+    return this._states()
+      .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+      .filter((entity) => !this._isHemManagedEntity(entity));
+  }
+
   _batteryEntityCandidatesForProvider(batteryState) {
     const provider = this._batteryProviderKey(batteryState?.stored?.provider || batteryState?.provider);
     const patterns = this._batteryProviderSensorPatterns(provider);
     const seen = new Set();
-    return this._states()
-      .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+    return this._batteryProviderSourceSensors()
       .filter((entity) => {
         const haystack = [
           entity?.entity_id || "",
@@ -2015,8 +2024,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         next[item.slot] = existing;
         return;
       }
-      const candidate = this._states()
-        .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+      const candidate = this._batteryProviderSourceSensors()
         .find((entity) => {
           const haystack = [
             entity?.entity_id || "",
@@ -2131,8 +2139,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const providerFiltered = this._batteryEntityCandidatesForProvider(batteryState);
     const sourceOptions = providerFiltered.length > 1
       ? providerFiltered
-      : this._states()
-          .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+      : this._batteryProviderSourceSensors()
           .map((entity) => ({
             value: entity.entity_id,
             label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
@@ -2263,9 +2270,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _managedEntities() {
-    return this._states().filter((entity) => (
-      /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity.entity_id)
-    ));
+    return this._states().filter((entity) => this._isHemManagedEntity(entity));
   }
 
   _entityCountByDomain(domain) {
