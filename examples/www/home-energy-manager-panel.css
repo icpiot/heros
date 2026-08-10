@@ -790,6 +790,10 @@
   margin-top: 16px;
 }
 
+.forecast-form[hidden] {
+  display: none !important;
+}
+
 .setup-actions {
   display: flex;
   align-items: center;
