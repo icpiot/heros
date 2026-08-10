@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "264";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "265";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -13,6 +13,7 @@ const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.p
 const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui";
 const HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY = "home-energy-manager.panel.pricing.purchase_tariffs";
 const HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY = "home-energy-manager.panel.forecast.mapping";
+const HOME_ENERGY_MANAGER_PANEL_BATTERY_MAPPING_KEY = "home-energy-manager.panel.battery.mapping";
 const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
 const HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS = 120000;
@@ -209,6 +210,179 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
   },
 ];
 
+const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
+  {
+    slot: "percentage",
+    configKey: "battery_percentage_entity",
+    label: "Battery percentage",
+    fallbackKey: "battery_percentage",
+    patterns: [
+      /(^|\.)battery_?(soc|state_of_charge|percentage|charge|level)$/i,
+      /(^|\.).*(battery).*(soc|state of charge|percentage|charge|level)/i,
+    ],
+  },
+  {
+    slot: "power",
+    configKey: "battery_power_entity",
+    label: "Battery power",
+    fallbackKey: "battery_power",
+    patterns: [
+      /(^|\.)battery_?power$/i,
+      /(^|\.).*(battery).*(power|charge power|discharge power)/i,
+    ],
+  },
+  {
+    slot: "temperature",
+    configKey: "battery_temperature_entity",
+    label: "Battery temperature",
+    fallbackKey: "battery_temperature",
+    patterns: [
+      /(^|\.)battery_?temperature$/i,
+      /(^|\.).*(battery).*(temperature|temp)/i,
+    ],
+  },
+  {
+    slot: "voltage",
+    configKey: "battery_voltage_entity",
+    label: "Battery voltage",
+    fallbackKey: "battery_voltage",
+    patterns: [
+      /(^|\.)battery_?voltage$/i,
+      /(^|\.).*(battery).*(voltage)/i,
+    ],
+  },
+  {
+    slot: "current",
+    configKey: "battery_current_entity",
+    label: "Battery current",
+    fallbackKey: "battery_current",
+    patterns: [
+      /(^|\.)battery_?current$/i,
+      /(^|\.).*(battery).*(current)/i,
+    ],
+  },
+  {
+    slot: "cycles",
+    configKey: "battery_cycles_entity",
+    label: "Battery cycles",
+    fallbackKey: "battery_cycles",
+    patterns: [
+      /(^|\.)battery_?cycles$/i,
+      /(^|\.).*(battery).*(cycle)/i,
+    ],
+  },
+  {
+    slot: "stateOfHealth",
+    configKey: "battery_state_of_health_entity",
+    label: "Battery state of health",
+    fallbackKey: "battery_state_of_health",
+    patterns: [
+      /(^|\.)battery_?(state_?of_?health|soh)$/i,
+      /(^|\.).*(battery).*(state of health|soh)/i,
+    ],
+  },
+  {
+    slot: "usableCapacity",
+    configKey: "battery_usable_capacity_entity",
+    label: "Battery usable capacity",
+    fallbackKey: "battery_usable_capacity",
+    patterns: [
+      /(^|\.)battery_?(usable_?capacity|capacity_?usable)$/i,
+      /(^|\.).*(battery).*(usable capacity|capacity usable)/i,
+    ],
+  },
+  {
+    slot: "remainingCapacity",
+    configKey: "battery_remaining_capacity_entity",
+    label: "Battery remaining capacity",
+    fallbackKey: "battery_remaining_capacity",
+    patterns: [
+      /(^|\.)battery_?(remaining_?capacity|capacity_?remaining)$/i,
+      /(^|\.).*(battery).*(remaining capacity|capacity remaining)/i,
+    ],
+  },
+  {
+    slot: "stateOfHealthPercent",
+    configKey: "battery_state_of_health_percent_entity",
+    label: "Battery state of health %",
+    fallbackKey: "battery_state_of_health_percent",
+    patterns: [
+      /(^|\.)battery_?(state_?of_?health_?percent|soh_?percent)$/i,
+      /(^|\.).*(battery).*(state of health percent|soh percent|soh %)/i,
+    ],
+  },
+  {
+    slot: "wearCost",
+    configKey: "battery_wear_cost_entity",
+    label: "Battery wear cost",
+    fallbackKey: "battery_wear_cost",
+    patterns: [
+      /(^|\.)battery_?wear_?cost$/i,
+      /(^|\.).*(battery).*(wear cost)/i,
+    ],
+  },
+  {
+    slot: "totalCharge",
+    configKey: "total_battery_charge_entity",
+    label: "Total battery charge",
+    fallbackKey: "total_battery_charge",
+    patterns: [
+      /(^|\.)total_?battery_?charge$/i,
+      /(^|\.).*(battery).*(total charge|charge total)/i,
+    ],
+  },
+  {
+    slot: "totalDischarge",
+    configKey: "total_battery_discharge_entity",
+    label: "Total battery discharge",
+    fallbackKey: "total_battery_discharge",
+    patterns: [
+      /(^|\.)total_?battery_?discharge$/i,
+      /(^|\.).*(battery).*(total discharge|discharge total)/i,
+    ],
+  },
+  {
+    slot: "pvChargingBattery",
+    configKey: "pv_charging_battery_entity",
+    label: "PV charging battery",
+    fallbackKey: "pv_charging_battery",
+    patterns: [
+      /(^|\.)pv_?charging_?battery$/i,
+      /(^|\.).*(pv).*(battery).*?(charging)/i,
+    ],
+  },
+  {
+    slot: "gridBatteryCharge",
+    configKey: "grid_battery_charge_entity",
+    label: "Grid battery charge",
+    fallbackKey: "grid_battery_charge",
+    patterns: [
+      /(^|\.)grid_?battery_?charge$/i,
+      /(^|\.).*(grid).*(battery).*?(charge)/i,
+    ],
+  },
+  {
+    slot: "chargedToday",
+    configKey: "battery_charged_today_entity",
+    label: "Battery charged today",
+    fallbackKey: "battery_charged_today",
+    patterns: [
+      /(^|\.)battery_?charged_?today$/i,
+      /(^|\.).*(battery).*(charged today|today charged)/i,
+    ],
+  },
+  {
+    slot: "dischargedToday",
+    configKey: "battery_discharged_today_entity",
+    label: "Battery discharged today",
+    fallbackKey: "battery_discharged_today",
+    patterns: [
+      /(^|\.)battery_?discharged_?today$/i,
+      /(^|\.).*(battery).*(discharged today|today discharged)/i,
+    ],
+  },
+];
+
 class HomeEnergyManagerPanel extends HTMLElement {
   constructor() {
     super();
@@ -223,6 +397,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._forecastSelectorHoldUntil = 0;
     this._forecastSelectorOpenKey = "";
     this._forecastSaveStatus = null;
+    this._forecastSetupExpanded = true;
+    this._batterySetupExpanded = false;
+    this._batterySaveStatus = null;
+    this._batterySelectorOpenKey = "";
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
     this._pricingRecordEditorMode = "";
@@ -1693,6 +1871,331 @@ class HomeEnergyManagerPanel extends HTMLElement {
                     aria-selected="${optionValue === selected ? "true" : "false"}"
                     data-forecast-field-option="${this._escapeHtml(key)}"
                     data-forecast-field-value="${this._escapeHtml(optionValue)}"
+                  >
+                    ${this._escapeHtml(option.label)}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          ` : ""}
+        </div>
+      </div>
+    `;
+  }
+
+  _batteryProviderSensorPatterns(provider) {
+    switch (String(provider || "bytewatt")) {
+      case "bytewatt":
+        return [
+          /(^|\.)battery_?(soc|state_?of_?charge|percentage|charge|level)$/i,
+          /(^|\.).*battery.*(soc|state of charge|percentage|charge|level)/i,
+          /(^|\.)battery_?power$/i,
+          /(^|\.)battery_?temperature$/i,
+          /(^|\.)battery_?voltage$/i,
+          /(^|\.)battery_?current$/i,
+          /(^|\.)battery_?cycles$/i,
+          /(^|\.)battery_?(state_?of_?health|soh)$/i,
+          /(^|\.)battery_?(usable_?capacity|remaining_?capacity)$/i,
+          /(^|\.)battery_?(wear_?cost)$/i,
+          /(^|\.)total_?battery_?(charge|discharge)$/i,
+          /(^|\.)pv_?charging_?battery$/i,
+          /(^|\.)grid_?battery_?charge$/i,
+          /(^|\.)battery_?(charged|discharged)_?today$/i,
+        ];
+      case "other":
+      default:
+        return [
+          /(^|\.).*battery.*/i,
+          /(^|\.).*(soc|state_?of_?charge|percentage|level).*/i,
+          /(^|\.).*(charge|discharge|wear|capacity|current|voltage|temperature|cycle|health).*/i,
+        ];
+    }
+  }
+
+  _batteryEntityCandidatesForProvider(batteryState) {
+    const provider = String(batteryState?.stored?.provider || batteryState?.provider || "bytewatt");
+    const patterns = this._batteryProviderSensorPatterns(provider);
+    const seen = new Set();
+    return this._states()
+      .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+      .filter((entity) => {
+        const haystack = [
+          entity?.entity_id || "",
+          entity?.attributes?.friendly_name || "",
+          entity?.attributes?.name || "",
+          entity?.name || "",
+        ]
+          .map((value) => String(value || "").toLowerCase())
+          .join(" ");
+        return patterns.some((pattern) => pattern.test(haystack));
+      })
+      .filter((entity) => {
+        if (seen.has(entity.entity_id)) {
+          return false;
+        }
+        seen.add(entity.entity_id);
+        return true;
+      })
+      .map((entity) => ({
+        value: entity.entity_id,
+        label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .concat([{ value: "", label: "Not set" }]);
+  }
+
+  _batteryMappingState() {
+    const configured = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = this._configuredEntityId(item.configKey) || "";
+      return result;
+    }, {
+      provider: this._config?.battery_provider || "bytewatt",
+    });
+    const stored = this._loadBatteryMapping();
+    const storedWithConfigFallback = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = stored[item.slot] || configured[item.slot] || "";
+      return result;
+    }, {
+      provider: stored.provider || configured.provider,
+    });
+    const mapping = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => ({
+      slot: item.slot,
+      entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || "",
+      entity: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]
+        ? this._hass?.states?.[this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]]
+        : null,
+    }));
+    return {
+      provider: storedWithConfigFallback.provider || configured.provider,
+      mapping,
+      candidates: this._batteryEntityCandidatesForProvider({ stored: storedWithConfigFallback, provider: storedWithConfigFallback.provider }),
+      stored: storedWithConfigFallback,
+    };
+  }
+
+  _loadBatteryMapping() {
+    try {
+      const raw = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_MAPPING_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  _saveBatteryMapping(mapping) {
+    try {
+      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_MAPPING_KEY, JSON.stringify(mapping || {}));
+    } catch (error) {
+      // Ignore storage failures in private browsing / restricted environments.
+    }
+  }
+
+  _batterySeededMapping(provider, current = {}) {
+    const next = { provider: String(provider || "bytewatt") };
+    if (next.provider === "none") {
+      HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+        next[item.slot] = String(current[item.slot] || "");
+      });
+      return next;
+    }
+    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+      const existing = String(current[item.slot] || "").trim();
+      if (existing) {
+        next[item.slot] = existing;
+        return;
+      }
+      const candidate = this._states()
+        .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+        .find((entity) => {
+          const haystack = [
+            entity?.entity_id || "",
+            entity?.attributes?.friendly_name || "",
+            entity?.attributes?.name || "",
+            entity?.name || "",
+          ]
+            .map((value) => String(value || "").toLowerCase())
+            .join(" ");
+          return item.patterns.some((pattern) => pattern.test(haystack));
+        });
+      next[item.slot] = candidate?.entity_id || "";
+    });
+    return next;
+  }
+
+  _saveBatteryDraftFromInputs() {
+    if (!this.shadowRoot) {
+      return null;
+    }
+    const mapping = {
+      provider: this.shadowRoot.querySelector('[data-battery-field="battery_provider"]')?.value || "bytewatt",
+    };
+    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+      mapping[item.slot] = this.shadowRoot.querySelector(`[data-battery-field="${item.configKey}"]`)?.value || "";
+    });
+    const seeded = this._batterySeededMapping(mapping.provider, mapping);
+    this._saveBatteryMapping(seeded);
+    this._holdRenderWindow(1000);
+    this._queueDeferredRender();
+    return seeded;
+  }
+
+  _batteryServicePayload(mapping) {
+    const payload = {
+      battery_provider: String(mapping?.provider || "bytewatt"),
+    };
+    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+      payload[item.configKey] = String(mapping?.[item.slot] || "");
+    });
+    return payload;
+  }
+
+  async _saveBatterySetup() {
+    const mapping = this._saveBatteryDraftFromInputs();
+    if (!mapping || !this._hass) {
+      this._batterySaveStatus = {
+        type: "error",
+        message: "Cannot save yet because Home Assistant is still loading HEM.",
+      };
+      this._render();
+      return;
+    }
+    const payload = this._batteryServicePayload(mapping);
+    try {
+      await this._hass.callService("home_energy_manager", "set_battery_mapping", {
+        entry_id: this._entryId(),
+        ...payload,
+      });
+      this._config = {
+        ...this._config,
+        ...payload,
+      };
+      this._batterySaveStatus = {
+        type: "success",
+        message: `Saved ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} battery mapping(s).`,
+      };
+      this._batterySetupExpanded = false;
+      this._render();
+    } catch (error) {
+      console.error("Failed to persist battery mapping", error);
+      this._batterySaveStatus = {
+        type: "error",
+        message: this._formatErrorMessage(error, "Battery mapping save failed."),
+      };
+      this._render();
+    }
+  }
+
+  _batteryMappingKeyForField(key) {
+    const entityField = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.find((item) => item.configKey === key);
+    if (entityField) {
+      return entityField.slot;
+    }
+    return {
+      battery_provider: "provider",
+    }[key] || key;
+  }
+
+  _saveBatteryField(key, value) {
+    const current = this._loadBatteryMapping();
+    const mappingKey = this._batteryMappingKeyForField(key);
+    const next = {
+      provider: current.provider || "bytewatt",
+      [mappingKey]: String(value || ""),
+    };
+    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+      if (!(item.slot in next)) {
+        next[item.slot] = current[item.slot] || "";
+      }
+    });
+    const seeded = mappingKey === "provider"
+      ? this._batterySeededMapping(next.provider, next)
+      : next;
+    this._saveBatteryMapping(seeded);
+    this._batterySelectorOpenKey = "";
+    this._holdRenderWindow(1000);
+    this._render();
+  }
+
+  _batteryEntityOptions(batteryState) {
+    const providerFiltered = this._batteryEntityCandidatesForProvider(batteryState);
+    const sourceOptions = providerFiltered.length > 1
+      ? providerFiltered
+      : this._states()
+          .filter((entity) => entity?.entity_id?.startsWith("sensor."))
+          .map((entity) => ({
+            value: entity.entity_id,
+            label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
+          }));
+    const selectedIds = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS
+      .map((item) => String(batteryState?.stored?.[item.slot] || "").trim())
+      .filter(Boolean);
+    const options = [];
+    const seen = new Set();
+    [...sourceOptions, ...selectedIds.map((entityId) => ({
+      value: entityId,
+      label: `${entityId} · configured`,
+    }))].forEach((option) => {
+      const value = String(option?.value || "").trim();
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+      options.push({
+        value,
+        label: option?.label || value || "Not set",
+      });
+    });
+    return options
+      .filter((option) => option.value)
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .concat([{ value: "", label: "Not set" }]);
+  }
+
+  _batterySelectedItem(batteryState, slot) {
+    const storedId = String(batteryState?.stored?.[slot] || "").trim();
+    const discovered = batteryState?.mapping?.find((item) => item.slot === slot);
+    if (storedId) {
+      const byId = this._states().find((entity) => entity.entity_id === storedId);
+      if (byId) {
+        return { ...byId, entity_id: byId.entity_id };
+      }
+    }
+    return discovered?.entity || null;
+  }
+
+  _batterySelectField(key, label, options, selectedValue) {
+    const selected = String(selectedValue || "").trim();
+    const selectedOption = options.find((option) => String(option.value) === selected);
+    const selectedLabel = selectedOption?.label || "Not set";
+    const isOpen = this._batterySelectorOpenKey === key;
+    return `
+      <div class="forecast-field shared-selector">
+        <input type="hidden" data-battery-field="${this._escapeHtml(key)}" value="${this._escapeHtml(selected)}" />
+        <div class="shared-selector__label">${this._escapeHtml(label)}</div>
+        <div class="shared-selector__picker">
+          <button
+            type="button"
+            class="shared-selector__control forecast-field__control"
+            aria-haspopup="listbox"
+            aria-expanded="${isOpen ? "true" : "false"}"
+            data-battery-field-toggle="${this._escapeHtml(key)}"
+          >
+            <span>${this._escapeHtml(selectedLabel)}</span>
+          </button>
+          ${isOpen ? `
+            <div class="shared-selector__menu forecast-field__menu" role="listbox" aria-label="${this._escapeHtml(label)}">
+              ${options.map((option) => {
+                const optionValue = String(option.value);
+                const selectedClass = optionValue === selected ? "is-selected" : "";
+                return `
+                  <button
+                    type="button"
+                    class="shared-selector__option ${selectedClass}"
+                    role="option"
+                    aria-selected="${optionValue === selected ? "true" : "false"}"
+                    data-battery-field-option="${this._escapeHtml(key)}"
+                    data-battery-field-value="${this._escapeHtml(optionValue)}"
                   >
                     ${this._escapeHtml(option.label)}
                   </button>
@@ -3599,23 +4102,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const setupStatus = mappedCount
       ? `Loaded ${mappedCount} saved forecast mapping${mappedCount === 1 ? "" : "s"}. Discovering ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`
       : `No saved forecast mappings yet. Discovered ${discoveredCount} matching HA sensor${discoveredCount === 1 ? "" : "s"}.`;
-    const saveStatus = this._forecastSaveStatus
+    const forecastOpen = this._forecastSetupExpanded !== false;
+    const forecastSaveStatus = this._forecastSaveStatus
       ? `<div class="${this._forecastSaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._forecastSaveStatus.message)}</div>`
       : "";
-    const providerProfiles = [
-      {
-        label: "Forecast.Solar",
-        description: "Native HA solar forecast entities with today, tomorrow, hourly, remaining, power, and peak values.",
-      },
-      {
-        label: "Solcast",
-        description: "A solar forecast integration that can feed the same mapped HEM fields.",
-      },
-      {
-        label: "Weather or template sensors",
-        description: "Any integration that exposes forecast values through helpers or template sensors.",
-      },
-    ];
+    const batteryState = this._batteryMappingState();
+    const batteryProvider = String(batteryState.stored?.provider || batteryState.provider || "bytewatt");
+    const batteryMappedCount = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS
+      .filter((item) => String(batteryState.stored?.[item.slot] || "").trim())
+      .length;
+    const batteryDiscoveredCount = Object.values(batteryState.candidates).filter(Boolean).length || 0;
+    const batterySetupStatus = batteryMappedCount
+      ? `Loaded ${batteryMappedCount} saved battery mapping${batteryMappedCount === 1 ? "" : "s"}. Discovering ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`
+      : `No saved battery mappings yet. Discovered ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`;
+    const batteryOpen = this._batterySetupExpanded === true;
+    const batterySaveStatus = this._batterySaveStatus
+      ? `<div class="${this._batterySaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._batterySaveStatus.message)}</div>`
+      : "";
     return `
       <section class="forecast">
         <article class="panel-card panel-card--wide forecast__hero">
@@ -3636,14 +4139,16 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <article class="panel-card panel-card--wide forecast__mapping-card">
           <div class="panel-card__header">
             <h2>Solar Forecast sensors.</h2>
-            <span>Workflow</span>
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-setup-toggle="forecast">
+              ${forecastOpen ? "Close Solar Forecast Sensors" : "Edit Solar Forecast Sensors"}
+            </button>
           </div>
-          <p>
-            Pick the provider profile, then choose the matching Home Assistant sensor entities.
-            Saved or configured mappings are shown immediately, even while HA is still
-            refreshing the entity list in the background.
-          </p>
-          <div class="forecast-form">
+          <div class="forecast-form" ${forecastOpen ? "" : "hidden"}>
+            <p>
+              Pick the provider profile, then choose the matching Home Assistant sensor entities.
+              Saved or configured mappings are shown immediately, even while HA is still
+              refreshing the entity list in the background.
+            </p>
             ${this._forecastSelectField("forecast_provider", "Provider", [
               { value: "none", label: "No provider" },
               { value: "forecast_solar", label: "Forecast.Solar" },
@@ -3656,8 +4161,39 @@ class HomeEnergyManagerPanel extends HTMLElement {
               this._forecastEntityOptions(forecastState),
               this._forecastSelectedItem(forecastState, item.slot)?.entity_id || "",
             )).join("")}
-            <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
-            ${saveStatus}
+            <div class="setup-actions">
+              <button class="forecast-save" type="button" data-forecast-save>Save Forecast Mapping</button>
+              ${forecastSaveStatus}
+            </div>
+          </div>
+        </article>
+
+        <article class="panel-card panel-card--wide forecast__mapping-card">
+          <div class="panel-card__header">
+            <h2>Battery sensors.</h2>
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-setup-toggle="battery">
+              ${batteryOpen ? "Close Battery Sensor Mapping" : "Edit Battery Sensor Mapping"}
+            </button>
+          </div>
+          <div class="forecast-form" ${batteryOpen ? "" : "hidden"}>
+            <p>
+              Map the battery provider-specific sensors used across the Battery page. The defaults
+              auto-fill from live Home Assistant entities, but you can override any field before saving.
+            </p>
+            ${this._batterySelectField("battery_provider", "Provider", [
+              { value: "bytewatt", label: "ByteWatt" },
+              { value: "other", label: "Other / template" },
+            ], batteryProvider)}
+            ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => this._batterySelectField(
+              item.configKey,
+              item.label,
+              this._batteryEntityOptions(batteryState),
+              this._batterySelectedItem(batteryState, item.slot)?.entity_id || "",
+            )).join("")}
+            <div class="setup-actions">
+              <button class="forecast-save" type="button" data-battery-save>Save Battery Mapping</button>
+              ${batterySaveStatus}
+            </div>
           </div>
         </article>
       </section>
@@ -4627,11 +5163,31 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._setPage(pageButton.dataset.page);
           return true;
         }
+        const setupToggle = path.find((node) => node?.dataset?.setupToggle !== undefined);
+        if (setupToggle) {
+          event.preventDefault();
+          event.stopPropagation();
+          const target = setupToggle.dataset.setupToggle || "";
+          if (target === "forecast") {
+            this._forecastSetupExpanded = !this._forecastSetupExpanded;
+          } else if (target === "battery") {
+            this._batterySetupExpanded = !this._batterySetupExpanded;
+          }
+          this._render();
+          return true;
+        }
         const forecastSave = path.find((node) => node?.dataset?.forecastSave !== undefined);
         if (forecastSave) {
           event.preventDefault();
           event.stopPropagation();
           this._saveForecastSetup();
+          return true;
+        }
+        const batterySave = path.find((node) => node?.dataset?.batterySave !== undefined);
+        if (batterySave) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._saveBatterySetup();
           return true;
         }
         const forecastOption = path.find((node) => node?.dataset?.forecastFieldOption !== undefined);
@@ -4641,6 +5197,16 @@ class HomeEnergyManagerPanel extends HTMLElement {
           this._saveForecastField(
             forecastOption.dataset.forecastFieldOption,
             forecastOption.dataset.forecastFieldValue || "",
+          );
+          return true;
+        }
+        const batteryOption = path.find((node) => node?.dataset?.batteryFieldOption !== undefined);
+        if (batteryOption) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._saveBatteryField(
+            batteryOption.dataset.batteryFieldOption,
+            batteryOption.dataset.batteryFieldValue || "",
           );
           return true;
         }
@@ -4654,6 +5220,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
           } else {
             this._openForecastSelector(key);
           }
+          return true;
+        }
+        const batteryToggle = path.find((node) => node?.dataset?.batteryFieldToggle !== undefined);
+        if (batteryToggle) {
+          event.preventDefault();
+          event.stopPropagation();
+          const key = batteryToggle.dataset.batteryFieldToggle || "";
+          if (this._batterySelectorOpenKey === key) {
+            this._batterySelectorOpenKey = "";
+          } else {
+            this._batterySelectorOpenKey = key;
+          }
+          this._render();
           return true;
         }
         return false;

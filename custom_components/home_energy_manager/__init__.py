@@ -50,6 +50,24 @@ from .const import (
     CONF_FORECAST_PEAK_TODAY_ENTITY,
     CONF_FORECAST_PEAK_TOMORROW_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
+    CONF_BATTERY_PROVIDER,
+    CONF_BATTERY_PERCENTAGE_ENTITY,
+    CONF_BATTERY_POWER_ENTITY,
+    CONF_BATTERY_TEMPERATURE_ENTITY,
+    CONF_BATTERY_VOLTAGE_ENTITY,
+    CONF_BATTERY_CURRENT_ENTITY,
+    CONF_BATTERY_CYCLES_ENTITY,
+    CONF_BATTERY_STATE_OF_HEALTH_ENTITY,
+    CONF_BATTERY_USABLE_CAPACITY_ENTITY,
+    CONF_BATTERY_REMAINING_CAPACITY_ENTITY,
+    CONF_BATTERY_STATE_OF_HEALTH_PERCENT_ENTITY,
+    CONF_BATTERY_WEAR_COST_ENTITY,
+    CONF_TOTAL_BATTERY_CHARGE_ENTITY,
+    CONF_TOTAL_BATTERY_DISCHARGE_ENTITY,
+    CONF_PV_CHARGING_BATTERY_ENTITY,
+    CONF_GRID_BATTERY_CHARGE_ENTITY,
+    CONF_BATTERY_CHARGED_TODAY_ENTITY,
+    CONF_BATTERY_DISCHARGED_TODAY_ENTITY,
     CONF_PANEL_THEME,
     CONF_RECOVERY_ENABLED,
     CONF_HEARTBEAT_INTERVAL,
@@ -96,6 +114,7 @@ from .const import (
     SERVICE_PRICING_REMOVE_RECORD,
     SERVICE_SET_PANEL_THEME,
     SERVICE_SET_FORECAST_MAPPING,
+    SERVICE_SET_BATTERY_MAPPING,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -152,7 +171,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=264"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=265"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -176,6 +195,24 @@ PANEL_CONFIG = {
     "forecast_peak_today_entity": "",
     "forecast_peak_tomorrow_entity": "",
     "solar_forecast_entity": "",
+    "battery_provider": "bytewatt",
+    "battery_percentage_entity": "",
+    "battery_power_entity": "",
+    "battery_temperature_entity": "",
+    "battery_voltage_entity": "",
+    "battery_current_entity": "",
+    "battery_cycles_entity": "",
+    "battery_state_of_health_entity": "",
+    "battery_usable_capacity_entity": "",
+    "battery_remaining_capacity_entity": "",
+    "battery_state_of_health_percent_entity": "",
+    "battery_wear_cost_entity": "",
+    "total_battery_charge_entity": "",
+    "total_battery_discharge_entity": "",
+    "pv_charging_battery_entity": "",
+    "grid_battery_charge_entity": "",
+    "battery_charged_today_entity": "",
+    "battery_discharged_today_entity": "",
 }
 PANEL_CUSTOM_CONFIG = {
     "_panel_custom": {
@@ -204,6 +241,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         _register_panel_theme_service(hass)
     if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
         _register_forecast_mapping_service(hass)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
+        _register_battery_mapping_service(hass)
     return True
 
 
@@ -237,6 +276,23 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_FORECAST_PEAK_TODAY_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TODAY_ENTITY, ""),
             CONF_FORECAST_PEAK_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY, ""),
             CONF_SOLAR_FORECAST_ENTITY: entry.data.get(CONF_SOLAR_FORECAST_ENTITY, ""),
+            CONF_BATTERY_PROVIDER: entry.data.get(CONF_BATTERY_PROVIDER, "bytewatt"),
+            CONF_BATTERY_POWER_ENTITY: entry.data.get(CONF_BATTERY_POWER_ENTITY, ""),
+            CONF_BATTERY_TEMPERATURE_ENTITY: entry.data.get(CONF_BATTERY_TEMPERATURE_ENTITY, ""),
+            CONF_BATTERY_VOLTAGE_ENTITY: entry.data.get(CONF_BATTERY_VOLTAGE_ENTITY, ""),
+            CONF_BATTERY_CURRENT_ENTITY: entry.data.get(CONF_BATTERY_CURRENT_ENTITY, ""),
+            CONF_BATTERY_CYCLES_ENTITY: entry.data.get(CONF_BATTERY_CYCLES_ENTITY, ""),
+            CONF_BATTERY_STATE_OF_HEALTH_ENTITY: entry.data.get(CONF_BATTERY_STATE_OF_HEALTH_ENTITY, ""),
+            CONF_BATTERY_USABLE_CAPACITY_ENTITY: entry.data.get(CONF_BATTERY_USABLE_CAPACITY_ENTITY, ""),
+            CONF_BATTERY_REMAINING_CAPACITY_ENTITY: entry.data.get(CONF_BATTERY_REMAINING_CAPACITY_ENTITY, ""),
+            CONF_BATTERY_STATE_OF_HEALTH_PERCENT_ENTITY: entry.data.get(CONF_BATTERY_STATE_OF_HEALTH_PERCENT_ENTITY, ""),
+            CONF_BATTERY_WEAR_COST_ENTITY: entry.data.get(CONF_BATTERY_WEAR_COST_ENTITY, ""),
+            CONF_TOTAL_BATTERY_CHARGE_ENTITY: entry.data.get(CONF_TOTAL_BATTERY_CHARGE_ENTITY, ""),
+            CONF_TOTAL_BATTERY_DISCHARGE_ENTITY: entry.data.get(CONF_TOTAL_BATTERY_DISCHARGE_ENTITY, ""),
+            CONF_PV_CHARGING_BATTERY_ENTITY: entry.data.get(CONF_PV_CHARGING_BATTERY_ENTITY, ""),
+            CONF_GRID_BATTERY_CHARGE_ENTITY: entry.data.get(CONF_GRID_BATTERY_CHARGE_ENTITY, ""),
+            CONF_BATTERY_CHARGED_TODAY_ENTITY: entry.data.get(CONF_BATTERY_CHARGED_TODAY_ENTITY, ""),
+            CONF_BATTERY_DISCHARGED_TODAY_ENTITY: entry.data.get(CONF_BATTERY_DISCHARGED_TODAY_ENTITY, ""),
             "theme": entry.data.get(CONF_PANEL_THEME, PANEL_CONFIG["theme"]),
             **PANEL_CUSTOM_CONFIG,
         },
@@ -357,6 +413,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _register_panel_theme_service(hass)
         if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
             _register_forecast_mapping_service(hass)
+        if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
+            _register_battery_mapping_service(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -915,6 +973,71 @@ def _register_forecast_mapping_service(hass: HomeAssistant) -> None:
     )
 
 
+async def _handle_set_battery_mapping(hass: HomeAssistant, call: ServiceCall) -> None:
+    entry_id = _resolve_entry_id(hass, call)
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None:
+        raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+    new_data = {
+        **entry.data,
+        CONF_BATTERY_PROVIDER: str(call.data.get(CONF_BATTERY_PROVIDER) or "bytewatt").strip() or "bytewatt",
+        CONF_BATTERY_PERCENTAGE_ENTITY: str(call.data.get(CONF_BATTERY_PERCENTAGE_ENTITY) or "").strip(),
+        CONF_BATTERY_POWER_ENTITY: str(call.data.get(CONF_BATTERY_POWER_ENTITY) or "").strip(),
+        CONF_BATTERY_TEMPERATURE_ENTITY: str(call.data.get(CONF_BATTERY_TEMPERATURE_ENTITY) or "").strip(),
+        CONF_BATTERY_VOLTAGE_ENTITY: str(call.data.get(CONF_BATTERY_VOLTAGE_ENTITY) or "").strip(),
+        CONF_BATTERY_CURRENT_ENTITY: str(call.data.get(CONF_BATTERY_CURRENT_ENTITY) or "").strip(),
+        CONF_BATTERY_CYCLES_ENTITY: str(call.data.get(CONF_BATTERY_CYCLES_ENTITY) or "").strip(),
+        CONF_BATTERY_STATE_OF_HEALTH_ENTITY: str(call.data.get(CONF_BATTERY_STATE_OF_HEALTH_ENTITY) or "").strip(),
+        CONF_BATTERY_USABLE_CAPACITY_ENTITY: str(call.data.get(CONF_BATTERY_USABLE_CAPACITY_ENTITY) or "").strip(),
+        CONF_BATTERY_REMAINING_CAPACITY_ENTITY: str(call.data.get(CONF_BATTERY_REMAINING_CAPACITY_ENTITY) or "").strip(),
+        CONF_BATTERY_STATE_OF_HEALTH_PERCENT_ENTITY: str(call.data.get(CONF_BATTERY_STATE_OF_HEALTH_PERCENT_ENTITY) or "").strip(),
+        CONF_BATTERY_WEAR_COST_ENTITY: str(call.data.get(CONF_BATTERY_WEAR_COST_ENTITY) or "").strip(),
+        CONF_TOTAL_BATTERY_CHARGE_ENTITY: str(call.data.get(CONF_TOTAL_BATTERY_CHARGE_ENTITY) or "").strip(),
+        CONF_TOTAL_BATTERY_DISCHARGE_ENTITY: str(call.data.get(CONF_TOTAL_BATTERY_DISCHARGE_ENTITY) or "").strip(),
+        CONF_PV_CHARGING_BATTERY_ENTITY: str(call.data.get(CONF_PV_CHARGING_BATTERY_ENTITY) or "").strip(),
+        CONF_GRID_BATTERY_CHARGE_ENTITY: str(call.data.get(CONF_GRID_BATTERY_CHARGE_ENTITY) or "").strip(),
+        CONF_BATTERY_CHARGED_TODAY_ENTITY: str(call.data.get(CONF_BATTERY_CHARGED_TODAY_ENTITY) or "").strip(),
+        CONF_BATTERY_DISCHARGED_TODAY_ENTITY: str(call.data.get(CONF_BATTERY_DISCHARGED_TODAY_ENTITY) or "").strip(),
+    }
+    hass.config_entries.async_update_entry(entry, data=new_data)
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _register_battery_mapping_service(hass: HomeAssistant) -> None:
+    if hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
+        return
+
+    async def handle_set_battery_mapping(call: ServiceCall) -> None:
+        await _handle_set_battery_mapping(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_BATTERY_MAPPING,
+        handle_set_battery_mapping,
+        schema=vol.Schema({
+            vol.Required(CONF_BATTERY_PROVIDER): cv.string,
+            vol.Optional(CONF_BATTERY_PERCENTAGE_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_POWER_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_TEMPERATURE_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_VOLTAGE_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_CURRENT_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_CYCLES_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_STATE_OF_HEALTH_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_USABLE_CAPACITY_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_REMAINING_CAPACITY_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_STATE_OF_HEALTH_PERCENT_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_WEAR_COST_ENTITY): cv.string,
+            vol.Optional(CONF_TOTAL_BATTERY_CHARGE_ENTITY): cv.string,
+            vol.Optional(CONF_TOTAL_BATTERY_DISCHARGE_ENTITY): cv.string,
+            vol.Optional(CONF_PV_CHARGING_BATTERY_ENTITY): cv.string,
+            vol.Optional(CONF_GRID_BATTERY_CHARGE_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_CHARGED_TODAY_ENTITY): cv.string,
+            vol.Optional(CONF_BATTERY_DISCHARGED_TODAY_ENTITY): cv.string,
+            vol.Optional(ATTR_ENTRY_ID): cv.string,
+        }),
+    )
+
+
 async def _submit_battery_service(
     hass: HomeAssistant, call: ServiceCall, **fields: Any
 ) -> bool:
@@ -1451,6 +1574,7 @@ def _register_services(hass: HomeAssistant) -> None:
     )
     _register_panel_theme_service(hass)
     _register_forecast_mapping_service(hass)
+    _register_battery_mapping_service(hass)
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_UPSERT_RULE, handle_pricing_upsert_rule,
         schema=_pricing_rule_schema,

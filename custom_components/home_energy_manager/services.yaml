@@ -233,6 +233,146 @@ update_battery_settings:
       selector:
         text:
 
+set_battery_mapping:
+  name: Set Battery Mapping
+  description: Persist the battery provider and mapped Home Assistant battery sensor entities.
+  fields:
+    battery_provider:
+      name: Battery Provider
+      description: Provider profile selected by the user, such as bytewatt.
+      required: true
+      selector:
+        select:
+          options:
+            - "bytewatt"
+            - "other"
+    battery_percentage_entity:
+      name: Battery Percentage Entity
+      description: Sensor for battery state of charge or percentage.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_power_entity:
+      name: Battery Power Entity
+      description: Sensor for battery power.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_temperature_entity:
+      name: Battery Temperature Entity
+      description: Sensor for battery temperature.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_voltage_entity:
+      name: Battery Voltage Entity
+      description: Sensor for battery voltage.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_current_entity:
+      name: Battery Current Entity
+      description: Sensor for battery current.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_cycles_entity:
+      name: Battery Cycles Entity
+      description: Sensor for battery cycle count.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_state_of_health_entity:
+      name: Battery State of Health Entity
+      description: Sensor for battery state of health.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_usable_capacity_entity:
+      name: Battery Usable Capacity Entity
+      description: Sensor for battery usable capacity.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_remaining_capacity_entity:
+      name: Battery Remaining Capacity Entity
+      description: Sensor for battery remaining capacity.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_state_of_health_percent_entity:
+      name: Battery State of Health Percent Entity
+      description: Sensor for battery state of health percentage.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_wear_cost_entity:
+      name: Battery Wear Cost Entity
+      description: Sensor for battery wear cost.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    total_battery_charge_entity:
+      name: Total Battery Charge Entity
+      description: Sensor for total battery charge.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    total_battery_discharge_entity:
+      name: Total Battery Discharge Entity
+      description: Sensor for total battery discharge.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    pv_charging_battery_entity:
+      name: PV Charging Battery Entity
+      description: Sensor for PV charging battery.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    grid_battery_charge_entity:
+      name: Grid Battery Charge Entity
+      description: Sensor for grid charging battery.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_charged_today_entity:
+      name: Battery Charged Today Entity
+      description: Sensor for battery charged today.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    battery_discharged_today_entity:
+      name: Battery Discharged Today Entity
+      description: Sensor for battery discharged today.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
 start_force_charge:
   name: Start Force Charge
   description: Start immediate battery charging using the portal's force-charge endpoint.

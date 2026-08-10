@@ -790,6 +790,21 @@
   margin-top: 16px;
 }
 
+.setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.setup-actions .pricing-loading,
+.setup-actions .pricing-alert {
+  margin: 0;
+  min-width: min(100%, 340px);
+  flex: 1 1 280px;
+}
+
 .forecast-field {
   display: grid;
   gap: 8px;
