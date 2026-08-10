@@ -2,7 +2,7 @@ import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-report-card.js?v=302";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "270";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "271";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -216,6 +216,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_percentage_entity",
     label: "Battery percentage",
     fallbackKey: "battery_percentage",
+    sourceKey: "soc",
     patterns: [
       /(^|\.)battery_?(soc|state_of_charge|percentage|charge|level)$/i,
       /(^|\.).*(battery).*(soc|state of charge|percentage|charge|level)/i,
@@ -226,6 +227,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_power_entity",
     label: "Battery power",
     fallbackKey: "battery_power",
+    sourceKey: "pbat",
     patterns: [
       /(^|\.)battery_?power$/i,
       /(^|\.).*(battery).*(power|charge power|discharge power)/i,
@@ -236,6 +238,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_temperature_entity",
     label: "Battery temperature",
     fallbackKey: "battery_temperature",
+    sourceKey: "battery_temperature",
     patterns: [
       /(^|\.)battery_?temperature$/i,
       /(^|\.).*(battery).*(temperature|temp)/i,
@@ -246,6 +249,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_voltage_entity",
     label: "Battery voltage",
     fallbackKey: "battery_voltage",
+    sourceKey: "battery_voltage",
     patterns: [
       /(^|\.)battery_?voltage$/i,
       /(^|\.).*(battery).*(voltage)/i,
@@ -256,6 +260,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_current_entity",
     label: "Battery current",
     fallbackKey: "battery_current",
+    sourceKey: "battery_current",
     patterns: [
       /(^|\.)battery_?current$/i,
       /(^|\.).*(battery).*(current)/i,
@@ -266,6 +271,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_cycles_entity",
     label: "Battery cycles",
     fallbackKey: "battery_cycles",
+    sourceKey: "battery_cycles",
     patterns: [
       /(^|\.)battery_?cycles$/i,
       /(^|\.).*(battery).*(cycle)/i,
@@ -276,6 +282,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_state_of_health_entity",
     label: "Battery state of health",
     fallbackKey: "battery_state_of_health",
+    sourceKey: "battery_state_of_health",
     patterns: [
       /(^|\.)battery_?(state_?of_?health|soh)$/i,
       /(^|\.).*(battery).*(state of health|soh)/i,
@@ -286,6 +293,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_usable_capacity_entity",
     label: "Battery usable capacity",
     fallbackKey: "battery_usable_capacity",
+    sourceKey: "battery_usable_capacity",
     patterns: [
       /(^|\.)battery_?(usable_?capacity|capacity_?usable)$/i,
       /(^|\.).*(battery).*(usable capacity|capacity usable)/i,
@@ -296,6 +304,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_remaining_capacity_entity",
     label: "Battery remaining capacity",
     fallbackKey: "battery_remaining_capacity",
+    sourceKey: "battery_remaining_capacity",
     patterns: [
       /(^|\.)battery_?(remaining_?capacity|capacity_?remaining)$/i,
       /(^|\.).*(battery).*(remaining capacity|capacity remaining)/i,
@@ -306,6 +315,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_state_of_health_percent_entity",
     label: "Battery state of health %",
     fallbackKey: "battery_state_of_health_percent",
+    sourceKey: "battery_state_of_health_percent",
     patterns: [
       /(^|\.)battery_?(state_?of_?health_?percent|soh_?percent)$/i,
       /(^|\.).*(battery).*(state of health percent|soh percent|soh %)/i,
@@ -316,6 +326,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_wear_cost_entity",
     label: "Battery wear cost",
     fallbackKey: "battery_wear_cost",
+    sourceKey: "battery_wear_cost",
     patterns: [
       /(^|\.)battery_?wear_?cost$/i,
       /(^|\.).*(battery).*(wear cost)/i,
@@ -326,6 +337,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "total_battery_charge_entity",
     label: "Total battery charge",
     fallbackKey: "total_battery_charge",
+    sourceKey: "Total_Battery_Charge",
     patterns: [
       /(^|\.)total_?battery_?charge$/i,
       /(^|\.).*(battery).*(total charge|charge total)/i,
@@ -336,6 +348,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "total_battery_discharge_entity",
     label: "Total battery discharge",
     fallbackKey: "total_battery_discharge",
+    sourceKey: "Total_Battery_Discharge",
     patterns: [
       /(^|\.)total_?battery_?discharge$/i,
       /(^|\.).*(battery).*(total discharge|discharge total)/i,
@@ -346,6 +359,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "pv_charging_battery_entity",
     label: "PV charging battery",
     fallbackKey: "pv_charging_battery",
+    sourceKey: "PV_Charging_Battery",
     patterns: [
       /(^|\.)pv_?charging_?battery$/i,
       /(^|\.).*(pv).*(battery).*?(charging)/i,
@@ -356,6 +370,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "grid_battery_charge_entity",
     label: "Grid battery charge",
     fallbackKey: "grid_battery_charge",
+    sourceKey: "Grid_Based_Battery_Charge",
     patterns: [
       /(^|\.)grid_?battery_?charge$/i,
       /(^|\.).*(grid).*(battery).*?(charge)/i,
@@ -366,6 +381,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_charged_today_entity",
     label: "Battery charged today",
     fallbackKey: "battery_charged_today",
+    sourceKey: "Battery_Charged_Today",
     patterns: [
       /(^|\.)battery_?charged_?today$/i,
       /(^|\.).*(battery).*(charged today|today charged)/i,
@@ -376,6 +392,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
     configKey: "battery_discharged_today_entity",
     label: "Battery discharged today",
     fallbackKey: "battery_discharged_today",
+    sourceKey: "Battery_Discharged_Today",
     patterns: [
       /(^|\.)battery_?discharged_?today$/i,
       /(^|\.).*(battery).*(discharged today|today discharged)/i,
@@ -1932,6 +1949,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       default:
         return "ByteWatt Web";
     }
+  }
+
+  _batteryProviderSourceLabel(provider, item) {
+    return `${this._batteryProviderLabel(provider)} data.${item.sourceKey || item.fallbackKey} -> HEM ${item.label}`;
   }
 
   _batteryFieldStoredValue(provider, item, stored = {}, configured = {}) {
@@ -4233,7 +4254,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               this._batterySelectedItem(batteryState, item.slot)?.entity_id || "",
               batteryDefaultsLocked,
               "",
-              batteryDefaultsLocked ? `${this._batteryProviderLabel(batteryProvider)} -> HEM ${item.label}` : "",
+              batteryDefaultsLocked ? this._batteryProviderSourceLabel(batteryProvider, item) : "",
             )).join("")}
           </div>
           <div class="setup-actions">
