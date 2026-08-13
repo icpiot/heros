@@ -14,7 +14,8 @@ def _load_select_module():
         pass
 
     class _CoordinatorEntity:
-        pass
+        def __init__(self, coordinator):
+            self.coordinator = coordinator
 
     class _ConfigEntry:
         pass
@@ -59,9 +60,14 @@ def _load_select_module():
     settings_module = types.ModuleType("custom_components.home_energy_manager.settings_manager")
     settings_module.SettingsManager = object
 
-    topology_module = types.ModuleType("custom_components.home_energy_manager.topology")
-    topology_module.ByteWattScope = object
-    topology_module.DiscoveredInverter = object
+    topology_path = ROOT / "custom_components" / "home_energy_manager" / "topology.py"
+    topology_spec = importlib.util.spec_from_file_location(
+        "custom_components.home_energy_manager.topology",
+        topology_path,
+    )
+    topology_module = importlib.util.module_from_spec(topology_spec)
+    sys.modules[topology_spec.name] = topology_module
+    topology_spec.loader.exec_module(topology_module)
 
     reporting_module = types.ModuleType("custom_components.home_energy_manager.reporting")
     reporting_module.build_reporting_payload = lambda battery_data, aggregate, label: {
@@ -143,3 +149,119 @@ def test_reporting_payload_keeps_daily_chart_series():
     assert power_diagram["series"]["bat"] == [10, 11]
     assert power_diagram["series"]["solar"] == [2, 5]
     assert power_diagram["summary"]["soc"] == 48.5
+
+
+def test_direct_api_summary_keeps_mppt_and_power_source_fields():
+    select_module = _load_select_module()
+
+    summary = select_module._direct_api_summary(
+        {
+            "soc": 60.36,
+            "pbat": 531,
+            "pload": 531,
+            "pgrid": 0,
+            "ppv": 0,
+            "ppv1": 120,
+            "ppv2": 140,
+            "ppv3": None,
+            "ppv4": 0,
+            "powerSource": "Solar",
+        }
+    )
+
+    assert summary == {
+        "soc": 60.36,
+        "pbat": 531,
+        "pload": 531,
+        "pgrid": 0,
+        "ppv": 0,
+        "ppv1": 120,
+        "ppv2": 140,
+        "ppv3": None,
+        "ppv4": 0,
+        "powerSource": "Solar",
+    }
+
+
+def test_direct_api_live_battery_shape_keeps_per_battery_mppt_fields():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "select.py"
+    ).read_text(encoding="utf-8")
+
+    for field in (
+        '"ppv1": battery.get("ppv1")',
+        '"ppv2": battery.get("ppv2")',
+        '"ppv3": battery.get("ppv3")',
+        '"ppv4": battery.get("ppv4")',
+        '"powerSource": battery.get("power_source")',
+    ):
+        assert field in source
+
+
+def test_history_hint_exposes_inventory_and_scope_summaries():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "select.py"
+    ).read_text(encoding="utf-8")
+
+    assert '"inventory_scopes"' in source
+    assert '"scope_summaries"' in source
+    assert '"scope_key": "all"' in source
+
+
+def test_live_battery_summary_keeps_per_battery_mppt_source_fields():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "coordinator.py"
+    ).read_text(encoding="utf-8")
+
+    for field in (
+        '"ppv1": _float_or_none(live_data.get("ppv1"))',
+        '"ppv2": _float_or_none(live_data.get("ppv2"))',
+        '"ppv3": _float_or_none(live_data.get("ppv3"))',
+        '"ppv4": _float_or_none(live_data.get("ppv4"))',
+        '"power_source": live_data.get("powerSource")',
+    ):
+        assert field in source
+
+
+def test_settings_target_options_merge_live_batteries_when_discovery_is_incomplete():
+    select_module = _load_select_module()
+    discovered = select_module.DiscoveredInverter(
+        system_id="sys-1",
+        sys_sn="25000SB244W00011",
+    )
+    hass = types.SimpleNamespace(data={
+        "home_energy_manager": {
+            "entry-1": {
+                "inverters": [discovered],
+            }
+        }
+    })
+    coordinator = types.SimpleNamespace(data={
+        "live_battery_power": {
+            "batteries": [
+                {
+                    "label": "25000SB244W00011",
+                    "system_id": "sys-1",
+                    "sys_sn": "25000SB244W00011",
+                },
+                {
+                    "label": "25000SB285W00047",
+                    "system_id": "sys-2",
+                    "sys_sn": "25000SB285W00047",
+                },
+            ]
+        }
+    })
+    manager = types.SimpleNamespace(
+        current_settings_target_id="",
+        current_settings_target_sys_sn="All",
+    )
+    config_entry = types.SimpleNamespace(entry_id="entry-1")
+
+    entity = select_module.ByteWattSettingsTargetSelect(hass, coordinator, config_entry, manager)
+
+    assert entity.options == [
+        "All systems",
+        "25000SB244W00011",
+        "25000SB285W00047",
+    ]

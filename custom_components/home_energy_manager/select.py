@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN
 from .const import CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
 from .coordinator import ByteWattDataUpdateCoordinator
-from .reporting import build_reporting_payload
+from .reporting import ByteWattReportHistory, build_reporting_payload
 from .settings_manager import SettingsManager
 from .topology import ByteWattScope, DiscoveredInverter
 
@@ -48,6 +48,23 @@ def _compact_summary(value: dict[str, Any] | None, keys: list[str]) -> dict[str,
     """Keep only a small set of keys for recorder-safe entity attributes."""
     source = value or {}
     return {key: source.get(key) for key in keys if key in source}
+
+
+def _direct_api_summary(value: dict[str, Any] | None) -> dict[str, Any]:
+    """Expose the direct ByteWatt real-time fields used by the setup page."""
+    source = value or {}
+    return {
+        "soc": source.get("soc"),
+        "pbat": source.get("pbat"),
+        "pload": source.get("pload"),
+        "pgrid": source.get("pgrid"),
+        "ppv": source.get("ppv"),
+        "ppv1": source.get("ppv1"),
+        "ppv2": source.get("ppv2"),
+        "ppv3": source.get("ppv3"),
+        "ppv4": source.get("ppv4"),
+        "powerSource": source.get("powerSource"),
+    }
 
 
 def _history_backfill_days(config_entry: ConfigEntry) -> int:
@@ -103,12 +120,56 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "model": DEVICE_MODEL,
         }
 
+    def _live_inventory(self) -> list[DiscoveredInverter]:
+        coordinator_data = self.coordinator.data or {}
+        live_batteries = coordinator_data.get("live_battery_power", {}).get("batteries", [])
+        if live_batteries:
+            recovered: list[DiscoveredInverter] = []
+            seen: set[tuple[str, str]] = set()
+            for index, battery in enumerate(live_batteries, start=1):
+                system_id = str(battery.get("system_id", "") or "").strip()
+                sys_sn = str(battery.get("sys_sn", "") or "").strip()
+                label = str(battery.get("label", "") or "").strip()
+                if not label:
+                    label = sys_sn or system_id or f"Battery {index}"
+                remark = label if label not in {sys_sn, system_id} else ""
+                key = (system_id, sys_sn or label)
+                if key in seen:
+                    continue
+                seen.add(key)
+                recovered.append(
+                    DiscoveredInverter(
+                        system_id=system_id,
+                        sys_sn=sys_sn,
+                        remark=remark,
+                    )
+                )
+            if recovered:
+                return recovered
+        return []
+
     def _inventory(self) -> list[DiscoveredInverter]:
         inventory = self._hass.data[DOMAIN][self._config_entry.entry_id].get("inverters", [])
-        if inventory:
-            return inventory
+        live_inventory = self._live_inventory()
+        merged: dict[tuple[str, str], DiscoveredInverter] = {}
+        for inverter in live_inventory:
+            key = (
+                str(inverter.system_id or "").strip(),
+                str(inverter.sys_sn or inverter.display_name).strip(),
+            )
+            merged[key] = inverter
+        for inverter in inventory:
+            key = (
+                str(inverter.system_id or "").strip(),
+                str(inverter.sys_sn or inverter.display_name).strip(),
+            )
+            merged.setdefault(key, inverter)
+        if merged:
+            return list(merged.values())
         current_id = self._manager.current_settings_target_id
         current_sys_sn = self._manager.current_settings_target_sys_sn
+        if not current_id and current_sys_sn == "All":
+            return []
         if current_id or current_sys_sn:
             return [DiscoveredInverter(system_id=current_id, sys_sn=current_sys_sn)]
         return []
@@ -212,6 +273,75 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "backfill_years": backfill_years,
             "backfill_days": _history_backfill_days(self._config_entry),
         }
+        inventory_scopes: list[dict[str, Any]] = [{
+            "scope_key": "all",
+            "label": "All systems",
+            "aggregate": True,
+        }]
+        seen_scope_keys = {"all"}
+        for inverter in self._inventory():
+            scope_key = str(inverter.sys_sn or inverter.system_id or "").strip()
+            if not scope_key or scope_key in seen_scope_keys:
+                continue
+            seen_scope_keys.add(scope_key)
+            inventory_scopes.append({
+                "scope_key": scope_key,
+                "label": inverter.display_name,
+                "aggregate": False,
+            })
+        history_scope_key = str(history_hint["current_scope"] or "all").strip() or "all"
+        history_summary = {}
+        current_scope_label = (
+            selected_scope.label
+            if selected_scope is not None and not selected_scope.aggregate
+            else current.display_name
+            if current is not None
+            else history_scope_key
+        )
+        if history_scope_key not in seen_scope_keys and history_scope_key != "all":
+            inventory_scopes.append({
+                "scope_key": history_scope_key,
+                "label": str(current_scope_label or history_scope_key).strip() or history_scope_key,
+                "aggregate": False,
+            })
+        history_hint["inventory_scopes"] = inventory_scopes
+        try:
+            history_store = ByteWattReportHistory(
+                self._hass,
+                self._config_entry.entry_id,
+            )
+            history_summary = history_store.scope_summary_sync(history_scope_key)
+            base_url = str(history_hint.get("base_url") or "").rstrip("/")
+            scope_summaries: list[dict[str, Any]] = []
+            for scope in inventory_scopes:
+                scope_key = str(scope.get("scope_key") or "").strip()
+                if not scope_key:
+                    continue
+                scope_summary = history_store.scope_summary_sync(scope_key)
+                csv_filename = str(scope_summary.get("csv_filename") or "").strip()
+                history_filename = str(scope_summary.get("history_filename") or "").strip()
+                if base_url and csv_filename:
+                    scope_summary["csv_url"] = f"{base_url}/{csv_filename}"
+                if base_url and history_filename:
+                    scope_summary["history_url"] = f"{base_url}/{history_filename}"
+                scope_summaries.append({
+                    "scope_key": scope_key,
+                    "label": str(scope.get("label") or scope_key),
+                    "aggregate": bool(scope.get("aggregate")),
+                    **scope_summary,
+                })
+            history_hint["scope_summaries"] = scope_summaries
+        except Exception:  # noqa: BLE001
+            history_summary = {}
+        if history_summary:
+            base_url = str(history_hint.get("base_url") or "").rstrip("/")
+            csv_filename = str(history_summary.get("csv_filename") or "").strip()
+            history_filename = str(history_summary.get("history_filename") or "").strip()
+            if base_url and csv_filename:
+                history_summary["csv_url"] = f"{base_url}/{csv_filename}"
+            if base_url and history_filename:
+                history_summary["history_url"] = f"{base_url}/{history_filename}"
+            history_hint["scope_summary"] = history_summary
         monitoring_summary = _compact_summary(
             selected_battery if (current is not None or (selected_scope is not None and not selected_scope.aggregate)) else aggregate_battery,
             ["soc", "pbat", "pload", "pgrid", "ppv", "powerSource"],
@@ -248,6 +378,9 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "saved_at": reporting_meta.get("saved_at"),
             "meta": {
                 "saved_at": reporting_meta.get("saved_at"),
+                "source": reporting_meta.get("source") or "backend_reporting",
+                "storage": reporting_meta.get("storage") or "local_archive",
+                "power_diagram_source": reporting_meta.get("power_diagram_source") or "provider_power_diagram",
                 "history": reporting_meta.get("history") or {},
                 "timezone": timezone_name,
                 "timezone_code": getattr(self.coordinator.client, "timezone_code", "") or "",
@@ -259,6 +392,49 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "power_diagram": _compact_summary(reporting.get("power_diagram"), ["date", "meta", "summary", "time", "series"]),
         }
         battery_policy = self._manager.battery_policy_summary()
+        live_battery_power = coordinator_data.get("live_battery_power") or getattr(
+            self.coordinator,
+            "live_battery_power_summary",
+            {},
+        )
+        battery_policy_summary = {
+            "execution_cycle_label": battery_policy.get("execution_cycle_label"),
+            "charge_slot_limit": battery_policy.get("charge_slot_limit"),
+            "discharge_slot_limit": battery_policy.get("discharge_slot_limit"),
+            "force_charge_active": battery_policy.get("force_charge_active"),
+            "live_batteries": live_battery_power.get("batteries", []),
+            "total_charge_rate_w": live_battery_power.get("total_charge_rate_w"),
+            "total_discharge_rate_w": live_battery_power.get("total_discharge_rate_w"),
+            "any_charging": live_battery_power.get("any_charging"),
+            "partial_charging": live_battery_power.get("partial_charging"),
+        }
+        direct_api = {
+            "all_systems": _direct_api_summary(aggregate_battery),
+            "selected_scope": _direct_api_summary(
+                selected_battery
+                if (current is not None or (selected_scope is not None and not selected_scope.aggregate))
+                else aggregate_battery
+            ),
+            "live_batteries": [
+                {
+                    "label": battery.get("label"),
+                    "system_id": battery.get("system_id"),
+                    "sys_sn": battery.get("sys_sn"),
+                    "soc": battery.get("soc"),
+                    "pbat": battery.get("pbat"),
+                    "pload": battery.get("load_w"),
+                    "pgrid": battery.get("grid_w"),
+                    "ppv": battery.get("solar_w"),
+                    "ppv1": battery.get("ppv1"),
+                    "ppv2": battery.get("ppv2"),
+                    "ppv3": battery.get("ppv3"),
+                    "ppv4": battery.get("ppv4"),
+                    "powerSource": battery.get("power_source"),
+                    "forceChargeMode": battery.get("force_charge_mode"),
+                }
+                for battery in live_battery_power.get("batteries", [])
+            ],
+        }
         feedin_policy = self._manager.feedin_policy_summary()
         if current is None:
             return {
@@ -266,12 +442,8 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 "monitoring_summary": monitoring_summary,
                 "reporting": reporting_summary,
                 "history": history_hint,
-                "battery_policy": {
-                    "execution_cycle_label": battery_policy.get("execution_cycle_label"),
-                    "charge_slot_limit": battery_policy.get("charge_slot_limit"),
-                    "discharge_slot_limit": battery_policy.get("discharge_slot_limit"),
-                    "force_charge_active": battery_policy.get("force_charge_active"),
-                },
+                "battery_policy": battery_policy_summary,
+                "direct_api": direct_api,
                 "feedin_policy": {
                     "enabled": feedin_policy.get("enabled"),
                     "cutoff_soc": feedin_policy.get("cutoff_soc"),
@@ -283,12 +455,8 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "monitoring_summary": monitoring_summary,
             "reporting": reporting_summary,
             "history": history_hint,
-            "battery_policy": {
-                "execution_cycle_label": battery_policy.get("execution_cycle_label"),
-                "charge_slot_limit": battery_policy.get("charge_slot_limit"),
-                "discharge_slot_limit": battery_policy.get("discharge_slot_limit"),
-                "force_charge_active": battery_policy.get("force_charge_active"),
-            },
+            "battery_policy": battery_policy_summary,
+            "direct_api": direct_api,
             "feedin_policy": {
                 "enabled": feedin_policy.get("enabled"),
                 "cutoff_soc": feedin_policy.get("cutoff_soc"),

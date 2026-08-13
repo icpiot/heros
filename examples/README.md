@@ -76,6 +76,24 @@ usable.
 This prevents HA refresh renders from closing the menu before the selected value
 is committed and reflected in the visible control.
 
+## Browser Storage Boundary
+
+Use Home Assistant-backed config or files for any setting that should persist
+across browsers or devices, including:
+
+- setup mappings
+- hero mapping overrides
+- pricing configuration
+- policy charge schedules
+
+Browser-local storage should be limited to UI convenience only, such as:
+
+- active page memory
+- selected battery convenience
+- debug toggle visibility
+- settings focus
+- remembered `entry_id` hint
+
 ## Historical Data Workflow
 
 The reporting card is designed to work without a manual download step.
@@ -113,21 +131,21 @@ Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=004
+url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=008
 type: module
 ```
 
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=299
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=304
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=032
+url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=035
 type: module
 ```
 
@@ -155,29 +173,31 @@ To force Home Assistant and the browser to load a fresh custom-card build:
 Example next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=004
+url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=008
 type: module
 ```
 
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=299
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=304
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=032
+url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=035
 type: module
 ```
 
 Current build stamp in this repo:
 
-- Policy card: `003`
-- Reporting card: `012`
-- Debug card: `031`
+- Policy card: `008`
+- Reporting loader URL: `302`
+- Reporting loader import cache-buster: `300`
+- Reporting archive file: `008`
+- Debug card: `035`
 
 ## Defaults
 

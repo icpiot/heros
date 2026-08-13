@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "015";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "016";
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
@@ -121,6 +121,9 @@ class ByteWattReportCard extends HTMLElement {
       saved_at: savedAt,
       meta: {
         saved_at: savedAt,
+        source: "synthesized_live_entities",
+        storage: "ephemeral_live_state",
+        power_diagram_source: "live_entity_synthesis",
         history: this._selectorState()?.attributes?.history || {},
       },
       live,
@@ -381,6 +384,25 @@ class ByteWattReportCard extends HTMLElement {
           ${this._heroChip("Load", this._fmtPower(live.house_consumption))}
           ${this._heroChip("Grid", this._fmtPower(live.grid_power))}
         </div>
+      </section>
+    `;
+  }
+
+  _renderDataSourceBanner(reporting) {
+    const meta = reporting?.meta || {};
+    const source = String(meta.source || "backend_reporting").replaceAll("_", " ");
+    const storage = String(meta.storage || "local_archive").replaceAll("_", " ");
+    const diagramSource = String(meta.power_diagram_source || "provider_power_diagram").replaceAll("_", " ");
+    const isFallback = String(meta.source || "").trim() === "synthesized_live_entities";
+    const toneClass = isFallback ? "data-source-banner--fallback" : "data-source-banner--backend";
+    const helper = isFallback
+      ? "This view is using synthesized live entity values because backend reporting payload is not available yet."
+      : "This view is using the backend reporting payload stored through the HEM report archive flow.";
+    return `
+      <section class="data-source-banner ${toneClass}">
+        <div class="data-source-title">${isFallback ? "Live Fallback Active" : "Backend Reporting Active"}</div>
+        <div class="data-source-copy">${helper}</div>
+        <div class="data-source-meta">Source: ${this._escape(source)} | Storage: ${this._escape(storage)} | Diagram: ${this._escape(diagramSource)}</div>
       </section>
     `;
   }
@@ -855,6 +877,35 @@ class ByteWattReportCard extends HTMLElement {
           background:
             linear-gradient(135deg, rgba(47,117,216,0.06), rgba(116,178,255,0.02)),
             #fff;
+        }
+        .data-source-banner {
+          border-radius:18px;
+          padding:14px 16px;
+          border:1px solid rgba(51, 92, 140, 0.14);
+          background:#fff;
+          box-shadow: 0 10px 20px rgba(20, 44, 78, 0.06);
+          display:grid;
+          gap:6px;
+        }
+        .data-source-banner--backend {
+          background:linear-gradient(180deg, rgba(83, 203, 162, 0.12), rgba(255,255,255,0.96));
+          border-color:rgba(58, 149, 118, 0.22);
+        }
+        .data-source-banner--fallback {
+          background:linear-gradient(180deg, rgba(255, 200, 93, 0.18), rgba(255,255,255,0.96));
+          border-color:rgba(191, 134, 20, 0.28);
+        }
+        .data-source-title {
+          font-size:0.9rem;
+          font-weight:800;
+          color:#17314e;
+          text-transform:uppercase;
+          letter-spacing:0.04em;
+        }
+        .data-source-copy,
+        .data-source-meta {
+          font-size:0.92rem;
+          color:#31435d;
         }
         .hero-main {
           display:grid;
@@ -1368,6 +1419,7 @@ class ByteWattReportCard extends HTMLElement {
           ${
             reporting
               ? `
+            ${this._renderDataSourceBanner(reporting)}
             ${this._renderHeroBanner(reporting)}
             ${this._renderAggregateStrip(reporting)}
             ${this._renderAggregateTable(reporting)}

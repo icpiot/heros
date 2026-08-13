@@ -41,7 +41,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/home-energy-manager/home-energy-manager-panel.js?v=010`
+`/local/community/home-energy-manager/home-energy-manager-panel.js?v=378`
 
 The panel ships with built-in theme presets:
 
@@ -53,6 +53,17 @@ The Home Assistant deploy scripts are manifest-driven:
 [`scripts/ha_deploy.manifest`](C:\Dev\repos\home-energy-manager\scripts\ha_deploy.manifest)
 controls which repo paths are copied into HA, so the same script shape can be
 reused for other projects by swapping the manifest and environment variables.
+For Codex-driven live sync work, prefer the direct Home Assistant config share
+`\\10.0.0.102\config\` rather than relying on a mapped `H:\` drive being
+present in the current session.
+
+### Development workflow
+
+For ongoing Codex-assisted work in this repo:
+
+- checkpoint to git after roughly every 5 meaningful implementation updates
+- keep major UI, reporting, mapping, or storage changes reflected in the repo docs
+- avoid bundling unrelated dirty-worktree changes into the same checkpoint
 
 ### Manual
 
@@ -72,6 +83,47 @@ If the account has more than one inverter, a second step asks you to pick the
 
 To change which inverter is the Host later: Settings → Devices & Services →
 Home Energy Manager → ⋮ → Reconfigure.
+
+### Setup persistence
+
+Setup mappings and hero-mapping overrides are intended to be shared Home Energy
+Manager configuration, not browser-local preferences.
+
+That means forecast setup mappings, battery setup mappings, and hero mapping
+overrides should be loaded from Home Assistant-backed config and saved through
+Home Energy Manager services rather than browser-only storage.
+
+### Setup page mapping model
+
+The Setup page now treats Bytewatt provider data and HEM hero values as two
+separate layers:
+
+- `Bytewatt Sensors` shows the direct provider payload HEM is currently reading
+- `Battery Hero Mapping Summary` maps battery-facing HEM hero values to Bytewatt fields
+- `Solar Hero Mapping Summary` maps solar and MPPT-facing HEM hero values to Bytewatt fields
+- `HEM Hero Sensors` mirrors the active HEM hero outputs so they can be compared against the direct provider values
+
+The direct provider payload is scope-aware and can include:
+
+- `all_systems`
+- `selected_scope`
+- `live_batteries`
+
+This means a single concept such as SOC, battery power, load, or solar can have:
+
+- an aggregate `All systems` value
+- a `Selected scope` value for the active battery selector target
+- one or more per-battery rows
+
+When Bytewatt exposes MPPT power fields, the Setup page can also surface:
+
+- `ppv1`
+- `ppv2`
+- `ppv3`
+- `ppv4`
+
+Per-battery rows are dynamic. HEM does not assume there are only two batteries.
+If Bytewatt returns more live battery rows, the setup summaries expand to match.
 
 ## Entities
 
@@ -135,6 +187,42 @@ already works well with a lightweight store.
 
 This keeps the pricing workflow simple and keeps the shared state easy to
 inspect in Home Assistant's `www` folder.
+
+Pricing configuration must not rely on browser `localStorage`.
+Saved pricing data belongs in the Home Assistant-backed pricing files above so
+it stays consistent across browsers and devices. Any temporary panel-only
+editing state should remain in memory only.
+
+The panel still uses browser storage for a few UI-only preferences:
+
+- active page / URL fragment convenience
+- selected battery target
+- debug page visibility toggle
+- settings-page focus tab
+- remembered `entry_id` hint used to reconnect the same HA config entry
+
+Those values are intentionally local to the current browser. They are not part
+of the shared Home Energy Manager configuration model.
+
+## Reporting storage
+
+HEM reporting currently uses a compact local archive for provider-aware daily
+snapshots and CSV exports, while InfluxDB is the planned long-term store for
+detailed sensor history.
+
+InfluxDB is not wired up by HEM yet. The current live reporting/history flow
+still reads and writes only through the local HEM archive.
+
+Report and archive diagnostics should read that HA-served archive directly.
+They must not depend on browser `localStorage` copies of report history.
+
+See [docs/REPORTING_STORAGE.md](C:/Dev/repos/home-energy-manager/docs/REPORTING_STORAGE.md)
+for the current archive layout and the intended split between HEM report
+storage and InfluxDB time-series retention.
+
+See [docs/REPORTING_PAYLOAD.md](C:/Dev/repos/home-energy-manager/docs/REPORTING_PAYLOAD.md)
+for the compact reporting payload contract used by the Report page and embedded
+report card.
 
 ## Example automations
 

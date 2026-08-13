@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "035";
+const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "036";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -9,12 +9,10 @@ class ByteWattDebugCard extends HTMLElement {
       title: config?.title || "Home Energy Manager Debug",
       ...config,
     };
-    this._debugStorageKey = `home-energy-manager-debug:${this._config.entity_prefix}:${this._config.settings_target}`;
     this._status = "";
     this._statusKind = "neutral";
-    const saved = this._loadDebugState();
-    this._debugPeriod = saved.period || this._debugPeriod || "day";
-    this._debugAnchorDate = saved.anchor || this._debugAnchorDate || "";
+    this._debugPeriod = this._debugPeriod || "day";
+    this._debugAnchorDate = this._debugAnchorDate || "";
     this._historyLoading = this._historyLoading || false;
     this._historyData = this._historyData || null;
     this._historyLoadError = this._historyLoadError || "";
@@ -32,33 +30,6 @@ class ByteWattDebugCard extends HTMLElement {
 
   _stateObj(entityId) {
     return entityId ? this._hass?.states?.[entityId] : null;
-  }
-
-  _loadDebugState() {
-    try {
-      if (!this._debugStorageKey || !window.localStorage) return {};
-      const raw = window.localStorage.getItem(this._debugStorageKey);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch (_err) {
-      return {};
-    }
-  }
-
-  _saveDebugState() {
-    try {
-      if (!this._debugStorageKey || !window.localStorage) return;
-      window.localStorage.setItem(
-        this._debugStorageKey,
-        JSON.stringify({
-          period: this._debugPeriod || "day",
-          anchor: this._debugAnchorDate || "",
-        }),
-      );
-    } catch (_err) {
-      return;
-    }
   }
 
   _selectorState() {
@@ -130,11 +101,6 @@ class ByteWattDebugCard extends HTMLElement {
     this.render();
     try {
       await this._requestArchiveProbe(true);
-      try {
-        window.localStorage?.removeItem(this._localHistoryKey());
-      } catch (_err) {
-        // Ignore localStorage failures and continue.
-      }
       await this._clearAppCaches();
       this._status = "Reloading now...";
       this.render();
@@ -385,89 +351,9 @@ class ByteWattDebugCard extends HTMLElement {
     return 365;
   }
 
-  _localHistoryKey() {
-    const entity = String(this._config?.settings_target || "home_energy_manager").replace(/[^A-Za-z0-9_.-]+/g, "_");
-    return `home-energy-manager-debug-history:${entity}`;
-  }
-
-  _readLocalHistory() {
-    try {
-      const raw = window.localStorage?.getItem(this._localHistoryKey());
-      if (!raw) return { scopes: {} };
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" ? parsed : { scopes: {} };
-    } catch (_err) {
-      return { scopes: {} };
-    }
-  }
-
-  _mergeSnapshotPayload(base, incoming) {
-    const merged = {
-      ...(base && typeof base === "object" ? base : {}),
-      ...(incoming && typeof incoming === "object" ? incoming : {}),
-    };
-    const baseScopes = base?.scopes && typeof base.scopes === "object" ? base.scopes : {};
-    const incomingScopes = incoming?.scopes && typeof incoming.scopes === "object" ? incoming.scopes : {};
-    const scopes = { ...baseScopes };
-    Object.entries(incomingScopes).forEach(([scopeKey, scopeValue]) => {
-      const current = scopes[scopeKey] || {};
-      const currentRecords = current.records && typeof current.records === "object" ? current.records : {};
-      const incomingRecords = scopeValue?.records && typeof scopeValue.records === "object" ? scopeValue.records : {};
-      const currentMissing = current.missing_dates && typeof current.missing_dates === "object" ? current.missing_dates : {};
-      const incomingMissing = scopeValue?.missing_dates && typeof scopeValue.missing_dates === "object" ? scopeValue.missing_dates : {};
-      scopes[scopeKey] = {
-        ...current,
-        ...scopeValue,
-        records: {
-          ...currentRecords,
-          ...incomingRecords,
-        },
-        missing_dates: {
-          ...currentMissing,
-          ...incomingMissing,
-        },
-      };
-    });
-    merged.scopes = scopes;
-    return merged;
-  }
-
-  _writeLocalHistory(data) {
-    try {
-      const merged = this._mergeSnapshotPayload(this._readLocalHistory(), data);
-      window.localStorage?.setItem(this._localHistoryKey(), JSON.stringify(merged));
-    } catch (_err) {
-      // Storage can be unavailable; remote history remains the source of truth.
-    }
-  }
-
   _historyScopes() {
-    const localScopes = this._readLocalHistory()?.scopes;
     const remoteScopes = this._historyData?.scopes;
-    const mergeScopes = (source, target) => {
-      const merged = { ...(target || {}) };
-      Object.entries(source || {}).forEach(([scopeKey, scopeValue]) => {
-        const current = merged[scopeKey] || {};
-        const currentRecords = current.records && typeof current.records === "object" ? current.records : {};
-        const incomingRecords = scopeValue?.records && typeof scopeValue.records === "object" ? scopeValue.records : {};
-        const currentMissing = current.missing_dates && typeof current.missing_dates === "object" ? current.missing_dates : {};
-        const incomingMissing = scopeValue?.missing_dates && typeof scopeValue.missing_dates === "object" ? scopeValue.missing_dates : {};
-        merged[scopeKey] = {
-          ...current,
-          ...scopeValue,
-          records: {
-            ...currentRecords,
-            ...incomingRecords,
-          },
-          missing_dates: {
-            ...currentMissing,
-            ...incomingMissing,
-          },
-        };
-      });
-      return merged;
-    };
-    return mergeScopes(localScopes, mergeScopes(remoteScopes, {}));
+    return remoteScopes && typeof remoteScopes === "object" ? remoteScopes : {};
   }
 
   _historyScopeKey() {
@@ -939,16 +825,9 @@ class ByteWattDebugCard extends HTMLElement {
       }
       const data = await response.json();
       this._historyData = data;
-      this._writeLocalHistory(data);
     } catch (error) {
-      const cached = this._readLocalHistory();
-      if (cached && cached.scopes && Object.keys(cached.scopes).length) {
-        this._historyData = cached;
-        this._historyLoadError = "";
-      } else {
-        this._historyLoadError = String(error?.message || error);
-        this._historyData = null;
-      }
+      this._historyLoadError = String(error?.message || error);
+      this._historyData = null;
     } finally {
       this._historyLoading = false;
       this.render();
@@ -1554,14 +1433,12 @@ class ByteWattDebugCard extends HTMLElement {
         if (this._debugPeriod === "today") {
           this._debugAnchorDate = this._formatLocalDate(this._todayLocalDate());
         }
-        this._saveDebugState();
         this.render();
       };
     });
     this.shadowRoot.querySelector("[data-debug-date]")?.addEventListener("change", (event) => {
       const picked = this._parseLocalDate(String(event.target.value || "").trim());
       this._debugAnchorDate = this._formatLocalDate(this._clampDateToToday(picked || this._todayLocalDate()));
-      this._saveDebugState();
       this.render();
     });
     this.shadowRoot.querySelectorAll("[data-debug-shift]").forEach((item) => {
@@ -1569,7 +1446,6 @@ class ByteWattDebugCard extends HTMLElement {
         const step = Number(item.getAttribute("data-debug-shift") || 0) || 0;
         const next = this._shiftAnchor(this._debugRange().anchor, this._debugPeriod || "day", step);
         this._debugAnchorDate = this._formatLocalDate(this._clampDateToToday(next));
-        this._saveDebugState();
         this.render();
       };
     });

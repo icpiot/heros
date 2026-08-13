@@ -108,3 +108,42 @@ def test_mark_missing_date_removes_blank_record(tmp_path):
     scope = payload["scopes"]["all"]
     assert "2026-07-08" not in scope["records"]
     assert "2026-07-08" in scope["missing_dates"]
+
+
+def test_scope_summary_reports_counts_dates_and_archive_filenames(tmp_path):
+    history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
+    history._store_snapshot_sync(
+        scope_key="all",
+        label="All systems",
+        record_date="2026-07-08",
+        reporting=_valid_reporting_payload(),
+    )
+    second = _valid_reporting_payload()
+    second["power_diagram"] = {
+        **second["power_diagram"],
+        "date": "2026-07-09",
+    }
+    history._store_snapshot_sync(
+        scope_key="all",
+        label="All systems",
+        record_date="2026-07-09",
+        reporting=second,
+    )
+    history._mark_missing_date_sync(
+        scope_key="all",
+        label="All systems",
+        record_date="2026-07-10",
+        reason="no_reporting_data",
+    )
+
+    summary = history.scope_summary_sync("all")
+
+    assert summary["scope_key"] == "all"
+    assert summary["label"] == "All systems"
+    assert summary["record_count"] == 2
+    assert summary["first_record_date"] == "2026-07-08"
+    assert summary["last_record_date"] == "2026-07-09"
+    assert summary["missing_count"] == 1
+    assert summary["csv_filename"] == "all.csv"
+    assert summary["history_filename"] == "history.json"
+    assert summary["last_updated"]

@@ -26,6 +26,8 @@ from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
+from .policy_charge import PolicyChargeSchedule
+from .policy_charge_store import PolicyChargeScheduleStore
 from .pricing import PricingRateGroup, PricingRateRecord, PricingRule
 from .pricing_store import PricingScheduleStore
 from .reporting import ByteWattReportHistory, build_reporting_payload
@@ -68,6 +70,8 @@ from .const import (
     CONF_GRID_BATTERY_CHARGE_ENTITY,
     CONF_BATTERY_CHARGED_TODAY_ENTITY,
     CONF_BATTERY_DISCHARGED_TODAY_ENTITY,
+    CONF_BATTERY_HERO_MAPPING,
+    CONF_SOLAR_HERO_MAPPING,
     CONF_PANEL_THEME,
     CONF_RECOVERY_ENABLED,
     CONF_HEARTBEAT_INTERVAL,
@@ -95,6 +99,7 @@ from .const import (
     SERVICE_STOP_FORCE_CHARGE,
     SERVICE_FORCE_RECONNECT,
     SERVICE_HEALTH_CHECK,
+    SERVICE_REFRESH_STATE,
     SERVICE_TOGGLE_DIAGNOSTICS,
     ATTR_END_DISCHARGE,
     ATTR_START_DISCHARGE,
@@ -115,6 +120,8 @@ from .const import (
     SERVICE_SET_PANEL_THEME,
     SERVICE_SET_FORECAST_MAPPING,
     SERVICE_SET_BATTERY_MAPPING,
+    SERVICE_SET_HERO_MAPPING,
+    SERVICE_POLICY_CHARGE_SAVE,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -154,7 +161,12 @@ from .const import (
     ATTR_HOLIDAY_DATES,
     ATTR_HOLIDAY_SOURCE,
     ATTR_REGION,
+    ATTR_POLICY_ENABLED,
+    ATTR_POLICY_NAME,
+    ATTR_IMMEDIATE_CUTOFF_SOC,
+    ATTR_ROWS,
     signal_pricing_changed,
+    signal_policy_charge_changed,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
     CONF_HISTORY_BACKFILL_YEARS,
@@ -171,7 +183,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=272"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=378"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -243,6 +255,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         _register_forecast_mapping_service(hass)
     if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
         _register_battery_mapping_service(hass)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
+        _register_hero_mapping_service(hass)
     return True
 
 
@@ -293,6 +307,8 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_GRID_BATTERY_CHARGE_ENTITY: entry.data.get(CONF_GRID_BATTERY_CHARGE_ENTITY, ""),
             CONF_BATTERY_CHARGED_TODAY_ENTITY: entry.data.get(CONF_BATTERY_CHARGED_TODAY_ENTITY, ""),
             CONF_BATTERY_DISCHARGED_TODAY_ENTITY: entry.data.get(CONF_BATTERY_DISCHARGED_TODAY_ENTITY, ""),
+            CONF_BATTERY_HERO_MAPPING: entry.data.get(CONF_BATTERY_HERO_MAPPING, "{}"),
+            CONF_SOLAR_HERO_MAPPING: entry.data.get(CONF_SOLAR_HERO_MAPPING, "{}"),
             "theme": entry.data.get(CONF_PANEL_THEME, PANEL_CONFIG["theme"]),
             **PANEL_CUSTOM_CONFIG,
         },
@@ -344,6 +360,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     manager = SettingsManager(hass, client.api_client, entry.entry_id)
     pricing_store = PricingScheduleStore(hass, entry.entry_id)
+    policy_charge_store = PolicyChargeScheduleStore(hass, entry.entry_id)
     coordinator = ByteWattDataUpdateCoordinator(
         hass,
         client=client,
@@ -357,6 +374,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "manager": manager,
         "pricing_store": pricing_store,
+        "policy_charge_store": policy_charge_store,
     }
 
     # Register the panel before network refreshes so HEM remains available even
@@ -415,6 +433,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _register_forecast_mapping_service(hass)
         if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
             _register_battery_mapping_service(hass)
+        if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
+            _register_hero_mapping_service(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -844,6 +864,7 @@ def _configured_entry_ids(hass: HomeAssistant) -> list[str]:
             entry_data.get("coordinator") is not None
             or entry_data.get("manager") is not None
             or entry_data.get("pricing_store") is not None
+            or entry_data.get("policy_charge_store") is not None
         )
     ]
 
@@ -873,6 +894,11 @@ def _manager_for(hass: HomeAssistant, call: ServiceCall) -> SettingsManager:
     return hass.data[DOMAIN][entry_id]["manager"]
 
 
+def _coordinator_for(hass: HomeAssistant, call: ServiceCall) -> ByteWattDataUpdateCoordinator:
+    entry_id = _resolve_entry_id(hass, call)
+    return hass.data[DOMAIN][entry_id]["coordinator"]
+
+
 def _pricing_store_for(hass: HomeAssistant, call: ServiceCall) -> tuple[PricingScheduleStore, str]:
     entry_id = _resolve_entry_id(hass, call)
     entry_data = hass.data[DOMAIN][entry_id]
@@ -883,8 +909,62 @@ def _pricing_store_for(hass: HomeAssistant, call: ServiceCall) -> tuple[PricingS
     return store, entry_id
 
 
+def _policy_charge_store_for(
+    hass: HomeAssistant, call: ServiceCall
+) -> tuple[PolicyChargeScheduleStore, str]:
+    entry_id = _resolve_entry_id(hass, call)
+    entry_data = hass.data[DOMAIN][entry_id]
+    store = entry_data.get("policy_charge_store")
+    if store is None:
+        store = PolicyChargeScheduleStore(hass, entry_id)
+        entry_data["policy_charge_store"] = store
+    return store, entry_id
+
+
 def _notify_pricing_changed(hass: HomeAssistant, entry_id: str) -> None:
     async_dispatcher_send(hass, signal_pricing_changed(entry_id))
+
+
+def _notify_policy_charge_changed(hass: HomeAssistant, entry_id: str) -> None:
+    async_dispatcher_send(hass, signal_policy_charge_changed(entry_id))
+
+
+def _policy_charge_scope_payload(hass: HomeAssistant, entry_id: str) -> dict[str, str]:
+    entry_data = hass.data.get(DOMAIN, {}).get(entry_id, {})
+    scope = entry_data.get("settings_scope")
+    if scope is not None and getattr(scope, "aggregate", False):
+        return {
+            "scope_key": "all",
+            "scope_label": "All systems",
+            "system_id": "",
+            "sys_sn": "All",
+        }
+    if scope is not None:
+        system_id = str(getattr(scope, "effective_system_id", "") or getattr(scope, "system_id", "") or "").strip()
+        sys_sn = str(getattr(scope, "settings_sys_sn", "") or getattr(scope, "sys_sn", "") or "").strip()
+        label = str(getattr(scope, "label", "") or sys_sn or system_id or "Selected system").strip()
+        return {
+            "scope_key": system_id or sys_sn or "all",
+            "scope_label": label or "Selected system",
+            "system_id": system_id,
+            "sys_sn": sys_sn or "All",
+        }
+    manager = entry_data.get("manager")
+    system_id = str(getattr(manager, "current_settings_target_id", "") or "").strip()
+    sys_sn = str(getattr(manager, "current_settings_target_sys_sn", "") or "").strip()
+    if not system_id and not sys_sn:
+        return {
+            "scope_key": "all",
+            "scope_label": "All systems",
+            "system_id": "",
+            "sys_sn": "All",
+        }
+    return {
+        "scope_key": system_id or sys_sn,
+        "scope_label": sys_sn or system_id,
+        "system_id": system_id,
+        "sys_sn": sys_sn or "All",
+    }
 
 
 def _register_panel_theme_service(hass: HomeAssistant) -> None:
@@ -1038,6 +1118,39 @@ def _register_battery_mapping_service(hass: HomeAssistant) -> None:
     )
 
 
+async def _handle_set_hero_mapping(hass: HomeAssistant, call: ServiceCall) -> None:
+    entry_id = _resolve_entry_id(hass, call)
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None:
+        raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+    new_data = {
+        **entry.data,
+        CONF_BATTERY_HERO_MAPPING: str(call.data.get(CONF_BATTERY_HERO_MAPPING) or "{}").strip() or "{}",
+        CONF_SOLAR_HERO_MAPPING: str(call.data.get(CONF_SOLAR_HERO_MAPPING) or "{}").strip() or "{}",
+    }
+    hass.config_entries.async_update_entry(entry, data=new_data)
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _register_hero_mapping_service(hass: HomeAssistant) -> None:
+    if hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
+        return
+
+    async def handle_set_hero_mapping(call: ServiceCall) -> None:
+        await _handle_set_hero_mapping(hass, call)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_HERO_MAPPING,
+        handle_set_hero_mapping,
+        schema=vol.Schema({
+            vol.Optional(CONF_BATTERY_HERO_MAPPING): cv.string,
+            vol.Optional(CONF_SOLAR_HERO_MAPPING): cv.string,
+            vol.Optional(ATTR_ENTRY_ID): cv.string,
+        }),
+    )
+
+
 async def _submit_battery_service(
     hass: HomeAssistant, call: ServiceCall, **fields: Any
 ) -> bool:
@@ -1105,21 +1218,75 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_start_force_charge(call: ServiceCall) -> None:
         manager = _manager_for(hass, call)
+        policy_store, entry_id = _policy_charge_store_for(hass, call)
+        scope_payload = _policy_charge_scope_payload(hass, entry_id)
         charge_cap = call.data.get(ATTR_CHARGE_CAP, 100)
-        ok = await manager.start_force_charge(int(charge_cap))
+        original_system_id = getattr(manager._client, "host_system_id", "") or ""  # noqa: SLF001
+        original_sys_sn = getattr(manager._client, "host_sys_sn", "") or ""  # noqa: SLF001
+        manager._client.host_system_id = scope_payload["system_id"]  # noqa: SLF001
+        manager._client.host_sys_sn = "" if scope_payload["scope_key"] == "all" else scope_payload["sys_sn"]  # noqa: SLF001
+        try:
+            result = await manager.start_force_charge_with_feedback(int(charge_cap))
+        finally:
+            manager._client.host_system_id = original_system_id  # noqa: SLF001
+            manager._client.host_sys_sn = original_sys_sn  # noqa: SLF001
+        ok = bool(result.get("ok"))
         if not ok:
-            raise HomeAssistantError("Force charge request failed")
-        entry_id = _resolve_entry_id(hass, call)
+            detail = str(result.get("message") or "Force charge request failed")
+            await policy_store.async_record_feedback(
+                scope_key=scope_payload["scope_key"],
+                action="start_force_charge",
+                ok=False,
+                message=detail,
+                charging_now=False,
+            )
+            _notify_policy_charge_changed(hass, entry_id)
+            raise HomeAssistantError(detail)
+        await policy_store.async_record_feedback(
+            scope_key=scope_payload["scope_key"],
+            action="start_force_charge",
+            ok=True,
+            message=str(result.get("message") or "Force charge started"),
+            charging_now=True,
+        )
+        _notify_policy_charge_changed(hass, entry_id)
         coordinator = hass.data[DOMAIN][entry_id].get("coordinator")
         if coordinator:
             await coordinator.async_request_refresh()
 
     async def handle_stop_force_charge(call: ServiceCall) -> None:
         manager = _manager_for(hass, call)
-        ok = await manager.stop_force_charge()
+        policy_store, entry_id = _policy_charge_store_for(hass, call)
+        scope_payload = _policy_charge_scope_payload(hass, entry_id)
+        original_system_id = getattr(manager._client, "host_system_id", "") or ""  # noqa: SLF001
+        original_sys_sn = getattr(manager._client, "host_sys_sn", "") or ""  # noqa: SLF001
+        manager._client.host_system_id = scope_payload["system_id"]  # noqa: SLF001
+        manager._client.host_sys_sn = "" if scope_payload["scope_key"] == "all" else scope_payload["sys_sn"]  # noqa: SLF001
+        try:
+            result = await manager.stop_force_charge_with_feedback()
+        finally:
+            manager._client.host_system_id = original_system_id  # noqa: SLF001
+            manager._client.host_sys_sn = original_sys_sn  # noqa: SLF001
+        ok = bool(result.get("ok"))
         if not ok:
-            raise HomeAssistantError("Stop charge request failed")
-        entry_id = _resolve_entry_id(hass, call)
+            detail = str(result.get("message") or "Stop charge request failed")
+            await policy_store.async_record_feedback(
+                scope_key=scope_payload["scope_key"],
+                action="stop_force_charge",
+                ok=False,
+                message=detail,
+                charging_now=True,
+            )
+            _notify_policy_charge_changed(hass, entry_id)
+            raise HomeAssistantError(detail)
+        await policy_store.async_record_feedback(
+            scope_key=scope_payload["scope_key"],
+            action="stop_force_charge",
+            ok=True,
+            message=str(result.get("message") or "Force charge stopped"),
+            charging_now=False,
+        )
+        _notify_policy_charge_changed(hass, entry_id)
         coordinator = hass.data[DOMAIN][entry_id].get("coordinator")
         if coordinator:
             await coordinator.async_request_refresh()
@@ -1420,6 +1587,74 @@ def _register_services(hass: HomeAssistant) -> None:
         )
         _notify_pricing_changed(hass, entry_id)
 
+    async def handle_policy_charge_save(call: ServiceCall) -> None:
+        store, entry_id = _policy_charge_store_for(hass, call)
+        scope_payload = _policy_charge_scope_payload(hass, entry_id)
+        rows = call.data.get(ATTR_ROWS) or []
+        if not isinstance(rows, list):
+            raise HomeAssistantError("rows must be a list")
+        schedule = PolicyChargeSchedule.from_dict({
+            **scope_payload,
+            "policy_enabled": call.data.get(ATTR_POLICY_ENABLED, False),
+            "policy_name": call.data.get(ATTR_POLICY_NAME) or "Battery Charge",
+            "immediate_cutoff_soc": call.data.get(ATTR_IMMEDIATE_CUTOFF_SOC, 100),
+            "charging_now": False,
+            "rows": rows,
+        })
+        await store.async_upsert_scope(schedule)
+        _notify_policy_charge_changed(hass, entry_id)
+        entry_data = hass.data[DOMAIN][entry_id]
+        manager = entry_data.get("manager")
+        coordinator = hass.data[DOMAIN][entry_id].get("coordinator")
+        if schedule.policy_enabled and manager is not None:
+            battery_data = getattr(coordinator, "_last_battery_data", None) or {}
+            soc_value = battery_data.get("soc") if isinstance(battery_data, dict) else None
+            try:
+                soc = float(soc_value) if soc_value is not None else None
+            except (TypeError, ValueError):
+                soc = None
+            active_row = schedule.active_row(dt_util.now(), soc=soc, holiday_dates=set())
+            if active_row is not None:
+                original_system_id = getattr(manager._client, "host_system_id", "") or ""  # noqa: SLF001
+                original_sys_sn = getattr(manager._client, "host_sys_sn", "") or ""  # noqa: SLF001
+                manager._client.host_system_id = schedule.system_id  # noqa: SLF001
+                manager._client.host_sys_sn = "" if schedule.scope_key == "all" else schedule.sys_sn  # noqa: SLF001
+                try:
+                    if coordinator is not None:
+                        await coordinator._ensure_bytewatt_schedule_disabled(schedule.system_id, manager)  # noqa: SLF001
+                    result = await manager.start_force_charge_with_feedback(
+                        active_row.cutoff_soc,
+                        allow_aggregate_fallback=schedule.scope_key == "all",
+                    )
+                finally:
+                    manager._client.host_system_id = original_system_id  # noqa: SLF001
+                    manager._client.host_sys_sn = original_sys_sn  # noqa: SLF001
+                started = bool(result.get("ok"))
+                await store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="save_start_force_charge",
+                    ok=started,
+                    message=(
+                        f"HEM policy applied and started charging: {active_row.label} "
+                        f"({active_row.start_time}-{active_row.end_time}, SOC {active_row.cutoff_soc}%)."
+                        if started
+                        else str(result.get("message") or "HEM policy saved but charge start failed")
+                    ),
+                    charging_now=started,
+                )
+                _notify_policy_charge_changed(hass, entry_id)
+            else:
+                await store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="save_no_active_charge_row",
+                    ok=True,
+                    message="Charge policy saved. No active row matches the current time/day/SOC.",
+                    charging_now=False,
+                )
+                _notify_policy_charge_changed(hass, entry_id)
+        if coordinator is not None:
+            await coordinator.async_request_refresh()
+
     # ---------- Schemas ----------
 
     _time_schema = vol.All(cv.string)
@@ -1489,6 +1724,13 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Optional(ATTR_CONTROLLED_LOAD_RATE): vol.Coerce(float),
         vol.Optional(ATTR_OTHER_CHARGES, default=""): cv.string,
         vol.Optional(ATTR_NOTES, default=""): cv.string,
+        **_entry_id_opt,
+    })
+    _policy_charge_save_schema = vol.Schema({
+        vol.Optional(ATTR_POLICY_ENABLED, default=False): cv.boolean,
+        vol.Optional(ATTR_POLICY_NAME, default="Battery Charge"): cv.string,
+        vol.Optional(ATTR_IMMEDIATE_CUTOFF_SOC, default=100): _soc_schema,
+        vol.Optional(ATTR_ROWS, default=[]): list,
         **_entry_id_opt,
     })
 
@@ -1572,6 +1814,14 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, SERVICE_TOGGLE_DIAGNOSTICS, handle_toggle_diagnostics,
         schema=vol.Schema({vol.Optional("enable"): cv.boolean, **_entry_id_opt}),
     )
+    async def handle_refresh_state(call: ServiceCall) -> None:
+        coordinator = _coordinator_for(hass, call)
+        await coordinator.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_REFRESH_STATE, handle_refresh_state,
+        schema=vol.Schema({**_entry_id_opt}),
+    )
     _register_panel_theme_service(hass)
     _register_forecast_mapping_service(hass)
     _register_battery_mapping_service(hass)
@@ -1586,6 +1836,10 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_SET_HOLIDAYS, handle_pricing_set_holidays,
         schema=_pricing_holiday_schema,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_POLICY_CHARGE_SAVE, handle_policy_charge_save,
+        schema=_policy_charge_save_schema,
     )
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_UPSERT_GROUP, handle_pricing_upsert_group,

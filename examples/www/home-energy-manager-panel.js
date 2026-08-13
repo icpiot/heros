@@ -1,21 +1,19 @@
 import "./home-energy-manager-policy-card.js?v=008";
-import "./home-energy-manager-report-card.js?v=302";
+import "./home-energy-manager-report-card.js?v=304";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "272";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "378";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
 const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
 const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
 const HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY = "home-energy-manager.panel.entry_id";
-const HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY = "home-energy-manager.panel.pricing.draft";
-const HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY = "home-energy-manager.panel.pricing.ui";
-const HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY = "home-energy-manager.panel.pricing.purchase_tariffs";
-const HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY = "home-energy-manager.panel.forecast.mapping";
-const HOME_ENERGY_MANAGER_PANEL_BATTERY_MAPPING_KEY = "home-energy-manager.panel.battery.mapping";
 const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
 const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
+const HOME_ENERGY_MANAGER_POLICY_FEEDBACK_MS = 5000;
+const HOME_ENERGY_MANAGER_POLICY_FILE_POLL_MS = 3000;
+const HOME_ENERGY_MANAGER_POLICY_LIVE_REFRESH_MS = 10000;
 const HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS = 120000;
 const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
 const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
@@ -400,6 +398,117 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
   },
 ];
 
+const HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS = [
+  {
+    key: "battery_soc",
+    heroLabel: "Battery SOC",
+    bytewattField: "soc",
+    valueKind: "percent",
+    scopeMode: "all_selected_per_battery",
+  },
+  {
+    key: "battery_power",
+    heroLabel: "Battery Power",
+    bytewattField: "pbat",
+    valueKind: "power",
+    scopeMode: "all_selected_per_battery",
+  },
+  {
+    key: "battery_load",
+    heroLabel: "Battery Load",
+    bytewattField: "pload",
+    valueKind: "power",
+    scopeMode: "all_selected_per_battery",
+  },
+  {
+    key: "battery_grid",
+    heroLabel: "Battery Grid",
+    bytewattField: "pgrid",
+    valueKind: "power",
+    scopeMode: "all_selected_per_battery",
+  },
+  {
+    key: "battery_feed_in",
+    heroLabel: "Battery Feed In",
+    bytewattField: "pgrid",
+    valueKind: "feed_in",
+    scopeMode: "all_selected_per_battery",
+    derivedFrom: "Derived from pgrid",
+  },
+  {
+    key: "battery_power_source",
+    heroLabel: "Battery Power Source",
+    bytewattField: "powerSource",
+    valueKind: "text",
+    scopeMode: "all_selected",
+  },
+  {
+    key: "battery_force_charge_mode",
+    heroLabel: "Battery Force Charge Mode",
+    bytewattField: "forceChargeMode",
+    valueKind: "boolean_text",
+    scopeMode: "per_battery",
+  },
+];
+
+const HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS = [
+  {
+    key: "solar_power",
+    heroLabel: "Solar Power",
+    bytewattField: "ppv",
+    valueKind: "power",
+    scopeMode: "all_selected_per_battery",
+  },
+  {
+    key: "solar_mppt_1",
+    heroLabel: "MPPT 1",
+    bytewattField: "ppv1",
+    valueKind: "power",
+    scopeMode: "all_selected",
+  },
+  {
+    key: "solar_mppt_2",
+    heroLabel: "MPPT 2",
+    bytewattField: "ppv2",
+    valueKind: "power",
+    scopeMode: "all_selected",
+  },
+  {
+    key: "solar_mppt_3",
+    heroLabel: "MPPT 3",
+    bytewattField: "ppv3",
+    valueKind: "power",
+    scopeMode: "all_selected",
+  },
+  {
+    key: "solar_mppt_4",
+    heroLabel: "MPPT 4",
+    bytewattField: "ppv4",
+    valueKind: "power",
+    scopeMode: "all_selected",
+  },
+];
+
+const HOME_ENERGY_MANAGER_BATTERY_HERO_FIELD_OPTIONS = [
+  { value: "soc", label: "soc" },
+  { value: "pbat", label: "pbat" },
+  { value: "pload", label: "pload" },
+  { value: "pgrid", label: "pgrid" },
+  { value: "ppv", label: "ppv" },
+  { value: "ppv1", label: "ppv1" },
+  { value: "ppv2", label: "ppv2" },
+  { value: "ppv3", label: "ppv3" },
+  { value: "ppv4", label: "ppv4" },
+  { value: "powerSource", label: "powerSource" },
+  { value: "forceChargeMode", label: "forceChargeMode" },
+];
+
+const HOME_ENERGY_MANAGER_BATTERY_HERO_SCOPE_OPTIONS = [
+  { value: "all_selected_per_battery", label: "All Systems + Selected Battery + Per Battery" },
+  { value: "all_selected", label: "All Systems + Selected Battery" },
+  { value: "per_battery", label: "Per Battery" },
+];
+
 class HomeEnergyManagerPanel extends HTMLElement {
   constructor() {
     super();
@@ -415,16 +524,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._forecastSelectorOpenKey = "";
     this._forecastSaveStatus = null;
     this._forecastSetupDirty = false;
+    this._forecastSetupDraft = null;
     this._forecastSetupExpanded = true;
     this._batterySetupExpanded = false;
     this._batterySaveStatus = null;
     this._batterySetupDirty = false;
+    this._batterySetupDraft = null;
     this._batterySelectorOpenKey = "";
+    this._heroMappingFieldSelectorOpenKey = "";
+    this._heroMappingScopeSelectorOpenKey = "";
     this._pricingGroupSelectorOpen = false;
     this._pricingGroupEditorOpen = false;
     this._pricingRecordEditorMode = "";
     this._pricingTypeSelectorOpen = false;
     this._pricingHelpOpen = "";
+    this._policyChargeEditorOpen = false;
+    this._policyChargeDraft = {};
+    this._policyChargeUiDirty = false;
     this._pricingUiGroupDraft = {};
     this._pricingUiRuleDrafts = {
       buy: this._pricingUiRuleDefaults("buy"),
@@ -438,9 +554,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._pricingFocusHoldUntil = 0;
     this._pricingFileLoadKey = "";
     this._pricingFileLoading = false;
+    this._policyChargeFileLoadKey = "";
+    this._policyChargeFileLoading = false;
+    this._policyChargeFileScheduleSet = null;
+    this._policyChargeFileLoadedAt = 0;
+    this._policyChargeLiveRefreshTimer = null;
     this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
     this._boundLocationChange = this._handleLocationChange.bind(this);
+    this._boundStorageChange = this._handleStorageChange.bind(this);
     this._bindInteractiveControls();
   }
 
@@ -454,6 +576,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._ensurePricingFileLoaded();
+    this._ensurePolicyChargeFileLoaded();
     if (this._page === "pricing" && this._hasPricingUrlAction()) {
       this._processPricingUrlAction();
       this._render();
@@ -495,14 +618,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
   connectedCallback() {
     window.addEventListener("hashchange", this._boundLocationChange);
     window.addEventListener("popstate", this._boundLocationChange);
+    window.addEventListener("storage", this._boundStorageChange);
     this._ensurePricingFileLoaded();
+    this._ensurePolicyChargeFileLoaded();
+    this._syncPolicyChargeLiveRefreshTimer();
     this._render();
   }
 
   disconnectedCallback() {
     window.removeEventListener("hashchange", this._boundLocationChange);
     window.removeEventListener("popstate", this._boundLocationChange);
+    window.removeEventListener("storage", this._boundStorageChange);
     this._clearSyncLogTimer();
+    this._clearPolicyChargeLiveRefreshTimer();
   }
 
   _shouldHoldRender() {
@@ -815,6 +943,41 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
   }
 
+  _clearPolicyChargeLiveRefreshTimer() {
+    if (this._policyChargeLiveRefreshTimer) {
+      window.clearInterval(this._policyChargeLiveRefreshTimer);
+      this._policyChargeLiveRefreshTimer = null;
+    }
+  }
+
+  async _refreshPolicyChargeLiveValues() {
+    if (this._page !== "policy") {
+      return;
+    }
+    try {
+      await this._hass?.callService?.("home_energy_manager", "refresh_state", {
+        entry_id: this._entryId(),
+      });
+    } catch (error) {
+      // Keep the page responsive if a refresh call fails briefly.
+    }
+    this._ensurePolicyChargeFileLoaded();
+    this._render();
+  }
+
+  _syncPolicyChargeLiveRefreshTimer() {
+    if (this._page !== "policy") {
+      this._clearPolicyChargeLiveRefreshTimer();
+      return;
+    }
+    if (this._policyChargeLiveRefreshTimer) {
+      return;
+    }
+    this._policyChargeLiveRefreshTimer = window.setInterval(() => {
+      this._refreshPolicyChargeLiveValues();
+    }, HOME_ENERGY_MANAGER_POLICY_LIVE_REFRESH_MS);
+  }
+
   async _loadSyncLog() {
     if (!this.shadowRoot) {
       return;
@@ -859,17 +1022,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _loadPricingDraft() {
-    try {
-      const scopedKey = this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
-      const scopedValue = localStorage.getItem(scopedKey);
-      const legacyValue = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY);
-      if (!scopedValue && legacyValue) {
-        localStorage.setItem(scopedKey, legacyValue);
-      }
-      return JSON.parse(scopedValue || legacyValue || "{}") || {};
-    } catch (error) {
-      return {};
-    }
+    return this._pricingDraftCache && typeof this._pricingDraftCache === "object"
+      ? { ...this._pricingDraftCache }
+      : {};
   }
 
   _isForecastInteractionTarget(target) {
@@ -900,19 +1055,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _savePricingDraft(draft) {
-    try {
-      localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY), JSON.stringify(draft || {}));
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
-    }
+    this._pricingDraftCache = draft && typeof draft === "object" ? { ...draft } : {};
   }
 
   _clearPricingDraft() {
-    try {
-      localStorage.removeItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY));
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
-    }
+    this._pricingDraftCache = {};
   }
 
   _setTheme(theme) {
@@ -924,6 +1071,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _setPage(page) {
     this._page = this._normalizePage(page);
     this._savePage(this._page);
+    this._syncPolicyChargeLiveRefreshTimer();
     this._render();
   }
 
@@ -973,6 +1121,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._page = nextPage;
     }
     this._ensurePricingFileLoaded();
+    this._render();
+  }
+
+  _handleStorageChange(event) {
+    const key = String(event?.key || "");
+    if (!key) {
+      return;
+    }
+    const batteryKey = HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY;
+    const pageKey = HOME_ENERGY_MANAGER_PANEL_PAGE_KEY;
+    const debugKey = HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY;
+    if (![batteryKey, pageKey, debugKey].includes(key)) {
+      return;
+    }
+    this._syncStoredState();
+    this._ensurePricingFileLoaded();
+    this._ensurePolicyChargeFileLoaded();
     this._render();
   }
 
@@ -1149,6 +1314,27 @@ class HomeEnergyManagerPanel extends HTMLElement {
         "Start: start time for the buy price window.",
         "End: end time for the buy price window.",
         "Import rate: the energy rate charged for this buy window.",
+      ],
+      policy_charge: [
+        "Battery Charge maps to the Buy Price side of the policy flow.",
+        "Charge Now and Stop Charging are immediate API actions; only one is shown at a time.",
+        "Charge Policy turns scheduled charging on or off. When off, the schedule details are hidden.",
+        "Add Charge Row opens a local row editor for charge start/end times and days.",
+        "Save Charge stores the charge settings locally while we finalise the provider save path.",
+      ],
+      battery_hero_summary: [
+        "Mapped Bytewatt field: use this selector when the current Bytewatt field is the wrong source for that hero value.",
+        "Scope: use this selector when the value source is correct, but you want a different scope such as All Systems, Selected Battery, or Per Battery.",
+        "Reset: restores one hero row back to its default field and scope.",
+        "Reset All Battery Hero Overrides: clears every local battery hero override and returns the whole summary to defaults.",
+        "Use these controls to test and compare Bytewatt mappings before we make any mapping permanent.",
+      ],
+      solar_hero_summary: [
+        "Mapped Bytewatt field: use this selector when the current solar or MPPT field is the wrong Bytewatt source.",
+        "Scope: use this selector when the field is correct, but you want a different scope such as All Systems, Selected Battery, or Per Battery.",
+        "Reset: restores one solar row back to its default field and scope.",
+        "Reset All Solar Hero Overrides: clears every local solar hero override and returns the whole summary to defaults.",
+        "Use these controls to test solar power and MPPT mappings before we make any mapping permanent.",
       ],
       sell: [
         "Feed-in tariff: the label for the export price window.",
@@ -1529,18 +1715,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }, {
       provider: stored.provider || configured.provider,
     });
-    const shouldSeedStoredMapping = Boolean(
-      storedWithConfigFallback.provider !== "none"
-      || storedWithConfigFallback.today
-      || storedWithConfigFallback.tomorrow
-      || HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.some((item) => storedWithConfigFallback[item.slot])
-    ) && (
-      storedWithConfigFallback.provider !== stored.provider
-      || HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.some((item) => storedWithConfigFallback[item.slot] !== stored[item.slot])
-    );
-    if (shouldSeedStoredMapping) {
-      this._saveForecastMapping(storedWithConfigFallback);
-    }
     const mapping = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => ({
       slot: item.slot,
       entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || "",
@@ -1674,21 +1848,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _loadForecastMapping() {
-    try {
-      const raw = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch (error) {
-      return {};
+    if (this._forecastSetupDraft && typeof this._forecastSetupDraft === "object") {
+      return this._forecastSetupDraft;
     }
+    return HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = String(this._config?.[item.configKey] || "").trim();
+      return result;
+    }, {
+      provider: String(this._config?.forecast_provider || "none").trim() || "none",
+    });
   }
 
   _saveForecastMapping(mapping) {
-    try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_FORECAST_MAPPING_KEY, JSON.stringify(mapping || {}));
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
-    }
+    this._forecastSetupDraft = mapping && typeof mapping === "object" ? { ...mapping } : null;
   }
 
   _saveForecastDraftFromInputs() {
@@ -1776,6 +1948,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         message: `Saved ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} forecast mapping(s).`,
       };
       this._forecastSetupDirty = false;
+      this._forecastSetupDraft = null;
       this._clearForecastSaveStatusSoon();
       this._holdForecastWindow(5000);
       this._render();
@@ -1909,6 +2082,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _batteryProviderKey(provider) {
     const value = String(provider || "bytewatt_web").trim();
     return value === "bytewatt" ? "bytewatt_web" : value;
+  }
+
+  _connectionTypeLabel(provider) {
+    switch (this._batteryProviderKey(provider)) {
+      case "bytewatt_local":
+        return "ByteWatt Local";
+      case "other":
+        return "Other / template";
+      case "bytewatt_web":
+      default:
+        return "ByteWatt Web";
+    }
   }
 
   _batteryProviderSensorPatterns(provider) {
@@ -2058,21 +2243,169 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _loadBatteryMapping() {
+    if (this._batterySetupDraft && typeof this._batterySetupDraft === "object") {
+      return this._batterySetupDraft;
+    }
+    return HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
+      result[item.slot] = String(this._config?.[item.configKey] || "").trim();
+      return result;
+    }, {
+      provider: this._batteryProviderKey(this._config?.battery_provider),
+    });
+  }
+
+  _saveBatteryMapping(mapping) {
+    this._batterySetupDraft = mapping && typeof mapping === "object" ? { ...mapping } : null;
+  }
+
+  _loadBatteryHeroMapping() {
     try {
-      const raw = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_MAPPING_KEY);
-      const parsed = raw ? JSON.parse(raw) : {};
-      return parsed && typeof parsed === "object" ? parsed : {};
+      const rawBattery = String(this._config?.battery_hero_mapping || "{}");
+      const rawSolar = String(this._config?.solar_hero_mapping || "{}");
+      const parsedBattery = rawBattery ? JSON.parse(rawBattery) : {};
+      const parsedSolar = rawSolar ? JSON.parse(rawSolar) : {};
+      return {
+        ...(parsedBattery && typeof parsedBattery === "object" ? parsedBattery : {}),
+        ...(parsedSolar && typeof parsedSolar === "object" ? parsedSolar : {}),
+      };
     } catch (error) {
       return {};
     }
   }
 
-  _saveBatteryMapping(mapping) {
-    try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_MAPPING_KEY, JSON.stringify(mapping || {}));
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
+  _splitHeroMappings(mapping = {}) {
+    const batteryKeys = new Set(HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS.map((item) => item.key));
+    const solarKeys = new Set(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS.map((item) => item.key));
+    const battery = {};
+    const solar = {};
+    Object.entries(mapping || {}).forEach(([key, value]) => {
+      if (batteryKeys.has(key)) {
+        battery[key] = value;
+      } else if (solarKeys.has(key)) {
+        solar[key] = value;
+      }
+    });
+    return { battery, solar };
+  }
+
+  async _saveBatteryHeroMapping(mapping) {
+    if (!this._hass) {
+      this._batterySaveStatus = {
+        type: "error",
+        message: "Cannot save hero mappings yet because Home Assistant is still loading HEM.",
+      };
+      this._render();
+      return;
     }
+    const split = this._splitHeroMappings(mapping || {});
+    try {
+      await this._hass.callService("home_energy_manager", "set_hero_mapping", {
+        entry_id: this._entryId(),
+        battery_hero_mapping: JSON.stringify(split.battery),
+        solar_hero_mapping: JSON.stringify(split.solar),
+      });
+      this._config = {
+        ...this._config,
+        battery_hero_mapping: JSON.stringify(split.battery),
+        solar_hero_mapping: JSON.stringify(split.solar),
+      };
+      this._batterySaveStatus = {
+        type: "success",
+        message: "Saved hero mapping overrides.",
+      };
+      this._clearBatterySaveStatusSoon();
+      this._render();
+    } catch (error) {
+      console.error("Failed to persist hero mappings", error);
+      this._batterySaveStatus = {
+        type: "error",
+        message: this._formatErrorMessage(error, "Hero mapping save failed."),
+      };
+      this._render();
+    }
+  }
+
+  _batteryHeroMappingDraft() {
+    return this._loadBatteryHeroMapping();
+  }
+
+  _batteryHeroMappingEntry(definition) {
+    const draft = this._batteryHeroMappingDraft();
+    const override = draft?.[definition.key] || {};
+    const field = String(override.bytewattField || definition.bytewattField);
+    const scopeMode = String(override.scopeMode || definition.scopeMode);
+    return {
+      ...definition,
+      activeField: field,
+      activeScopeMode: scopeMode,
+      usingOverride: field !== definition.bytewattField || scopeMode !== definition.scopeMode,
+    };
+  }
+
+  _saveBatteryHeroOverride(definitionKey, override) {
+    const current = this._batteryHeroMappingDraft();
+    current[definitionKey] = override;
+    void this._saveBatteryHeroMapping(current);
+    this._holdRenderWindow(1000);
+    this._render();
+  }
+
+  _clearBatteryHeroOverride(definitionKey) {
+    const current = this._batteryHeroMappingDraft();
+    delete current[definitionKey];
+    void this._saveBatteryHeroMapping(current);
+    this._holdRenderWindow(1000);
+    this._render();
+  }
+
+  _clearAllBatteryHeroOverrides() {
+    const current = this._batteryHeroMappingDraft();
+    HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS.forEach((definition) => {
+      delete current[definition.key];
+    });
+    void this._saveBatteryHeroMapping(current);
+    this._holdRenderWindow(1000);
+    this._render();
+  }
+
+  _clearAllSolarHeroOverrides() {
+    const current = this._batteryHeroMappingDraft();
+    HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS.forEach((definition) => {
+      delete current[definition.key];
+    });
+    void this._saveBatteryHeroMapping(current);
+    this._holdRenderWindow(1000);
+    this._render();
+  }
+
+  _setBatteryHeroOverrideField(definitionKey, value) {
+    const definition = HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS
+      .concat(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS)
+      .find((item) => item.key === definitionKey);
+    if (!definition) {
+      return;
+    }
+    const mapping = this._batteryHeroMappingEntry(definition);
+    this._saveBatteryHeroOverride(definition.key, {
+      bytewattField: String(value || definition.bytewattField),
+      scopeMode: mapping.activeScopeMode,
+    });
+    this._heroMappingFieldSelectorOpenKey = "";
+  }
+
+  _setBatteryHeroOverrideScope(definitionKey, value) {
+    const definition = HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS
+      .concat(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS)
+      .find((item) => item.key === definitionKey);
+    if (!definition) {
+      return;
+    }
+    const mapping = this._batteryHeroMappingEntry(definition);
+    this._saveBatteryHeroOverride(definition.key, {
+      bytewattField: mapping.activeField,
+      scopeMode: String(value || definition.scopeMode),
+    });
+    this._heroMappingScopeSelectorOpenKey = "";
   }
 
   _batterySeededMapping(provider, current = {}) {
@@ -2161,6 +2494,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         message: `Saved ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} battery mapping(s).`,
       };
       this._batterySetupDirty = false;
+      this._batterySetupDraft = null;
       this._clearBatterySaveStatusSoon();
       this._batterySetupExpanded = false;
       this._render();
@@ -2205,6 +2539,33 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._batterySelectorOpenKey = "";
     this._holdRenderWindow(1000);
     this._render();
+  }
+
+  async _saveConnectionType() {
+    const provider = this._batteryProviderKey(this.shadowRoot?.querySelector('[data-connection-type-field="battery_provider"]')?.value || this._config?.battery_provider);
+    try {
+      await this._hass.callService("home_energy_manager", "set_battery_mapping", {
+        entry_id: this._entryId(),
+        battery_provider: provider,
+      });
+      this._config = {
+        ...this._config,
+        battery_provider: provider,
+      };
+      this._batterySaveStatus = {
+        type: "success",
+        message: `Saved connection type: ${this._connectionTypeLabel(provider)}.`,
+      };
+      this._clearBatterySaveStatusSoon();
+      this._render();
+    } catch (error) {
+      console.error("Failed to persist connection type", error);
+      this._batterySaveStatus = {
+        type: "error",
+        message: this._formatErrorMessage(error, "Connection type save failed."),
+      };
+      this._render();
+    }
   }
 
   _batteryEntityOptions(batteryState) {
@@ -2568,6 +2929,80 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }, delayMs);
   }
 
+  _policyChargeFileUrl() {
+    const entryId = this._entryId();
+    if (!entryId) {
+      return "";
+    }
+    return `/local/home-energy-manager/${encodeURIComponent(entryId)}/policy_charge_schedule.json?cb=${Date.now()}`;
+  }
+
+  _ensurePolicyChargeFileLoaded() {
+    if (this._page !== "policy") {
+      return;
+    }
+    const url = this._policyChargeFileUrl();
+    if (!url) {
+      return;
+    }
+    const loadKey = url.split("?")[0];
+    const now = Date.now();
+    if (
+      this._policyChargeFileLoadKey === loadKey
+      && this._policyChargeFileLoading
+    ) {
+      return;
+    }
+    if (
+      this._policyChargeFileLoadKey === loadKey
+      && now - this._policyChargeFileLoadedAt < HOME_ENERGY_MANAGER_POLICY_FILE_POLL_MS
+    ) {
+      return;
+    }
+    this._policyChargeFileLoadKey = loadKey;
+    this._policyChargeFileLoading = true;
+    window.fetch(url, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Policy charge file unavailable: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        this._policyChargeFileLoading = false;
+        this._policyChargeFileLoadedAt = Date.now();
+        this._policyChargeFileScheduleSet = payload && typeof payload === "object" ? payload : null;
+        if (this._page === "policy" && !this._shouldHoldRender()) {
+          this._render();
+        }
+      })
+      .catch((error) => {
+        this._policyChargeFileLoading = false;
+        console.debug("Policy charge file not ready; using HA state fallback", error);
+        if (this._page === "policy" && !this._shouldHoldRender()) {
+          this._render();
+        }
+      });
+  }
+
+  _invalidatePolicyChargeFileLoad() {
+    this._policyChargeFileLoadKey = "";
+    this._policyChargeFileLoadedAt = 0;
+  }
+
+  _refreshPolicyChargeFileSoon(delayMs = 1200, attempts = 1) {
+    if (this._page !== "policy") {
+      return;
+    }
+    window.setTimeout(() => {
+      this._invalidatePolicyChargeFileLoad();
+      this._ensurePolicyChargeFileLoaded();
+      if (attempts > 1) {
+        this._refreshPolicyChargeFileSoon(HOME_ENERGY_MANAGER_POLICY_FILE_POLL_MS, attempts - 1);
+      }
+    }, delayMs);
+  }
+
   _pricingUiDefaults() {
     return {
       groups: [],
@@ -2601,22 +3036,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _loadStoredPricingUi() {
-    try {
-      const scopedKey = this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
-      const scopedValue = localStorage.getItem(scopedKey);
-      const legacyValue = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY);
-      if (!scopedValue && legacyValue) {
-        localStorage.setItem(scopedKey, legacyValue);
-      }
-      const parsed = JSON.parse(scopedValue || legacyValue || "{}") || {};
-      return this._stabilizePricingUiModel({
-        ...this._pricingUiDefaults(),
-        ...parsed,
-        groups: Array.isArray(parsed.groups) ? parsed.groups : [],
-      });
-    } catch (error) {
-      return this._pricingUiDefaults();
-    }
+    const parsed = this._pricingUiMemoryState && typeof this._pricingUiMemoryState === "object"
+      ? this._pricingUiMemoryState
+      : {};
+    return this._stabilizePricingUiModel({
+      ...this._pricingUiDefaults(),
+      ...parsed,
+      groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+    });
   }
 
   _loadPricingUi() {
@@ -2624,12 +3051,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
       const parsed = this._loadStoredPricingUi();
       const backendModel = this._pricingUiFromBackendSchedule();
       if (backendModel.backendAvailable && backendModel.groups.length === 0 && (!Array.isArray(parsed.groups) || parsed.groups.length === 0)) {
-        try {
-          localStorage.removeItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY));
-          localStorage.removeItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_DRAFT_KEY));
-        } catch (storageError) {
-          // Ignore storage failures in private browsing / restricted environments.
-        }
         return this._stabilizePricingUiModel(backendModel);
       }
       if (!Array.isArray(parsed.groups) || parsed.groups.length === 0) {
@@ -2692,54 +3113,46 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _savePricingUi(model) {
-    try {
-      const now = Date.now();
-      localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY), JSON.stringify(this._stabilizePricingUiModel({
-        ...this._pricingUiDefaults(),
-        ...(model || {}),
-        groups: Array.isArray(model?.groups) ? model.groups : [],
-        localUpdatedAt: now,
-        pendingWriteUntil: now + HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS,
-      })));
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
-    }
+    const now = Date.now();
+    this._pricingUiMemoryState = this._stabilizePricingUiModel({
+      ...this._pricingUiDefaults(),
+      ...(model || {}),
+      groups: Array.isArray(model?.groups) ? model.groups : [],
+      localUpdatedAt: now,
+      pendingWriteUntil: now + HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS,
+    });
   }
 
   _savePricingUiFromBackend(model) {
-    try {
-      const backendUpdatedAt = Date.parse(String(model?.backendUpdatedAt || ""));
-      const existing = this._loadStoredPricingUi();
-      const existingLocalUpdatedAt = Number(existing.localUpdatedAt || 0);
-      const existingPendingWriteUntil = Number(existing.pendingWriteUntil || 0);
-      const incomingGroups = Array.isArray(model?.groups) ? model.groups : [];
-      const existingGroups = Array.isArray(existing.groups) ? existing.groups : [];
-      if (
-        existingGroups.length > 0
-        && (
-          Date.now() < existingPendingWriteUntil
-          || (existingLocalUpdatedAt > 0 && (!Number.isFinite(backendUpdatedAt) || existingLocalUpdatedAt > backendUpdatedAt))
-        )
-      ) {
-        return;
-      }
-      const groupsToSave = incomingGroups.length === 0 && existingGroups.length > 0
-        ? existingGroups
-        : incomingGroups;
-      const activeGroupIdToSave = groupsToSave.length > 0
-        ? String(model?.activeGroupId || existing.activeGroupId || groupsToSave[0]?.group_id || "")
-        : "";
-      localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY), JSON.stringify(this._stabilizePricingUiModel({
-        ...this._pricingUiDefaults(),
-        ...(model || {}),
-        groups: groupsToSave,
-        activeGroupId: activeGroupIdToSave,
-        localUpdatedAt: Number.isFinite(backendUpdatedAt) ? backendUpdatedAt : Date.now(),
-        pendingWriteUntil: 0,
-      })));
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
+    const backendUpdatedAt = Date.parse(String(model?.backendUpdatedAt || ""));
+    const existing = this._loadStoredPricingUi();
+    const existingLocalUpdatedAt = Number(existing.localUpdatedAt || 0);
+    const existingPendingWriteUntil = Number(existing.pendingWriteUntil || 0);
+    const incomingGroups = Array.isArray(model?.groups) ? model.groups : [];
+    const existingGroups = Array.isArray(existing.groups) ? existing.groups : [];
+    if (
+      existingGroups.length > 0
+      && (
+        Date.now() < existingPendingWriteUntil
+        || (existingLocalUpdatedAt > 0 && (!Number.isFinite(backendUpdatedAt) || existingLocalUpdatedAt > backendUpdatedAt))
+      )
+    ) {
+      return;
     }
+    const groupsToSave = incomingGroups.length === 0 && existingGroups.length > 0
+      ? existingGroups
+      : incomingGroups;
+    const activeGroupIdToSave = groupsToSave.length > 0
+      ? String(model?.activeGroupId || existing.activeGroupId || groupsToSave[0]?.group_id || "")
+      : "";
+    this._pricingUiMemoryState = this._stabilizePricingUiModel({
+      ...this._pricingUiDefaults(),
+      ...(model || {}),
+      groups: groupsToSave,
+      activeGroupId: activeGroupIdToSave,
+      localUpdatedAt: Number.isFinite(backendUpdatedAt) ? backendUpdatedAt : Date.now(),
+      pendingWriteUntil: 0,
+    });
   }
 
   _pricingUiGroupDefaults() {
@@ -2774,18 +3187,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _purchaseTariffOptions() {
-    let customOptions = [];
-    try {
-      const scopedKey = this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY);
-      const scopedValue = localStorage.getItem(scopedKey);
-      const legacyValue = localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY);
-      if (!scopedValue && legacyValue) {
-        localStorage.setItem(scopedKey, legacyValue);
-      }
-      customOptions = JSON.parse(scopedValue || legacyValue || "[]") || [];
-    } catch (error) {
-      customOptions = [];
-    }
+    const customOptions = Array.isArray(this._pricingCustomTariffOptions)
+      ? this._pricingCustomTariffOptions
+      : [];
     return [...new Set([
       ...HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS,
       ...customOptions.map((option) => String(option || "").trim()).filter(Boolean),
@@ -2799,11 +3203,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const options = this._purchaseTariffOptions();
     if (!options.includes(normalized)) {
-      try {
-        localStorage.setItem(this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PURCHASE_TARIFF_KEY), JSON.stringify([...options, normalized]));
-      } catch (error) {
-        // The typed label can still be used for this record even if storage is blocked.
-      }
+      this._pricingCustomTariffOptions = [...options, normalized]
+        .filter((option) => !HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS.includes(option));
     }
     return normalized;
   }
@@ -2869,11 +3270,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _pricingGroupDraftType() {
-    try {
-      return localStorage.getItem(`${this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY)}.draft_type`) || "dynamic";
-    } catch (error) {
-      return "dynamic";
-    }
+    return this._pricingGroupDraftTypeValue || "dynamic";
   }
 
   _openPricingGroupSelector() {
@@ -2942,11 +3339,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _savePricingGroupDraftType(value) {
     const pricingType = String(value || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic";
-    try {
-      localStorage.setItem(`${this._pricingStorageKey(HOME_ENERGY_MANAGER_PANEL_PRICING_UI_KEY)}.draft_type`, pricingType);
-    } catch (error) {
-      // Ignore storage failures in private browsing / restricted environments.
-    }
+    this._pricingGroupDraftTypeValue = pricingType;
     return pricingType;
   }
 
@@ -3156,6 +3549,540 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return `Overlaps with "${overlap.label || "Unnamed rate window"}". Change the day or time before saving.`;
     }
     return "";
+  }
+
+  _normalizePolicyTime(value, fallback = "00:00") {
+    const text = String(value || "").trim();
+    const match = /^(\d{1,2}):(\d{2})/.exec(text);
+    if (!match) {
+      return fallback;
+    }
+    return `${String(Math.min(23, Math.max(0, Number(match[1])))).padStart(2, "0")}:${String(Math.min(59, Math.max(0, Number(match[2])))).padStart(2, "0")}`;
+  }
+
+  _policyChargeScheduleEntity() {
+    return this._entityByKey("policy_charge_schedule");
+  }
+
+  _policyChargeScopeMeta() {
+    const selector = this._settingsTargetState();
+    const selection = selector?.attributes?.selection && typeof selector.attributes.selection === "object"
+      ? selector.attributes.selection
+      : {};
+    const systemId = String(selection.system_id || "").trim();
+    const sysSn = String(selection.sys_sn || "").trim();
+    const label = String(selection.label || selector?.state || "All systems").trim() || "All systems";
+    if (label === "All systems" || sysSn === "All") {
+      return { scope_key: "all", scope_label: "All systems", system_id: "", sys_sn: "All" };
+    }
+    return {
+      scope_key: systemId || sysSn || "all",
+      scope_label: label,
+      system_id: systemId,
+      sys_sn: sysSn || "All",
+    };
+  }
+
+  _policyChargeScheduleData() {
+    const entity = this._policyChargeScheduleEntity();
+    const attributes = entity?.attributes || {};
+    const stateSchedules = Array.isArray(attributes.schedules) ? attributes.schedules : [];
+    const fileSchedules = Array.isArray(this._policyChargeFileScheduleSet?.schedules)
+      ? this._policyChargeFileScheduleSet.schedules
+      : [];
+    const scheduleMap = new Map();
+    [...stateSchedules, ...fileSchedules].forEach((schedule) => {
+      const scopeKey = String(schedule?.scope_key || "").trim();
+      if (scopeKey) {
+        scheduleMap.set(scopeKey, schedule);
+      }
+    });
+    const schedules = [...scheduleMap.values()];
+    const scopeMeta = this._policyChargeScopeMeta();
+    const scoped = schedules.find((schedule) => String(schedule?.scope_key || "") === scopeMeta.scope_key)
+      || (schedules.length === 1 ? schedules[0] : null);
+    const batteryPolicy = this._settingsTargetState()?.attributes?.battery_policy || {};
+    return {
+      available: Boolean(entity || this._policyChargeFileScheduleSet),
+      updatedAt: String(attributes.updated_at || this._policyChargeFileScheduleSet?.updated_at || scoped?.updated_at || ""),
+      charging_now: batteryPolicy.force_charge_active === undefined ? Boolean(scoped?.charging_now) : Boolean(batteryPolicy.force_charge_active),
+      schedule: scoped,
+      scopeMeta,
+      schedules,
+    };
+  }
+
+  _policyChargeRowDefaults() {
+    return {
+      row_id: this._generateRuleId(),
+      label: "Battery Charge",
+      cutoff_soc: "100",
+      start_time: "00:00",
+      end_time: "00:15",
+      day_types: ["mon", "tue", "wed", "thu", "fri"],
+    };
+  }
+
+  _policyChargeDefaultPlaceholderRow() {
+    return {
+      ...this._policyChargeRowDefaults(),
+      row_id: "hem_default_charge_row",
+      label: "Battery Charge",
+      cutoff_soc: "100",
+      start_time: "00:00",
+      end_time: "00:15",
+      day_types: ["mon", "tue", "wed", "thu", "fri"],
+    };
+  }
+
+  _policyChargeNormalizeRows(rows, fallback = {}) {
+    const defaults = this._policyChargeDefaultPlaceholderRow();
+    const normalized = (Array.isArray(rows) ? rows : [])
+      .filter(Boolean)
+      .map((row) => ({
+        ...this._policyChargeRowDefaults(),
+        ...row,
+        row_id: String(row?.row_id || this._generateRuleId()),
+        label: String(row?.label || row?.policy_name || fallback.policy_name || defaults.label),
+        cutoff_soc: String(row?.cutoff_soc ?? fallback.cutoff_soc ?? fallback.immediate_cutoff_soc ?? defaults.cutoff_soc),
+        start_time: this._normalizePolicyTime(row?.start_time, defaults.start_time),
+        end_time: this._normalizePolicyTime(row?.end_time, defaults.end_time),
+        day_types: Array.isArray(row?.day_types) && row.day_types.length ? row.day_types : [...defaults.day_types],
+      }));
+    return normalized.length ? normalized : [defaults];
+  }
+
+  _policyChargeUiDefaults() {
+    return {
+      immediate_cutoff_soc: "100",
+      policy_enabled: false,
+      policy_name: "Battery Charge",
+      cutoff_soc: "100",
+      charging_now: false,
+      rows: [this._policyChargeDefaultPlaceholderRow()],
+      warning: "",
+      last_command_message: "",
+      last_command_ok: null,
+      last_command_at: 0,
+      scope_key: "all",
+    };
+  }
+
+  _policyChargeFeedbackTimestamp(value) {
+    if (Number.isFinite(value) && value > 0) {
+      return Number(value);
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return 0;
+      }
+      const numeric = Number(trimmed);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric;
+      }
+      const parsed = Date.parse(trimmed);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return 0;
+  }
+
+  _policyChargeNormalizeFeedback(model) {
+    const feedbackAt = this._policyChargeFeedbackTimestamp(
+      model?.last_command_at ?? model?.updated_at ?? "",
+    );
+    const feedbackVisible = Boolean(model?.charging_now)
+      || !feedbackAt
+      || (Date.now() - feedbackAt) < HOME_ENERGY_MANAGER_POLICY_FEEDBACK_MS;
+    if (feedbackVisible) {
+      return {
+        ...model,
+        last_command_at: feedbackAt,
+      };
+    }
+    return {
+      ...model,
+      last_command_message: "",
+      last_command_ok: null,
+      last_command_at: feedbackAt,
+    };
+  }
+
+  _loadPolicyChargeUi() {
+    const backend = this._policyChargeScheduleData();
+    const schedule = backend.schedule || {};
+    const defaults = this._policyChargeUiDefaults();
+    const model = {
+      ...defaults,
+      scope_key: backend.scopeMeta.scope_key,
+      backend_available: Boolean(backend.available && backend.schedule),
+      policy_enabled: Boolean(schedule.policy_enabled),
+      policy_name: String(schedule.policy_name || defaults.policy_name),
+      immediate_cutoff_soc: String(schedule.immediate_cutoff_soc ?? defaults.immediate_cutoff_soc),
+      cutoff_soc: String(schedule.rows?.[0]?.cutoff_soc ?? schedule.immediate_cutoff_soc ?? defaults.cutoff_soc),
+      charging_now: Boolean(backend.charging_now),
+      rows: this._policyChargeNormalizeRows(schedule.rows, {
+        policy_name: schedule.policy_name || defaults.policy_name,
+        cutoff_soc: schedule.rows?.[0]?.cutoff_soc ?? schedule.immediate_cutoff_soc ?? defaults.cutoff_soc,
+        immediate_cutoff_soc: schedule.immediate_cutoff_soc ?? defaults.immediate_cutoff_soc,
+      }),
+      last_command_message: String(schedule.last_command_message || ""),
+      last_command_ok: schedule.last_command_ok ?? null,
+      last_command_at: this._policyChargeFeedbackTimestamp(schedule.last_command_at ?? schedule.updated_at ?? backend.updatedAt),
+      updated_at: String(schedule.updated_at || backend.updatedAt || ""),
+    };
+    if (this._policyChargeUiCache && this._policyChargeUiCache.scope_key === model.scope_key) {
+      const backendAvailable = Boolean(model.backend_available);
+      const backendHasFeedback = Boolean(model.last_command_message);
+      const backendScheduleAt = this._policyChargeFeedbackTimestamp(model.updated_at);
+      const cachedScheduleAt = this._policyChargeFeedbackTimestamp(this._policyChargeUiCache.updated_at);
+      const backendFeedbackAt = this._policyChargeFeedbackTimestamp(model.last_command_at);
+      const cachedFeedbackAt = this._policyChargeFeedbackTimestamp(this._policyChargeUiCache.last_command_at);
+      const preferBackendSchedule = backendAvailable && backendScheduleAt >= cachedScheduleAt;
+      const preferBackendFeedback = backendAvailable && backendHasFeedback && backendFeedbackAt >= cachedFeedbackAt;
+      return this._policyChargeNormalizeFeedback({
+        ...model,
+        ...this._policyChargeUiCache,
+        policy_enabled: preferBackendSchedule
+          ? Boolean(model.policy_enabled)
+          : Boolean(this._policyChargeUiCache.policy_enabled),
+        policy_name: preferBackendSchedule
+          ? String(model.policy_name || defaults.policy_name)
+          : String(this._policyChargeUiCache.policy_name || model.policy_name || defaults.policy_name),
+        immediate_cutoff_soc: preferBackendSchedule
+          ? String(model.immediate_cutoff_soc || defaults.immediate_cutoff_soc)
+          : String(this._policyChargeUiCache.immediate_cutoff_soc || model.immediate_cutoff_soc || defaults.immediate_cutoff_soc),
+        charging_now: preferBackendFeedback ? model.charging_now : Boolean(this._policyChargeUiCache.charging_now),
+        last_command_message: preferBackendFeedback ? model.last_command_message : String(this._policyChargeUiCache.last_command_message || ""),
+        last_command_ok: preferBackendFeedback ? model.last_command_ok : (this._policyChargeUiCache.last_command_ok ?? null),
+        last_command_at: preferBackendFeedback
+          ? backendFeedbackAt
+          : this._policyChargeFeedbackTimestamp(this._policyChargeUiCache.last_command_at ?? model.last_command_at),
+        updated_at: preferBackendSchedule ? model.updated_at : String(this._policyChargeUiCache.updated_at || model.updated_at || ""),
+        rows: preferBackendSchedule
+          ? this._policyChargeNormalizeRows(model.rows, model)
+          : this._policyChargeNormalizeRows(this._policyChargeUiCache.rows, model),
+      });
+    }
+    this._policyChargeUiCache = this._policyChargeNormalizeFeedback(model);
+    return this._policyChargeUiCache;
+  }
+
+  _savePolicyChargeUi(model) {
+    this._policyChargeUiCache = this._policyChargeNormalizeFeedback({
+      ...this._policyChargeUiDefaults(),
+      ...(model || {}),
+      rows: this._policyChargeNormalizeRows(model?.rows, model),
+    });
+  }
+
+  _readPolicyChargeForm() {
+    const model = this._loadPolicyChargeUi();
+    if (!this.shadowRoot) {
+      return model;
+    }
+    const form = { ...model };
+    this.shadowRoot.querySelectorAll("[data-policy-charge-field]").forEach((field) => {
+      const key = field.dataset.policyChargeField;
+      if (key) {
+        form[key] = field.type === "checkbox" ? Boolean(field.checked) : String(field.value || "").trim();
+      }
+    });
+    return form;
+  }
+
+  _readPolicyChargeRowForm() {
+    const defaults = this._policyChargeRowDefaults();
+    if (!this.shadowRoot) {
+      return defaults;
+    }
+    const row = {};
+    this.shadowRoot.querySelectorAll("[data-policy-charge-row-field]").forEach((field) => {
+      const key = field.dataset.policyChargeRowField;
+      if (key) {
+        row[key] = String(field.value || "").trim();
+      }
+    });
+    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-policy-charge-row-day]:checked"))
+      .map((field) => String(field.dataset.policyChargeRowDay || ""))
+      .filter(Boolean);
+    return {
+      ...defaults,
+      ...row,
+      row_id: String(row.row_id || "").trim() || this._generateRuleId(),
+      start_time: this._normalizePolicyTime(row.start_time, defaults.start_time),
+      end_time: this._normalizePolicyTime(row.end_time, defaults.end_time),
+      day_types: dayTypes.length ? dayTypes : defaults.day_types,
+    };
+  }
+
+  _policyChargeValidationForRow(model, candidateRow, existingRowId = "") {
+    const candidate = { ...candidateRow, record_type: "buy" };
+    if (this._pricingRuleSegments(candidate).length === 0) {
+      return "Charge row start and end time must be valid and cannot be the same.";
+    }
+    const overlap = (Array.isArray(model?.rows) ? model.rows : []).find((row) => (
+      String(row.row_id || "") !== String(existingRowId || "")
+      && this._pricingRulesOverlap(
+        { ...row, record_type: "buy", rule_id: row.row_id },
+        { ...candidate, rule_id: candidate.row_id }
+      )
+    ));
+    if (overlap) {
+      return `Overlaps with ${this._formatPricingTime(overlap.start_time)} - ${this._formatPricingTime(overlap.end_time)}. Change the day or time before saving.`;
+    }
+    return "";
+  }
+
+  async _handlePolicyChargeToggleNow() {
+    const model = this._readPolicyChargeForm();
+    model.warning = "";
+    model.last_command_ok = null;
+    model.last_command_at = Date.now();
+    model.last_command_message = model.charging_now
+      ? "Stopping charge. Waiting for inverter confirmation..."
+      : "Starting charge. Waiting for inverter confirmation...";
+    model.charging_now = !Boolean(model.charging_now);
+    this._savePolicyChargeUi(model);
+    this._render();
+    try {
+      if (!model.charging_now) {
+        await this._hass.callService("home_energy_manager", "stop_force_charge", {});
+      } else {
+        await this._hass.callService("home_energy_manager", "start_force_charge", {
+          charge_cap: Number(model.immediate_cutoff_soc || 100),
+        });
+      }
+      this._policyChargeUiCache = {
+        ...this._policyChargeUiDefaults(),
+        ...model,
+        last_command_ok: true,
+        last_command_at: Date.now(),
+        last_command_message: model.charging_now
+          ? "Charge command sent. Refreshing ByteWatt response details..."
+          : "Stop command sent. Refreshing ByteWatt response details...",
+      };
+      this._refreshPolicyChargeFileSoon(1000, 10);
+    } catch (error) {
+      model.charging_now = !Boolean(model.charging_now);
+      model.last_command_ok = false;
+      model.last_command_at = Date.now();
+      model.last_command_message = "";
+      model.warning = String(error?.message || error || "Immediate charge action failed");
+      this._savePolicyChargeUi(model);
+      this._refreshPolicyChargeFileSoon(1000, 10);
+    }
+    this._render();
+  }
+
+  async _handlePolicyChargeStopNow() {
+    const model = this._readPolicyChargeForm();
+    model.warning = "";
+    model.policy_enabled = false;
+    model.charging_now = false;
+    model.last_command_ok = null;
+    model.last_command_at = Date.now();
+    model.last_command_message = "Stopping charge and disabling HEM Charge Policy...";
+    model.updated_at = new Date().toISOString();
+    this._savePolicyChargeUi(model);
+    this._render();
+    try {
+      await this._hass.callService("home_energy_manager", "policy_charge_save", {
+        policy_enabled: false,
+        policy_name: String(model.policy_name || "Battery Charge"),
+        immediate_cutoff_soc: Number(model.immediate_cutoff_soc || 100),
+        rows: this._policyChargeNormalizeRows(model.rows, model).map((row) => ({
+          row_id: String(row.row_id || this._generateRuleId()),
+          label: String(row.label || model.policy_name || "Battery Charge"),
+          cutoff_soc: Number(row.cutoff_soc || model.cutoff_soc || model.immediate_cutoff_soc || 100),
+          start_time: this._normalizePolicyTime(row.start_time, "00:00"),
+          end_time: this._normalizePolicyTime(row.end_time, "00:15"),
+          day_types: Array.isArray(row.day_types) ? row.day_types : [],
+        })),
+      });
+      await this._hass.callService("home_energy_manager", "stop_force_charge", {});
+      await this._hass.callService("homeassistant", "update_entity", {
+        entity_id: this._settingsTargetId(),
+      });
+      this._savePolicyChargeUi({
+        ...model,
+        policy_enabled: false,
+        charging_now: false,
+        last_command_ok: true,
+        last_command_at: Date.now(),
+        last_command_message: "Stop command sent successfully. HEM Charge Policy is now disabled.",
+        updated_at: new Date().toISOString(),
+      });
+      this._policyChargeUiDirty = false;
+      this._refreshPolicyChargeFileSoon(600, 4);
+    } catch (error) {
+      this._savePolicyChargeUi({
+        ...model,
+        charging_now: true,
+        last_command_ok: false,
+        last_command_at: Date.now(),
+        last_command_message: "",
+        warning: String(error?.message || error || "Stop charge action failed"),
+        updated_at: new Date().toISOString(),
+      });
+    }
+    this._render();
+  }
+
+  _handlePolicyChargeStartRow() {
+    const model = this._readPolicyChargeForm();
+    this._policyChargeDraft = {
+      ...this._policyChargeRowDefaults(),
+      label: String(model.policy_name || "Battery Charge"),
+      cutoff_soc: String(model.cutoff_soc || model.immediate_cutoff_soc || 100),
+    };
+    this._policyChargeEditorOpen = true;
+    this._policyChargeUiDirty = true;
+    model.warning = "";
+    this._savePolicyChargeUi(model);
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  _handlePolicyChargeModifyRow(rowId) {
+    const model = this._loadPolicyChargeUi();
+    const row = (Array.isArray(model.rows) ? model.rows : []).find((item) => String(item.row_id || "") === String(rowId || ""));
+    if (!row) {
+      return;
+    }
+    this._policyChargeDraft = {
+      ...this._policyChargeRowDefaults(),
+      ...row,
+      day_types: Array.isArray(row.day_types) ? [...row.day_types] : this._policyChargeRowDefaults().day_types,
+    };
+    this._policyChargeEditorOpen = true;
+    this._policyChargeUiDirty = true;
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
+  _handlePolicyChargeDeleteRow(rowId) {
+    if (!window.confirm("Delete this saved charge row?")) {
+      return;
+    }
+    const model = this._readPolicyChargeForm();
+    model.rows = (Array.isArray(model.rows) ? model.rows : []).filter((row) => String(row.row_id || "") !== String(rowId || ""));
+    model.warning = "";
+    this._policyChargeUiDirty = true;
+    this._savePolicyChargeUi(model);
+    this._render();
+  }
+
+  _handlePolicyChargeSaveRow() {
+    const model = this._readPolicyChargeForm();
+    const row = this._readPolicyChargeRowForm();
+    const warning = this._policyChargeValidationForRow(model, row, row.row_id);
+    if (warning) {
+      model.warning = warning;
+      this._savePolicyChargeUi(model);
+      this._render();
+      return;
+    }
+    const rows = Array.isArray(model.rows) ? [...model.rows] : [];
+    const index = rows.findIndex((item) => String(item.row_id || "") === String(row.row_id || ""));
+    if (index >= 0) {
+      rows[index] = row;
+    } else {
+      rows.push(row);
+    }
+    model.rows = rows;
+    model.warning = "";
+    this._policyChargeEditorOpen = false;
+    this._policyChargeDraft = {};
+    this._policyChargeUiDirty = true;
+    this._savePolicyChargeUi(model);
+    this._render();
+  }
+
+  _handlePolicyChargeCancelRow() {
+    this._policyChargeEditorOpen = false;
+    this._policyChargeDraft = {};
+    const model = this._readPolicyChargeForm();
+    model.warning = "";
+    this._savePolicyChargeUi(model);
+    this._render();
+  }
+
+  _handlePolicyChargeCancel() {
+    this._policyChargeEditorOpen = false;
+    this._policyChargeDraft = {};
+    this._policyChargeUiDirty = false;
+    this._policyChargeUiCache = null;
+    this._invalidatePolicyChargeFileLoad();
+    this._ensurePolicyChargeFileLoaded();
+    this._render();
+  }
+
+  async _handlePolicyChargeSave() {
+    const model = this._readPolicyChargeForm();
+    const policyEnabled = Boolean(
+      this.shadowRoot?.querySelector('input[data-policy-charge-field="policy_enabled"]')?.checked
+      ?? model.policy_enabled
+    );
+    model.policy_enabled = policyEnabled;
+    model.warning = "";
+    const payloadRows = this._policyChargeNormalizeRows(model.rows, model).map((row) => ({
+      row_id: String(row.row_id || this._generateRuleId()),
+      label: String(row.label || model.policy_name || "Battery Charge"),
+      cutoff_soc: Number(row.cutoff_soc || model.cutoff_soc || model.immediate_cutoff_soc || 100),
+      start_time: this._normalizePolicyTime(row.start_time, "00:00"),
+      end_time: this._normalizePolicyTime(row.end_time, "00:15"),
+      day_types: Array.isArray(row.day_types) ? row.day_types : [],
+    }));
+    this._savePolicyChargeUi(model);
+    this._policyChargeEditorOpen = false;
+    this._policyChargeDraft = {};
+    this._policyChargeUiDirty = false;
+    this._render();
+    try {
+      await this._hass.callService("home_energy_manager", "policy_charge_save", {
+        policy_enabled: policyEnabled,
+        policy_name: String(model.policy_name || "Battery Charge"),
+        immediate_cutoff_soc: Number(model.immediate_cutoff_soc || 100),
+        rows: payloadRows,
+      });
+      await this._hass.callService("homeassistant", "update_entity", {
+        entity_id: this._settingsTargetId(),
+      });
+      this._savePolicyChargeUi({
+        ...model,
+        rows: payloadRows.map((row) => ({
+          ...row,
+          cutoff_soc: String(row.cutoff_soc ?? model.immediate_cutoff_soc ?? 100),
+        })),
+        last_command_ok: true,
+        last_command_at: Date.now(),
+        last_command_message: policyEnabled
+          ? "Charge policy saved and applied. HEM is checking the schedule now."
+          : "Charge policy saved as disabled.",
+        charging_now: policyEnabled ? Boolean(model.charging_now) : false,
+        policy_enabled: policyEnabled,
+        updated_at: new Date().toISOString(),
+      });
+      this._invalidatePolicyChargeFileLoad();
+      this._refreshPolicyChargeFileSoon(600, 4);
+    } catch (error) {
+      model.warning = String(error?.message || error || "Unable to save charge policy");
+      this._savePolicyChargeUi(model);
+      this._policyChargeUiDirty = true;
+    }
+    this._render();
+  }
+
+  _policyChargeShowPublicHolidayDay() {
+    const activeGroup = this._pricingUiActiveGroup(this._loadPricingUi());
+    const buyRules = (Array.isArray(activeGroup?.rules) ? activeGroup.rules : [])
+      .filter((rule) => String(rule?.record_type || "buy").toLowerCase() !== "sell");
+    return buyRules.some((rule) => (
+      Array.isArray(rule?.day_types) && rule.day_types.includes("public_holiday")
+    ));
   }
 
   _pricingUiSortedGroups(model = this._loadPricingUi()) {
@@ -3665,6 +4592,151 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return this._formatEntityState(this._entityByKey(key, domain), fallback);
   }
 
+  _numericState(key, domain = "sensor") {
+    const entity = this._entityByKey(key, domain);
+    if (!entity || entity.state === "unknown" || entity.state === "unavailable") {
+      return null;
+    }
+    const value = Number(entity.state);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  _formatPowerValue(value, fallback = "Unavailable") {
+    if (!Number.isFinite(value)) {
+      return fallback;
+    }
+    const absValue = Math.abs(value);
+    if (absValue >= 1000) {
+      return `${(absValue / 1000).toFixed(2)} kW`;
+    }
+    return `${absValue.toFixed(0)} W`;
+  }
+
+  _batteryTotalChargeRate() {
+    const batteryPower = this._numericState("battery_power");
+    if (batteryPower === null) {
+      return "Unavailable";
+    }
+    return this._formatPowerValue(batteryPower < 0 ? Math.abs(batteryPower) : 0, "0 W");
+  }
+
+  _batteryChargeRateWatts(policyState = {}) {
+    const totalChargeRate = Number(policyState.total_charge_rate_w);
+    if (Number.isFinite(totalChargeRate)) {
+      return Math.max(totalChargeRate, 0);
+    }
+    const batteryPower = this._numericState("battery_power");
+    return batteryPower !== null && batteryPower < 0 ? Math.abs(batteryPower) : 0;
+  }
+
+  _selectedLiveBattery(policyState = {}) {
+    const rows = Array.isArray(policyState.live_batteries) ? policyState.live_batteries : [];
+    if (!rows.length) {
+      return null;
+    }
+    const selector = this._settingsTargetState();
+    const selection = selector?.attributes?.selection && typeof selector.attributes.selection === "object"
+      ? selector.attributes.selection
+      : {};
+    const selectedLabel = String(this._selectedSettingsTargetLabel() || selection.label || selector?.state || "").trim();
+    const selectedSysSn = String(selection.sys_sn || "").trim();
+    const selectedSystemId = String(selection.system_id || "").trim();
+    if (!selectedLabel || selectedLabel === "All systems" || selectedSysSn === "All") {
+      return null;
+    }
+    return rows.find((battery) => {
+      const rowLabel = String(battery?.label || "").trim();
+      const rowSysSn = String(battery?.sys_sn || "").trim();
+      const rowSystemId = String(battery?.system_id || "").trim();
+      return (selectedSysSn && rowSysSn === selectedSysSn)
+        || (selectedSystemId && rowSystemId === selectedSystemId)
+        || (selectedLabel && rowLabel === selectedLabel);
+    }) || null;
+  }
+
+  _selectedBatterySoc(policyState = {}) {
+    const selectedBattery = this._selectedLiveBattery(policyState);
+    const liveSoc = Number(selectedBattery?.soc);
+    if (Number.isFinite(liveSoc)) {
+      return `${liveSoc.toFixed(1)} %`;
+    }
+    return "Unavailable";
+  }
+
+  _selectedSettingsTargetLabel() {
+    const selector = this._settingsTargetState();
+    const options = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
+    const storedSelection = this._loadBatterySelection();
+    if (storedSelection && options.includes(storedSelection)) {
+      return storedSelection;
+    }
+    const current = String(selector?.state || "").trim();
+    if (current && current !== "unavailable") {
+      return current;
+    }
+    return options.includes("All systems") ? "All systems" : current || "Unavailable";
+  }
+
+  _liveBatteryChargeSource(policyState = {}) {
+    const chargeRate = this._batteryChargeRateWatts(policyState);
+    const pvPower = this._numericState("pv_power");
+    const loadPower = this._numericState("house_consumption");
+    const gridPower = this._numericState("grid_power");
+    if (!Number.isFinite(chargeRate) || chargeRate <= 0) {
+      return {
+        gridToBatteryW: 0,
+        solarToBatteryW: 0,
+        source: "Not charging",
+        note: "Live pbat is not charging",
+      };
+    }
+    const solarSurplusW = pvPower !== null && loadPower !== null
+      ? Math.max(pvPower - loadPower, 0)
+      : null;
+    const solarToBatteryW = solarSurplusW !== null
+      ? Math.min(chargeRate, solarSurplusW)
+      : 0;
+    const gridImportW = gridPower !== null ? Math.max(gridPower, 0) : null;
+    const gridToBatteryW = gridImportW !== null
+      ? Math.min(Math.max(chargeRate - solarToBatteryW, 0), gridImportW)
+      : Math.max(chargeRate - solarToBatteryW, 0);
+    const thresholdW = 150;
+    const source = gridToBatteryW > thresholdW && solarToBatteryW > thresholdW
+      ? "Grid + Solar"
+      : gridToBatteryW > thresholdW
+        ? "Grid"
+        : solarToBatteryW > thresholdW
+          ? "Solar"
+          : "Source unclear";
+    return {
+      gridToBatteryW: Math.max(gridToBatteryW, 0),
+      solarToBatteryW: Math.max(solarToBatteryW, 0),
+      source,
+      note: "Derived from live pbat, PV, load, and grid power",
+    };
+  }
+
+  _configuredOrFallbackState(configKey, fallbackKey, fallback = "Unavailable") {
+    const configured = this._configuredEntityState(configKey, null);
+    if (configured !== null && configured !== undefined && configured !== "Unavailable") {
+      return configured;
+    }
+    return this._formattedState(fallbackKey, "sensor", fallback);
+  }
+
+  _gridToBatteryEnergyTotal() {
+    const direct = this._configuredOrFallbackState("grid_battery_charge_entity", "grid_battery_charge", "");
+    if (direct && direct !== "Unavailable") {
+      return direct;
+    }
+    const total = this._numericState("total_battery_charge");
+    const solar = this._numericState("pv_charging_battery");
+    if (total === null || solar === null) {
+      return "Unavailable";
+    }
+    return `${Math.max(total - solar, 0).toFixed(2)} kWh`;
+  }
+
   _firstManagedState(pattern, fallback = "Unavailable") {
     return this._firstState(pattern, fallback);
   }
@@ -3674,8 +4746,371 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? items
       : [{ label: emptyLabel, value: "idle" }];
     return entries
-      .map((item) => `<li><span>${item.label}</span><strong>${item.value}</strong></li>`)
+      .map((item) => item.section
+        ? `<li class="panel-list__section"><span>${item.label}</span><strong></strong></li>`
+        : `<li><span>${item.label}</span><strong>${item.value}</strong></li>`)
       .join("");
+  }
+
+  _bytewattApiValue(value, kind = "") {
+    const numeric = Number(value);
+    if (kind === "percent") {
+      return Number.isFinite(numeric) ? `${numeric.toFixed(2)} %` : "Unavailable";
+    }
+    if (kind === "power") {
+      return Number.isFinite(numeric) ? this._formatPowerValue(numeric) : "Unavailable";
+    }
+    if (kind === "energy") {
+      return Number.isFinite(numeric) ? `${numeric.toFixed(2)} kWh` : "Unavailable";
+    }
+    if (kind === "text") {
+      const text = String(value ?? "").trim();
+      return text || "Unavailable";
+    }
+    return value === null || value === undefined || value === "" ? "Unavailable" : String(value);
+  }
+
+  _bytewattHeroFieldValue(source, fieldName, kind = "") {
+    if (kind === "feed_in") {
+      return this._bytewattFeedInPowerValue(source?.[fieldName]);
+    }
+    if (kind === "boolean_text") {
+      if (source?.[fieldName] === null || source?.[fieldName] === undefined || source?.[fieldName] === "") {
+        return "Unavailable";
+      }
+      return Boolean(source[fieldName]) ? "Enabled" : "Disabled";
+    }
+    return this._bytewattApiValue(source?.[fieldName], kind);
+  }
+
+  _bytewattScopeSectionLabel(label, sysSn = "") {
+    const safeLabel = String(label || "").trim() || "Unknown";
+    const safeSysSn = String(sysSn || "").trim();
+    return safeSysSn && safeSysSn !== safeLabel ? `${safeLabel} (${safeSysSn})` : safeLabel;
+  }
+
+  _bytewattScopeEntries() {
+    const targetState = this._settingsTargetState();
+    const directApi = targetState?.attributes?.direct_api || {};
+    const selection = targetState?.attributes?.selection || {};
+    const selectedLabel = String(selection?.label || "All systems").trim() || "All systems";
+    const selectedSysSn = String(selection?.sys_sn || "").trim();
+    const liveBatteries = Array.isArray(directApi?.live_batteries) ? directApi.live_batteries : [];
+    const entries = [
+      {
+        scopeType: "all_systems",
+        label: "All Systems",
+        source: directApi?.all_systems || {},
+      },
+      {
+        scopeType: "selected_scope",
+        label: `Selected Battery: ${this._bytewattScopeSectionLabel(selectedLabel, selectedSysSn === "All" ? "" : selectedSysSn)}`,
+        source: directApi?.selected_scope || {},
+      },
+    ];
+    liveBatteries.forEach((battery, index) => {
+      entries.push({
+        scopeType: "per_battery",
+        label: `Battery ${index + 1}: ${this._bytewattScopeSectionLabel(battery?.label || `Battery ${index + 1}`, battery?.sys_sn)}`,
+        source: battery || {},
+      });
+    });
+    return entries;
+  }
+
+  _batteryHeroScopeModeLabel(scopeMode) {
+    if (scopeMode === "all_selected_per_battery") {
+      return "All Systems + Selected Battery + Per Battery";
+    }
+    if (scopeMode === "all_selected") {
+      return "All Systems + Selected Battery";
+    }
+    if (scopeMode === "per_battery") {
+      return "Per Battery";
+    }
+    return "Dynamic";
+  }
+
+  _batteryHeroMappingRows() {
+    return this._heroMappingRowsForDefinitions(HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS);
+  }
+
+  _solarHeroMappingRows() {
+    return this._heroMappingRowsForDefinitions(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS);
+  }
+
+  _heroMappingRowsForDefinitions(definitions) {
+    const scopeEntries = this._bytewattScopeEntries();
+    return definitions.map((definition) => {
+      const mapping = this._batteryHeroMappingEntry(definition);
+      const visibleScopes = scopeEntries
+        .filter((entry) => {
+          if (mapping.activeScopeMode === "per_battery") {
+            return entry.scopeType === "per_battery";
+          }
+          if (mapping.activeScopeMode === "all_selected") {
+            return entry.scopeType === "all_systems" || entry.scopeType === "selected_scope";
+          }
+          return true;
+        })
+        .map((entry) => `${entry.label}: ${this._bytewattHeroFieldValue(entry.source, mapping.activeField, mapping.valueKind)}`);
+      return {
+        key: mapping.key,
+        label: mapping.heroLabel,
+        field: mapping.activeField,
+        defaultField: mapping.bytewattField,
+        scope: this._batteryHeroScopeModeLabel(mapping.activeScopeMode),
+        activeScopeMode: mapping.activeScopeMode,
+        defaultScope: this._batteryHeroScopeModeLabel(mapping.scopeMode),
+        liveValues: visibleScopes.join(" | ") || "Unavailable",
+        note: mapping.derivedFrom || "",
+        usingOverride: mapping.usingOverride,
+      };
+    });
+  }
+
+  _renderBatteryHeroMappingRows() {
+    const rows = this._batteryHeroMappingRows();
+    return this._renderHeroMappingRows(rows, true);
+  }
+
+  _renderSolarHeroMappingRows() {
+    const rows = this._solarHeroMappingRows();
+    return this._renderHeroMappingRows(rows, true);
+  }
+
+  _renderHeroMappingRows(rows, editable = false) {
+    if (!rows.length) {
+      return '<div class="pricing-rule pricing-rule--empty"><strong>No battery hero mappings available yet.</strong></div>';
+    }
+    return rows.map((row) => `
+      <article class="pricing-rule">
+        <div class="pricing-rule__detail-row">
+          <div>
+            <strong>${this._escapeHtml(row.label)}</strong>
+            <span>Bytewatt field: ${this._escapeHtml(row.field)}${row.field !== row.defaultField ? ` (default ${this._escapeHtml(row.defaultField)})` : ""}</span>
+            <span>Scope: ${this._escapeHtml(row.scope)}${row.scope !== row.defaultScope ? ` (default ${this._escapeHtml(row.defaultScope)})` : ""}</span>
+            <span>Override: ${row.usingOverride ? "Custom" : "Default"}</span>
+            ${row.note ? `<span>${this._escapeHtml(row.note)}</span>` : ""}
+          </div>
+        </div>
+        ${editable ? `
+          <div class="pricing-record-section__grid pricing-record-section__grid--buy-tariff policy-record-section__grid--charge-schedule">
+            ${this._heroMappingFieldSelectField(
+              row.key,
+              "Mapped Bytewatt field",
+              HOME_ENERGY_MANAGER_BATTERY_HERO_FIELD_OPTIONS,
+              row.field,
+              this._heroMappingFieldSelectorOpenKey,
+              "field",
+              "field",
+            )}
+            ${this._heroMappingFieldSelectField(
+              row.key,
+              "Scope",
+              HOME_ENERGY_MANAGER_BATTERY_HERO_SCOPE_OPTIONS,
+              row.activeScopeMode || "",
+              this._heroMappingScopeSelectorOpenKey,
+              "scope",
+              "scope",
+            )}
+            <div class="pricing-form__actions pricing-record-form__actions policy-form__actions">
+              <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-battery-hero-reset="${this._escapeHtml(row.key)}">Reset</button>
+            </div>
+          </div>
+        ` : ""}
+        <div class="pricing-rule__detail-row">
+          <div>
+            <span>${this._escapeHtml(row.liveValues)}</span>
+          </div>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  _bytewattFeedInPowerValue(value) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return "Unavailable";
+    }
+    return this._formatPowerValue(Math.max(-numeric, 0), "0 W");
+  }
+
+  _bytewattSetupApiItems() {
+    const targetState = this._settingsTargetState();
+    const directApi = targetState?.attributes?.direct_api || {};
+    const selection = targetState?.attributes?.selection || {};
+    const allSystems = directApi?.all_systems || {};
+    const selected = directApi?.selected_scope || {};
+    const liveBatteries = Array.isArray(directApi?.live_batteries) ? directApi.live_batteries : [];
+    const items = [];
+    const pushMetric = (metricLabel, value) => {
+      items.push({
+        label: metricLabel,
+        value: value ?? "Unavailable",
+      });
+    };
+    const pushSection = (label) => {
+      items.push({ section: true, label, value: "" });
+    };
+    const hasBytewattValue = (value) => value !== null && value !== undefined && value !== "";
+    const pushApiMetrics = (source, options = {}) => {
+      const includeFeedIn = options.includeFeedIn !== false;
+      const includeMppt = options.includeMppt !== false;
+      const includeForceChargeMode = options.includeForceChargeMode === true;
+      pushMetric("SOC", this._bytewattApiValue(source?.soc, "percent"));
+      if (includeFeedIn) {
+        pushMetric("Feed in", this._bytewattFeedInPowerValue(source?.pgrid));
+      }
+      pushMetric("Battery", this._bytewattApiValue(source?.pbat, "power"));
+      pushMetric("Load", this._bytewattApiValue(source?.pload, "power"));
+      pushMetric("Solar", this._bytewattApiValue(source?.ppv, "power"));
+      if (includeMppt) {
+        ["ppv1", "ppv2", "ppv3", "ppv4"].forEach((key, index) => {
+          if (hasBytewattValue(source?.[key])) {
+            pushMetric(`MPPT ${index + 1}`, this._bytewattApiValue(source[key], "power"));
+          }
+        });
+      }
+      pushMetric("Grid", this._bytewattApiValue(source?.pgrid, "power"));
+      pushMetric("Power source", this._bytewattApiValue(source?.powerSource, "text"));
+      if (includeForceChargeMode) {
+        pushMetric("Force charge mode", this._bytewattApiValue(source?.forceChargeMode, "text"));
+      }
+    };
+    pushSection("All systems");
+    pushApiMetrics(allSystems, { includeFeedIn: true, includeMppt: true });
+
+    const selectedLabel = String(selection?.label || "All systems").trim() || "All systems";
+    const selectedSysSn = String(selection?.sys_sn || "").trim();
+    pushSection(`Selected scope: ${this._bytewattScopeSectionLabel(selectedLabel, selectedSysSn === "All" ? "" : selectedSysSn)}`);
+    if (hasBytewattValue(selection?.system_id)) {
+      pushMetric("System ID", this._bytewattApiValue(selection.system_id, "text"));
+    }
+    if (hasBytewattValue(selection?.sys_sn)) {
+      pushMetric("System serial", this._bytewattApiValue(selection.sys_sn, "text"));
+    }
+    if (hasBytewattValue(selection?.remark)) {
+      pushMetric("Remark", this._bytewattApiValue(selection.remark, "text"));
+    }
+    pushApiMetrics(selected, { includeFeedIn: true, includeMppt: true });
+
+    liveBatteries.forEach((battery, index) => {
+      pushSection(this._bytewattScopeSectionLabel(battery?.label || `Battery ${index + 1}`, battery?.sys_sn));
+      pushMetric("System ID", this._bytewattApiValue(battery?.system_id, "text"));
+      pushMetric("System serial", this._bytewattApiValue(battery?.sys_sn, "text"));
+      pushApiMetrics(battery, {
+        includeFeedIn: true,
+        includeMppt: true,
+        includeForceChargeMode: true,
+      });
+    });
+    return items;
+  }
+
+  _bytewattSetupDebugPayload() {
+    const targetState = this._settingsTargetState();
+    const directApi = targetState?.attributes?.direct_api || {};
+    const selection = targetState?.attributes?.selection || {};
+    const payload = {
+      selection,
+      direct_api: directApi,
+    };
+    try {
+      return JSON.stringify(payload, null, 2);
+    } catch (error) {
+      return "Unavailable";
+    }
+  }
+
+  _bytewattSetupItems(batteryProvider) {
+    return [
+      { label: "Provider", value: this._batteryProviderLabel(batteryProvider) },
+      ...this._bytewattSetupApiItems(),
+    ];
+  }
+
+  _hemHeroSetupItems() {
+    const pushSection = (items, label) => {
+      items.push({ section: true, label, value: "" });
+    };
+    const batteryMappings = this._batteryHeroMappingRows();
+    const solarMappings = this._solarHeroMappingRows();
+    const policyState = this._settingsTargetState()?.attributes?.battery_policy || {};
+    const chargeModel = this._loadPolicyChargeUi();
+    const providerChargingState = policyState.force_charge_active === undefined
+      ? null
+      : Boolean(policyState.force_charge_active);
+    const liveChargingState = providerChargingState === null
+      ? false
+      : Boolean(providerChargingState);
+    const activeControlState = liveChargingState ? "Force charge active" : providerChargingState === null ? "Checking..." : "Not active";
+    const liveBatteryRows = Array.isArray(policyState.live_batteries) ? policyState.live_batteries : [];
+    const totalChargeRate = this._batteryChargeRateWatts(policyState);
+    const batteryTotalChargeRate = this._formatPowerValue(totalChargeRate, "0 W");
+    const chargeSource = this._liveBatteryChargeSource(policyState);
+    const batteryChargeRateItems = liveBatteryRows.map((battery, index) => {
+      const label = battery?.label || battery?.sys_sn || `Battery ${index + 1}`;
+      return {
+        label: `${label} Charge Rate`,
+        value: this._formatPowerValue(Number(battery?.charge_rate_w || 0), "0 W"),
+      };
+    });
+    const items = [];
+
+    pushSection(items, "Mapped Battery Hero Summary");
+    batteryMappings.forEach((row) => {
+      items.push({
+        label: row.label,
+        value: row.liveValues,
+      });
+    });
+
+    pushSection(items, "Mapped Solar Hero Summary");
+    solarMappings.forEach((row) => {
+      items.push({
+        label: row.label,
+        value: row.liveValues,
+      });
+    });
+
+    pushSection(items, "Live HEM Highlights");
+    items.push(
+      { label: "Overview Battery", value: this._formattedState("battery_percentage") },
+      { label: "Overview Solar", value: this._formattedState("pv_power") },
+      { label: "Overview Grid", value: this._formattedState("grid_power") },
+      { label: "Overview Load", value: this._formattedState("house_consumption") },
+      { label: "Battery power", value: this._formattedState("battery_power") },
+      { label: "Grid import today", value: this._formattedState("grid_import_today") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Consumed today", value: this._formattedState("consumed_today") },
+    );
+
+    pushSection(items, "Policy Highlights");
+    items.push(
+      { label: "Active Control State", value: activeControlState },
+      { label: "Selected Target", value: this._selectedSettingsTargetLabel() },
+      { label: "Battery SOC", value: this._selectedBatterySoc(policyState) },
+      { label: "Battery Total Charge Rate", value: batteryTotalChargeRate },
+      ...batteryChargeRateItems,
+      { label: "Grid to Battery", value: this._formatPowerValue(chargeSource.gridToBatteryW, "0 W") },
+      { label: "Solar to Battery", value: this._formatPowerValue(chargeSource.solarToBatteryW, "0 W") },
+      { label: "Charging Source", value: chargeSource.source },
+      { label: "Charge Policy", value: chargeModel.policy_enabled ? "Enabled" : "Disabled" },
+    );
+
+    pushSection(items, "Solar Highlights");
+    items.push(
+      { label: "Solar now", value: this._formattedState("pv_power") },
+      { label: "Grid now", value: this._formattedState("grid_consumption") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Battery charged", value: this._formattedState("battery_charged_today") },
+      { label: "PV generated today", value: this._formattedState("pv_generated_today") },
+      { label: "Self consumption", value: this._formattedState("self_consumption") },
+      { label: "Self sufficiency", value: this._formattedState("self_sufficiency") },
+      { label: "Battery charged from solar", value: this._formattedState("battery_charged_today") },
+    );
+    return items;
   }
 
   _matchedEntities(pattern) {
@@ -3768,8 +5203,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const overviewTiles = [
       { label: "Battery", value: this._formattedState("battery_percentage"), note: "Current charge" },
       { label: "Solar", value: this._formattedState("pv_power"), note: "Live PV power" },
-      { label: "Grid", value: this._formattedState("grid_consumption"), note: "Live grid flow" },
+      { label: "Grid", value: this._formattedState("grid_power"), note: "Live grid flow" },
       { label: "Load", value: this._formattedState("house_consumption"), note: "Home demand" },
+    ];
+    const gridConsumptionStats = [
+      { label: "Grid consumption now", value: this._formattedState("grid_consumption") },
+      { label: "Grid import today", value: this._formattedState("grid_import_today") },
+      { label: "Feed in today", value: this._formattedState("feed_in_today") },
+      { label: "Consumed today", value: this._formattedState("consumed_today") },
     ];
     return `
       <section class="overview">
@@ -3786,7 +5227,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
         <section class="overview__tiles">
           ${overviewTiles.map((tile) => `
-            <article class="overview-tile">
+            <article class="overview-tile overview-tile--live">
               <span>${tile.label}</span>
               <strong>${tile.value}</strong>
               <small>${tile.note}</small>
@@ -3829,6 +5270,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
               ])}
             </ul>
           </article>
+
+          <article class="panel-card">
+            <div class="panel-card__header">
+              <h2>Grid Consumption</h2>
+              <span>Live stats</span>
+            </div>
+            <p>
+              Current grid usage and the related daily totals from the live HEM entities.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(gridConsumptionStats)}
+            </ul>
+          </article>
+
         </section>
       </section>
     `;
@@ -3914,58 +5369,372 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _policyPage() {
+    this._ensurePolicyChargeFileLoaded();
+    const policyState = this._settingsTargetState()?.attributes?.battery_policy || {};
     const policyItems = [
-      { label: "Charge window", value: `${this._formattedState("charge_start_time", "time")} → ${this._formattedState("charge_end_time", "time")}` },
-      { label: "Discharge window", value: `${this._formattedState("discharge_start_time", "time")} → ${this._formattedState("discharge_end_time", "time")}` },
-      { label: "Minimum SOC", value: this._formattedState("minimum_soc") },
-      { label: "Charge cap", value: this._formattedState("charge_cap") },
-      { label: "UPS reserve", value: this._formattedState("ups_reserve", "switch") },
-      { label: "Grid charging", value: this._formattedState("grid_charging", "switch") },
+      { label: "Settings target", value: this._formattedState("settings_target", "select") },
+      { label: "Execution cycle", value: this._formattedState("execution_cycle", "select") },
+      { label: "Selected page", value: this._pageLabel() },
+    ];
+    const chargeModel = this._loadPolicyChargeUi();
+    const chargePolicyDirty = Boolean(this._policyChargeUiDirty || this._policyChargeEditorOpen);
+    const providerChargingState = policyState.force_charge_active === undefined
+      ? null
+      : Boolean(policyState.force_charge_active);
+    const livePowerChargingState = policyState.any_charging === undefined
+      ? null
+      : Boolean(policyState.any_charging);
+    const liveChargingState = providerChargingState === null
+      ? Boolean(chargeModel.charging_now)
+      : Boolean(providerChargingState);
+    const activeControlState = liveChargingState ? "Force charge active" : providerChargingState === null ? "Checking..." : "Not active";
+    const liveBatteryRows = Array.isArray(policyState.live_batteries) ? policyState.live_batteries : [];
+    const totalChargeRate = this._batteryChargeRateWatts(policyState);
+    const batteryTotalChargeRate = this._formatPowerValue(totalChargeRate, "0 W");
+    const chargeSource = this._liveBatteryChargeSource(policyState);
+    const batteryChargeRateTiles = liveBatteryRows.map((battery, index) => {
+      const label = battery?.label || battery?.sys_sn || `Battery ${index + 1}`;
+      const soc = Number(battery?.soc);
+      const socNote = Number.isFinite(soc) ? `${soc.toFixed(1)}% SOC` : "SOC unavailable";
+      return {
+        label: `${label} Charge Rate`,
+        value: this._formatPowerValue(Number(battery?.charge_rate_w || 0), "0 W"),
+        note: `${socNote} from live pbat`,
+      };
+    });
+    const batteryPolicyTiles = [
+      { label: "Active Control State", value: activeControlState, note: providerChargingState === null ? "Waiting for provider status" : "Live provider force-charge state" },
+      { label: "Selected Target", value: this._selectedSettingsTargetLabel(), note: "Current HEM control scope" },
+      { label: "Battery SOC", value: this._selectedBatterySoc(policyState), note: "Selected target live SOC" },
+      { label: "Battery Total Charge Rate", value: batteryTotalChargeRate, note: liveBatteryRows.length ? "Sum of live battery pbat" : "Derived from live battery power" },
+      ...batteryChargeRateTiles,
+      { label: "Grid to Battery", value: this._formatPowerValue(chargeSource.gridToBatteryW, "0 W"), note: chargeSource.gridToBatteryW > 25 ? "Live grid import feeding charge" : "No live grid charge detected" },
+      { label: "Solar to Battery", value: this._formatPowerValue(chargeSource.solarToBatteryW, "0 W"), note: chargeSource.solarToBatteryW > 25 ? "Live solar surplus feeding charge" : "No live solar charge detected" },
+      { label: "Charging Source", value: chargeSource.source, note: chargeSource.note },
+      { label: "Charge Policy", value: chargeModel.policy_enabled ? "Enabled" : "Disabled", note: "HEM scheduled charge control" },
+    ];
+    const chargePolicyEnabled = Boolean(chargeModel.policy_enabled);
+    const chargeWarningMessage = this._batteryProviderKey(this._config?.battery_provider) === "bytewatt_web"
+      ? "Existing Charge Schedules set in Web will be DISABLED."
+      : "";
+    const chargeStatusMessage = liveChargingState
+      ? "Charging is active from live force charge or HEM schedule state."
+      : "Charging is not active from live force charge or HEM schedule state.";
+    const chargeImmediateAction = liveChargingState
+      ? `<button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-stop-now>Stop Charging</button>`
+      : `<button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-toggle-now>Charge Now</button>`;
+    const chargeDraft = {
+      ...this._policyChargeRowDefaults(),
+      ...(this._policyChargeDraft || {}),
+    };
+    const chargeRows = Array.isArray(chargeModel.rows) ? chargeModel.rows : [];
+    const chargeRowExists = chargeRows.some((row) => String(row.row_id || "") === String(chargeDraft.row_id || ""));
+    const chargeDayOptions = this._policyChargeShowPublicHolidayDay()
+      ? ["mon", "tue", "wed", "thu", "fri", "sat", "sun", "public_holiday"]
+      : ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const renderChargeDays = (selectedDays = []) => `
+      <div class="pricing-day-grid policy-day-grid">
+        ${chargeDayOptions.map((day) => `
+          <label class="pricing-day-pill">
+            <input type="checkbox" data-policy-charge-row-day="${day}" ${selectedDays.includes(day) ? "checked" : ""} />
+            <span>${this._pricingDisplayDayLabel(day)}</span>
+          </label>
+        `).join("")}
+      </div>
+    `;
+    const chargeRowEditor = this._policyChargeEditorOpen
+      ? `
+        <div class="policy-charge-row-editor">
+          <input type="hidden" data-policy-charge-row-field="row_id" value="${this._escapeHtml(String(chargeDraft.row_id || ""))}" />
+          <div class="pricing-record-section__grid pricing-record-section__grid--buy-tariff policy-record-section__grid--charge-schedule">
+            <label class="pricing-record-form__name">
+              <span>Policy name</span>
+              <input type="text" data-policy-charge-row-field="label" value="${this._escapeHtml(String(chargeDraft.label || "Battery Charge"))}" aria-label="Charge row policy name" />
+            </label>
+            <label class="pricing-record-form__rate">
+              <span>SOC</span>
+              <input type="number" min="1" max="100" step="1" data-policy-charge-row-field="cutoff_soc" value="${this._escapeHtml(String(chargeDraft.cutoff_soc || "100"))}" aria-label="Charge row cutoff SOC" />
+            </label>
+            <label class="pricing-record-form__time">
+              <span>Start (hh:mm AM/PM)</span>
+              <input type="time" data-policy-charge-row-field="start_time" value="${this._escapeHtml(String(chargeDraft.start_time || "00:00"))}" aria-label="Charge row start time" />
+            </label>
+            <label class="pricing-record-form__time">
+              <span>End (hh:mm AM/PM)</span>
+              <input type="time" data-policy-charge-row-field="end_time" value="${this._escapeHtml(String(chargeDraft.end_time || "00:15"))}" aria-label="Charge row end time" />
+            </label>
+            ${renderChargeDays(Array.isArray(chargeDraft.day_types) ? chargeDraft.day_types : [])}
+          </div>
+          <div class="pricing-form__actions pricing-record-form__actions policy-form__actions">
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-save-row>${chargeRowExists ? "Update Charge Row" : "Save Charge Row"}</button>
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-policy-charge-cancel-row>Cancel</button>
+          </div>
+        </div>
+      `
+      : "";
+    const chargeRowCards = chargeRows.length
+      ? chargeRows.map((row) => `
+        <article class="pricing-rule policy-charge-row-card">
+          <div class="pricing-rule__detail-row">
+            <div>
+              <strong>${this._escapeHtml(String(row.label || "Battery Charge"))}</strong>
+              <span>${this._formatPricingTime(row.start_time)} - ${this._formatPricingTime(row.end_time)} · SOC ${this._escapeHtml(String(row.cutoff_soc || "100"))}%</span>
+              <span>${this._escapeHtml((Array.isArray(row.day_types) ? row.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected")}</span>
+            </div>
+            <div class="pricing-rule__actions pricing-rule__actions--inline">
+              <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-modify-row="${this._escapeHtml(String(row.row_id || ""))}">Modify Charge Row</button>
+              <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-delete-row="${this._escapeHtml(String(row.row_id || ""))}">Delete Charge Row</button>
+            </div>
+          </div>
+        </article>
+      `).join("")
+      : `<div class="pricing-rule pricing-rule--empty">No charge rows saved for this target yet.</div>`;
+    const chargePolicyDetails = chargePolicyEnabled
+      ? `
+        <div class="pricing-record-section__grid pricing-record-section__grid--buy policy-record-section__grid--charge">
+          <label class="pricing-record-form__name">
+            <span>Charge Policy</span>
+            <input type="text" data-policy-charge-field="policy_name" value="${this._escapeHtml(String(chargeModel.policy_name || ""))}" aria-label="Charge policy description or name" />
+          </label>
+          <label class="pricing-record-form__rate">
+            <span>Charging Cutoff SOC</span>
+            <input type="number" min="0" max="100" step="1" data-policy-charge-field="cutoff_soc" value="${this._escapeHtml(String(chargeModel.cutoff_soc || ""))}" aria-label="Policy charging cutoff SOC" />
+          </label>
+        </div>
+
+        <div class="policy-section-bar" aria-hidden="true"></div>
+        <div class="pricing-section-heading">
+          <div>
+            <strong>Charge Profile</strong>
+            <span>Start, end, and applicable days</span>
+          </div>
+            <div class="pricing-form__actions policy-form__actions policy-form__actions--inline policy-form__actions--right">
+              <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-start-row>Add Charge Row</button>
+            </div>
+        </div>
+        ${chargeModel.warning ? `<div class="pricing-alert policy-charge-warning">${this._escapeHtml(chargeModel.warning)}</div>` : ""}
+        ${chargeRowEditor}
+        <div class="pricing-rule-list pricing-rule-list--attached policy-charge-row-list">
+          <div class="pricing-record-list-section">
+            <div class="pricing-record-section__heading">
+              <strong>Charge rows saved in HEM</strong>
+              <span>${chargeRows.length} item(s)</span>
+            </div>
+            ${chargeRowCards}
+          </div>
+        </div>
+        ${chargePolicyDirty ? `
+          <div class="pricing-form__actions pricing-record-form__actions policy-form__actions">
+            <div class="policy-charge-status-inline">${this._escapeHtml(chargeStatusMessage)}</div>
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-save>Save Charge</button>
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-policy-charge-cancel>Cancel</button>
+          </div>
+        ` : ""}
+      `
+      : `<div class="policy-disabled-panel">Charge Policy is off. Enable it to edit the charge cutoff, profile rows, and applicable days.</div>`;
+    const dischargeItems = [
+      { label: "Enabled", value: this._formattedState("battery_discharge_time_control", "switch") },
+      { label: "Cutoff SOC", value: this._formattedState("minimum_soc") },
+      { label: "Discharge power", value: this._formattedState("discharge_power") },
+      { label: "Discharge start", value: this._formattedState("discharge_start_time", "time") },
+      { label: "Discharge end", value: this._formattedState("discharge_end_time", "time") },
+      { label: "Discharge days", value: this._formattedState("discharge_days", "text") },
+    ];
+    const feedinItems = [
+      { label: "Enabled", value: this._formattedState("grid_feed_in_function", "switch") },
+      { label: "Feed-in cutoff SOC", value: this._formattedState("grid_feed_in_discharging_cutoff_soc") },
+      { label: "Feed-in time 1 start", value: this._formattedState("grid_feed_in_time1_start", "time") },
+      { label: "Feed-in time 1 end", value: this._formattedState("grid_feed_in_time1_end", "time") },
+      { label: "Feed-in power", value: this._formattedState("grid_feed_in_time1_power") },
+      { label: "Feed-in days", value: this._formattedState("feedin_days", "text") },
+    ];
+    const offgridItems = [
+      { label: "Enabled", value: this._formattedState("offgrid_soc_control", "switch") },
+      { label: "Wake-up SOC", value: this._formattedState("offgrid_wakeup_soc") },
+      { label: "Cut-off SOC", value: this._formattedState("offgrid_cutoff_soc") },
+      { label: "Reserve mode", value: this._formattedState("ups_reserve_enable", "switch") },
+    ];
+    const policyArtifacts = [
+      {
+        label: "Policy card source",
+        value: `<a href="/local/community/home-energy-manager/home-energy-manager-policy-card.js?v=008" target="_blank" rel="noreferrer">home-energy-manager-policy-card.js</a>`,
+      },
+      {
+        label: "Older built policy card",
+        value: `<a href="/local/community/home-energy-manager/home-energy-manager-policy-card.048.js" target="_blank" rel="noreferrer">home-energy-manager-policy-card.048.js</a>`,
+      },
+      {
+        label: "Policy Lovelace example",
+        value: `<a href="/local/community/home-energy-manager/bytewatt_policy_cards.yaml" target="_blank" rel="noreferrer">bytewatt_policy_cards.yaml</a>`,
+      },
+      {
+        label: "Build markers",
+        value: `<a href="/local/community/home-energy-manager/LATEST_BUILD.txt" target="_blank" rel="noreferrer">LATEST_BUILD.txt</a> · <a href="/local/community/home-energy-manager/LATEST_REPORT_BUILD.txt" target="_blank" rel="noreferrer">LATEST_REPORT_BUILD.txt</a>`,
+      },
     ];
     return `
       <section class="policy">
         <article class="panel-card panel-card--wide policy__hero">
           <div class="panel-card__header">
             <h2>Policy</h2>
-            <span>Charge and feed-in control</span>
+            <span>ByteWatt-style charge, discharge, feed-in, and reserve settings</span>
           </div>
-            <p>
-            This page shows the live policy summary inside the HEM panel so battery charge and
-            feed-in rules stay in one place.
+          <p>
+            This page shows the live ByteWatt policy settings inside the HEM panel so charge,
+            discharge, feed-in, and off-grid rules stay in one place.
           </p>
         </article>
 
         <section class="policy__stack">
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Battery Policy Summary</h2>
-              <span>Live settings</span>
+              <h2>Policy Overview</h2>
+              <span>Updated every 10 secs</span>
+            </div>
+            <section class="overview__tiles policy-live-tiles">
+              ${batteryPolicyTiles.map((tile) => `
+                <article class="overview-tile overview-tile--live policy-live-tile">
+                  <span>${tile.label}</span>
+                  <strong>${this._escapeHtml(tile.value)}</strong>
+                  <small>${this._escapeHtml(tile.note)}</small>
+                </article>
+              `).join("")}
+            </section>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Charge</h2>
+              <span>Charge policy and timing</span>
             </div>
             <p>
-              The current live settings are shown below while the embedded policy editors are
-              stabilised. This keeps the page responsive even if the provider card is unavailable.
+              Battery Charge follows the same pattern as Buy Price on the Pricing page: one
+              themed settings set, with no record group.
+            </p>
+            <form class="pricing-form pricing-record-form policy-charge-form" method="get" action="/home-energy-manager#hem_page=policy">
+              <section class="pricing-record-section pricing-record-section--buy policy-record-section policy-record-section--charge">
+                <div class="pricing-record-section__heading">
+              <div>
+                    <strong>Battery Charge</strong>
+                    <span>Existing Charge Schedules set in Web will be DISABLED</span>
+                  </div>
+                  ${this._renderHelpButton("policy_charge", "Battery Charge")}
+                </div>
+                ${this._renderHelpPanel("policy_charge")}
+
+                <div class="pricing-section-heading">
+                  <div>
+                    <strong>Active Immediate State</strong>
+                    <span>Manual API action</span>
+                  </div>
+                </div>
+                <div class="pricing-record-section__grid pricing-record-section__grid--buy policy-record-section__grid--charge-immediate">
+                  <label class="pricing-record-form__rate">
+                    <span>Charging Cutoff SOC</span>
+                    <input type="number" min="0" max="100" step="1" data-policy-charge-field="immediate_cutoff_soc" value="${this._escapeHtml(String(chargeModel.immediate_cutoff_soc || ""))}" aria-label="Charging cutoff SOC" />
+                  </label>
+                  <div class="pricing-form__actions policy-form__actions policy-form__actions--inline">
+                    ${chargeImmediateAction}
+                    <span class="policy-immediate-feedback ${chargeModel.last_command_ok === false ? "is-error" : "is-success"}">${this._escapeHtml(chargeStatusMessage)}</span>
+                    ${chargeModel.last_command_message ? `<span class="policy-immediate-feedback ${chargeModel.last_command_ok === false ? "is-error" : "is-success"}">${this._escapeHtml(chargeModel.last_command_message)}</span>` : ""}
+                  </div>
+                </div>
+
+                <div class="policy-section-separator" aria-hidden="true"></div>
+                <div class="pricing-section-heading">
+                  <div>
+                    <strong>Policy</strong>
+                    <span>Scheduled charge profile</span>
+                  </div>
+                </div>
+                <div class="policy-toggle-row">
+                  <label class="pricing-day-pill policy-toggle-pill">
+                    <input type="checkbox" data-policy-charge-field="policy_enabled" ${chargePolicyEnabled ? "checked" : ""} />
+                    <span>Charge policy</span>
+                  </label>
+                </div>
+                ${chargeWarningMessage ? `<div class="pricing-alert policy-charge-warning">${this._escapeHtml(chargeWarningMessage)}</div>` : ""}
+                ${chargePolicyDetails}
+                ${chargePolicyEnabled || !chargePolicyDirty ? "" : `
+                  <div class="pricing-form__actions pricing-record-form__actions policy-form__actions">
+                    <div class="policy-charge-status-inline">${this._escapeHtml(chargeStatusMessage)}</div>
+                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-save>Save Charge</button>
+                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-policy-charge-cancel>Cancel</button>
+                  </div>
+                `}
+              </section>
+            </form>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Discharge</h2>
+              <span>Discharge policy and timing</span>
+            </div>
+            <p>
+              Discharge control uses the selected execution cycle, discharge cutoff SOC, discharge
+              power, and scheduled start/end windows.
             </p>
             <ul class="key-list key-list--compact">
-              ${this._valueList(policyItems)}
+              ${this._valueList(dischargeItems)}
             </ul>
           </article>
 
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Feed-in Policy Summary</h2>
-              <span>Export control</span>
+              <h2>Feed-in</h2>
+              <span>Export timing</span>
             </div>
             <p>
-              Feed-in limits and export behavior can be reviewed here without depending on the
-              embedded editor lifecycle.
+              Feed-in settings control export behavior, including the feed-in cutoff SOC and the
+              configured feed-in time window.
             </p>
             <ul class="key-list key-list--compact">
-              ${this._valueList([
-                { label: "Feed-in enabled", value: this._formattedState("feedin_enabled", "switch") },
-                { label: "Feed-in cutoff SOC", value: this._formattedState("feedin_cutoff_soc") },
-                { label: "Feed-in slot limit", value: this._formattedState("feedin_slot_limit") },
-                { label: "Selected page", value: this._pageLabel() },
-              ])}
+              ${this._valueList(feedinItems)}
+            </ul>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Off-grid</h2>
+              <span>Reserve protection</span>
+            </div>
+            <p>
+              Off-grid reserve settings keep battery capacity protected and define the wake-up and
+              cut-off SOC levels used by the inverter.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(offgridItems)}
+            </ul>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Battery Policy Editor</h2>
+              <span>Modify and add settings</span>
+            </div>
+            <div class="panel-card__embedded" data-embedded="battery-policy"></div>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Feed-in Policy Editor</h2>
+              <span>Modify and add feed-in rows</span>
+            </div>
+            <div class="panel-card__embedded" data-embedded="feedin-policy"></div>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Policy Artifacts</h2>
+              <span>Open the generated files</span>
+            </div>
+            <p>
+              These links open the policy build files directly from the Home Assistant local
+              directory so you can inspect the generated contents without leaving HEM.
+            </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(policyArtifacts)}
             </ul>
           </article>
         </section>
@@ -3974,16 +5743,214 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _reportPage() {
-    const reportItems = [
-      { label: "Battery SOC", value: this._formattedState("battery_percentage") },
-      { label: "Battery power", value: this._formattedState("battery_power") },
-      { label: "PV power", value: this._formattedState("pv_power") },
-      { label: "House consumption", value: this._formattedState("house_consumption") },
-      { label: "Grid consumption", value: this._formattedState("grid_consumption") },
-      { label: "PV generated today", value: this._formattedState("pv_generated_today") },
-      { label: "Consumed today", value: this._formattedState("consumed_today") },
-      { label: "Feed in today", value: this._formattedState("feed_in_today") },
-      { label: "Grid import today", value: this._formattedState("grid_import_today") },
+    const selector = this._settingsTargetState();
+    const reporting = selector?.attributes?.reporting || {};
+    const reportingMeta = reporting?.meta && typeof reporting.meta === "object" ? reporting.meta : {};
+    const history = selector?.attributes?.history && typeof selector.attributes.history === "object"
+      ? selector.attributes.history
+      : reportingMeta.history && typeof reportingMeta.history === "object"
+        ? reportingMeta.history
+        : {};
+    const archiveStatus = String(history.status || "").trim()
+      || String(this._hass?.states?.[this._settingsTargetId()]?.attributes?.history_status || "").trim()
+      || "Archive status not reported yet";
+    const scopeSummary = history.scope_summary && typeof history.scope_summary === "object"
+      ? history.scope_summary
+      : {};
+    const storedRowCount = Number(scopeSummary.record_count);
+    const missingRowCount = Number(scopeSummary.missing_count);
+    const hasStoredRows = Number.isFinite(storedRowCount) && storedRowCount > 0;
+    const hasMissingRows = Number.isFinite(missingRowCount) && missingRowCount > 0;
+    const normalizedStoredRows = Number.isFinite(storedRowCount) ? storedRowCount : 0;
+    const normalizedMissingRows = Number.isFinite(missingRowCount) ? missingRowCount : 0;
+    const totalKnownRows = (Number.isFinite(storedRowCount) ? storedRowCount : 0)
+      + (Number.isFinite(missingRowCount) ? missingRowCount : 0);
+    const knownArchiveDays = totalKnownRows > 0 ? String(totalKnownRows) : "Unavailable";
+    const archiveCoverage = totalKnownRows > 0
+      ? `${Math.round((normalizedStoredRows / totalKnownRows) * 100)} %`
+      : "Unavailable";
+    const archiveCompleteness = totalKnownRows > 0
+      ? `${normalizedStoredRows} stored / ${normalizedMissingRows} missing`
+      : "Unavailable";
+    const firstStoredDate = String(scopeSummary.first_record_date || "").trim();
+    const lastStoredDate = String(scopeSummary.last_record_date || "").trim();
+    const archiveRange = firstStoredDate && lastStoredDate
+      ? firstStoredDate === lastStoredDate
+        ? firstStoredDate
+        : `${firstStoredDate} -> ${lastStoredDate}`
+      : "Unavailable";
+    const lastUpdatedText = String(scopeSummary.last_updated || "").trim();
+    let archiveAge = "Unknown";
+    if (lastUpdatedText) {
+      const updatedAt = Date.parse(lastUpdatedText);
+      if (Number.isFinite(updatedAt)) {
+        const nowMs = Date.now();
+        const ageDays = Math.max(0, Math.floor((nowMs - updatedAt) / 86400000));
+        archiveAge = ageDays <= 0
+          ? "Updated today"
+          : ageDays === 1
+            ? "1 day old"
+            : ageDays <= 7
+              ? `${ageDays} days old`
+              : "Older than 7 days";
+      }
+    }
+    const reportingDate = String(reporting.reporting_date || reportingMeta.reporting_date || reporting?.power_diagram?.date || "").trim();
+    let archiveLag = "Unavailable";
+    if (reportingDate && lastStoredDate) {
+      const reportMs = Date.parse(`${reportingDate}T00:00:00Z`);
+      const storedMs = Date.parse(`${lastStoredDate}T00:00:00Z`);
+      if (Number.isFinite(reportMs) && Number.isFinite(storedMs)) {
+        const lagDays = Math.round((reportMs - storedMs) / 86400000);
+        archiveLag = lagDays <= 0
+          ? "0 days"
+          : lagDays === 1
+            ? "1 day"
+            : `${lagDays} days`;
+      }
+    }
+    const archiveFreshness = reportingDate && lastStoredDate
+      ? reportingDate === lastStoredDate
+        ? "Current"
+        : lastStoredDate < reportingDate
+          ? "Behind latest report"
+          : "Ahead of current report"
+      : lastStoredDate
+        ? "Archive only"
+        : "Unknown";
+    const archiveHealth = hasStoredRows
+      ? hasMissingRows
+        ? "Ready with gaps"
+        : "Ready"
+      : hasMissingRows
+        ? "Missing only"
+        : "Empty";
+    const payloadSource = String(reportingMeta.source || "backend_reporting")
+      .replaceAll("_", " ")
+      .trim();
+    const payloadStorage = String(reportingMeta.storage || "local_archive")
+      .replaceAll("_", " ")
+      .trim();
+    const diagramSource = String(reportingMeta.power_diagram_source || "provider_power_diagram")
+      .replaceAll("_", " ")
+      .trim();
+    const archiveItems = [
+      { section: true, label: "Report Context" },
+      { label: "Selected target", value: this._selectedSettingsTargetLabel() },
+      { label: "Reporting label", value: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems") },
+      { label: "Reporting date", value: String(reporting.reporting_date || reportingMeta.reporting_date || reporting?.power_diagram?.date || "Unavailable") },
+      { label: "Saved at", value: String(reportingMeta.saved_at || reporting.saved_at || "Unavailable") },
+      { label: "Payload source", value: payloadSource || "backend reporting" },
+      { label: "Payload storage", value: payloadStorage || "local archive" },
+      { label: "Diagram source", value: diagramSource || "provider power diagram" },
+      { section: true, label: "Archive Health" },
+      { label: "Archive status", value: archiveStatus },
+      { label: "Archive health", value: archiveHealth },
+      { label: "Archive age", value: archiveAge },
+      { label: "Archive freshness", value: archiveFreshness },
+      { label: "Archive lag", value: archiveLag },
+      { label: "Archive completeness", value: archiveCompleteness },
+      { label: "Known archive days", value: knownArchiveDays },
+      { label: "Archive coverage", value: archiveCoverage },
+      { label: "Stored report rows", value: scopeSummary.record_count !== undefined ? String(scopeSummary.record_count) : "Unavailable" },
+      { label: "Missing report dates", value: scopeSummary.missing_count !== undefined ? String(scopeSummary.missing_count) : "Unavailable" },
+      { label: "Archive range", value: archiveRange },
+      { label: "First stored date", value: String(scopeSummary.first_record_date || "Unavailable") },
+      { label: "Last stored date", value: String(scopeSummary.last_record_date || "Unavailable") },
+      { label: "Scope updated", value: String(scopeSummary.last_updated || "Unavailable") },
+      { section: true, label: "Archive Files" },
+      { label: "Archive base URL", value: String(history.base_url || "Unavailable") },
+      { label: "Archive scope", value: String(history.current_scope || "all") },
+      { label: "Scope CSV", value: String(scopeSummary.csv_filename || "Unavailable") },
+      { label: "Scope CSV URL", value: String(scopeSummary.csv_url || "Unavailable") },
+      { label: "History JSON", value: String(scopeSummary.history_filename || "Unavailable") },
+      { label: "History JSON URL", value: String(scopeSummary.history_url || "Unavailable") },
+      { section: true, label: "Backfill" },
+      { label: "Backfill years", value: history.backfill_years !== undefined ? String(history.backfill_years) : "Unavailable" },
+      { label: "Backfill days", value: history.backfill_days !== undefined ? String(history.backfill_days) : "Unavailable" },
+    ];
+    const archiveSnapshotItems = [
+      { label: "Health", value: archiveHealth },
+      { label: "Freshness", value: archiveFreshness },
+      { label: "Lag", value: archiveLag },
+      { label: "Age", value: archiveAge },
+      { label: "Completeness", value: archiveCompleteness },
+      { label: "Coverage", value: archiveCoverage },
+      { label: "Range", value: archiveRange },
+    ];
+    const expectedArchiveDays = Number(history.backfill_days);
+    const normalizedExpectedArchiveDays = Number.isFinite(expectedArchiveDays) && expectedArchiveDays > 0
+      ? Math.max(1, Math.floor(expectedArchiveDays))
+      : 0;
+    const backendScopeSummaries = Array.isArray(history.scope_summaries) ? history.scope_summaries : [];
+    const archiveScopeSummaries = backendScopeSummaries.length
+      ? backendScopeSummaries
+      : [{
+          scope_key: String(history.current_scope || "all"),
+          label: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems"),
+          aggregate: String(history.current_scope || "all") === "all",
+          ...scopeSummary,
+        }];
+    const archiveScopeOverviewCards = archiveScopeSummaries
+      .map((scope) => {
+        const scopeKey = String(scope?.scope_key || "").trim() || "all";
+        const scopeLabel = String(scope?.label || scopeKey || "All systems").trim() || "All systems";
+        const storedCount = Number(scope?.record_count);
+        const missingCount = Number(scope?.missing_count);
+        const normalizedStoredCount = Number.isFinite(storedCount) ? storedCount : 0;
+        const normalizedMissingCount = Number.isFinite(missingCount) ? missingCount : 0;
+        const knownCount = normalizedStoredCount + normalizedMissingCount;
+        const coverageLabel = normalizedExpectedArchiveDays > 0
+          ? `${knownCount}/${normalizedExpectedArchiveDays}`
+          : `${knownCount}`;
+        const firstDate = String(scope?.first_record_date || "").trim();
+        const lastDate = String(scope?.last_record_date || "").trim();
+        const dateRange = firstDate && lastDate
+          ? firstDate === lastDate
+            ? firstDate
+            : `${firstDate} -> ${lastDate}`
+          : normalizedStoredCount > 0
+            ? firstDate || lastDate || "Stored rows available"
+            : "No stored rows yet";
+        const isActiveScope = scopeKey === String(history.current_scope || "all").trim();
+        return `
+          <article class="report-scope-card${isActiveScope ? " report-scope-card--active" : ""}">
+            <div class="report-scope-card__head">
+              <h3>${this._escapeHtml(scopeLabel)}</h3>
+              <span>${this._escapeHtml(coverageLabel)}</span>
+            </div>
+            <p>${this._escapeHtml(dateRange)}</p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList([
+                { label: "Stored", value: String(normalizedStoredCount) },
+                { label: "Missing", value: String(normalizedMissingCount) },
+                { label: "Scope key", value: scopeKey },
+              ])}
+            </ul>
+          </article>
+        `;
+      })
+      .join("");
+    const archiveSnapshotSummary = hasStoredRows
+      ? `${archiveHealth}. Lag ${archiveLag}. ${archiveCompleteness}. Coverage ${archiveCoverage}.`
+      : hasMissingRows
+        ? `No stored report rows yet. ${normalizedMissingRows} known missing day${normalizedMissingRows === 1 ? "" : "s"} in the archive window.`
+        : "No archive rows are stored for this scope yet.";
+    const archiveActionLinks = [
+      scopeSummary.csv_url
+        ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scopeSummary.csv_url))}" target="_blank" rel="noreferrer">Open Scope CSV</a>`
+        : "",
+      scopeSummary.history_url
+        ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scopeSummary.history_url))}" target="_blank" rel="noreferrer">Open History JSON</a>`
+        : "",
+    ].filter(Boolean).join("");
+    const storageItems = [
+      { label: "Local report archive", value: "Home Assistant www/home-energy-manager-history/<entry_id>/history.json" },
+      { label: "Local scope CSVs", value: "One CSV per scope for exported daily report rows" },
+      { label: "Current purpose", value: "Power diagram snapshots, daily report rows, and archive backfill state" },
+      { label: "Long-term detailed data", value: "InfluxDB will hold detailed sensor history for long-range analysis" },
+      { label: "Influx role", value: "Detailed time-series retention beyond the compact HEM archive" },
+      { label: "HEM archive role", value: "Provider-aware report snapshots kept lightweight for the panel and exports" },
     ];
     return `
       <section class="report">
@@ -3992,9 +5959,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <h2>Report</h2>
             <span>Power diagram and exports</span>
           </div>
-            <p>
-            The report view shows a live summary from the HEM sensors so you can see current
-            data while history continues to build.
+          <p>
+            The report page now uses the existing HEM reporting card and local archive pipeline.
+            It shows the current provider-aware power diagram while the background archive keeps
+            building daily scope snapshots.
           </p>
         </article>
 
@@ -4002,29 +5970,84 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
               <h2>Report Output</h2>
-              <span>Live summary</span>
+              <span>Embedded report card</span>
+            </div>
+            <div class="panel-card__embedded" data-embedded="report"></div>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Archive Snapshot</h2>
+              <span>At-a-glance status</span>
             </div>
             <p>
-            This live report summary is built from the HEM sensors so you still get a visible
-            output even before the longer history archive is ready.
-          </p>
+              ${archiveSnapshotSummary}
+            </p>
+            ${archiveActionLinks ? `
+              <div class="pricing-rule__actions--inline report-actions">
+                ${archiveActionLinks}
+              </div>
+            ` : ""}
             <div class="report-summary">
               <ul class="key-list key-list--compact">
-                ${this._valueList(reportItems)}
+                ${this._valueList(archiveSnapshotItems)}
+              </ul>
+            </div>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Archive Scope Coverage</h2>
+              <span>All systems + battery scopes</span>
+            </div>
+            <p>
+              These cards mirror the archive scope inventory HEM currently exposes for reporting.
+              Coverage is shown against the configured archive horizon so you can see which scopes
+              have stored rows, known missing dates, or no history yet.
+            </p>
+            <div class="report-scope-grid">
+              ${archiveScopeOverviewCards || '<div class="panel-empty">No archive scopes reported yet.</div>'}
+            </div>
+          </article>
+
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header">
+              <h2>Archive Status</h2>
+              <span>Background storage</span>
+            </div>
+            <p>
+              HEM keeps a compact local reporting archive under Home Assistant so the report card,
+              history tools, and CSV exports can reuse downloaded provider snapshots without
+              re-fetching every day on every page load. The payload source rows below identify
+              whether the current report came from backend reporting, which storage layer it
+              belongs to, and whether the chart itself came from a provider power diagram or
+              from HEM synthesis.
+            </p>
+            ${archiveActionLinks ? `
+              <div class="pricing-rule__actions--inline report-actions">
+                ${archiveActionLinks}
+              </div>
+            ` : ""}
+            <div class="report-summary">
+              <ul class="key-list key-list--compact">
+                ${this._valueList(archiveItems)}
               </ul>
             </div>
           </article>
 
           <article class="panel-card">
             <div class="panel-card__header">
-              <h2>Report Notes</h2>
-              <span>History</span>
+              <h2>Storage Strategy</h2>
+              <span>Local archive + Influx</span>
             </div>
             <p>
-              History backfill and daily snapshots will appear here once the archive download
-              finishes. For now, this page gives you the live report snapshot and navigation
-              paths to policy, battery, history, and solar pages.
+              The compact HEM archive and InfluxDB have different jobs. HEM keeps provider-aware
+              daily report snapshots for panel rendering and exports, while InfluxDB is the long-term
+              detailed sensor store for deeper time-series analysis.
             </p>
+            <ul class="key-list key-list--compact">
+              ${this._valueList(storageItems)}
+            </ul>
           </article>
         </section>
       </section>
@@ -4206,10 +6229,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? `Loaded ${batteryMappedCount} saved battery mapping${batteryMappedCount === 1 ? "" : "s"}. Discovering ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`
       : `No saved battery mappings yet. Discovered ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`;
     const batteryOpen = this._batterySetupExpanded === true;
+    const showBatterySensorsCard = batteryOpen
+      || batteryMappedCount > 0
+      || batteryDiscoveredCount > 0
+      || this._batterySetupDirty
+      || Boolean(this._batterySaveStatus);
     const batteryDefaultsLocked = this._batteryFieldLocked(batteryProvider);
     const batteryActionStatus = this._batterySaveStatus
       ? `<div class="${this._batterySaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._batterySaveStatus.message)}</div>`
       : "";
+    const bytewattItems = this._bytewattSetupItems(batteryProvider);
+    const batteryHeroMappingRows = this._renderBatteryHeroMappingRows();
+    const solarHeroMappingRows = this._renderSolarHeroMappingRows();
+    const hemHeroItems = this._hemHeroSetupItems();
+    const bytewattDebugPayload = this._bytewattSetupDebugPayload();
     return `
       <section class="forecast">
         <article class="panel-card panel-card--wide forecast__hero">
@@ -4261,6 +6294,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
           ` : ""}
         </article>
 
+        <div class="pricing-loading forecast-loading" role="status">${batterySetupStatus}</div>
+
+        ${showBatterySensorsCard ? `
         <article class="panel-card panel-card--wide forecast__mapping-card">
           <div class="panel-card__header">
             <h2>Battery sensors.</h2>
@@ -4296,7 +6332,126 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </div>
           ` : ""}
         </article>
+        ` : ""}
+
+        <article class="panel-card panel-card--wide forecast__mapping-card">
+          <div class="panel-card__header">
+            <h2>Battery Hero Mapping Summary.</h2>
+            <span>Dynamic Bytewatt scopes</span>
+          </div>
+          ${this._renderHelpButton("battery_hero_summary", "Battery Hero Mapping help")}
+          ${this._renderHelpPanel("battery_hero_summary")}
+          <p>
+            This is the battery hero naming and mapping layer. Each hero value is named once,
+            mapped to a Bytewatt field, and expanded across the live scopes returned by the
+            provider API such as All Systems, the selected battery, and each returned battery row.
+          </p>
+          <div class="pricing-form__actions pricing-record-form__actions policy-form__actions">
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-battery-hero-reset-all>Reset All Battery Hero Overrides</button>
+          </div>
+          <div class="pricing-rule-list pricing-rule-list--attached">
+            ${batteryHeroMappingRows}
+          </div>
+        </article>
+
+        <article class="panel-card panel-card--wide forecast__mapping-card">
+          <div class="panel-card__header">
+            <h2>Solar Hero Mapping Summary.</h2>
+            <span>Solar and MPPT values</span>
+          </div>
+          ${this._renderHelpButton("solar_hero_summary", "Solar Hero Mapping help")}
+          ${this._renderHelpPanel("solar_hero_summary")}
+          <p>
+            This keeps solar power and MPPT mappings separate from the battery summary so the
+            setup layer mirrors the actual domain boundaries more clearly.
+          </p>
+          <div class="pricing-form__actions pricing-record-form__actions policy-form__actions">
+            <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-solar-hero-reset-all>Reset All Solar Hero Overrides</button>
+          </div>
+          <div class="pricing-rule-list pricing-rule-list--attached">
+            ${solarHeroMappingRows}
+          </div>
+        </article>
+
+        <article class="panel-card panel-card--wide forecast__mapping-card">
+          <div class="panel-card__header">
+            <h2>Bytewatt Sensors.</h2>
+            <span>Live provider values</span>
+          </div>
+          <p>
+            This lists the ByteWatt values HEM is currently reading from the provider API for the
+            setup flow, including the live power fields and the merged daily and lifetime statistics.
+          </p>
+          <ul class="panel-list">
+            ${this._valueList(bytewattItems, "No ByteWatt sensor values available yet")}
+          </ul>
+          <div class="sync-status">
+            <div class="panel-card__header">
+              <span>Raw setup payload</span>
+            </div>
+            <pre class="sync-status__log">${this._escapeHtml(bytewattDebugPayload)}</pre>
+          </div>
+        </article>
+
+        <article class="panel-card panel-card--wide forecast__mapping-card">
+          <div class="panel-card__header">
+            <h2>HEM Hero Sensors.</h2>
+            <span>Live HEM values</span>
+          </div>
+          <p>
+            This now starts with the active mapped battery and solar hero summaries, followed by
+            the key live HEM highlights used across the panel for comparison against ByteWatt.
+          </p>
+          <ul class="panel-list">
+            ${this._valueList(hemHeroItems, "No HEM hero sensor values available yet")}
+          </ul>
+        </article>
       </section>
+    `;
+  }
+
+  _heroMappingFieldSelectField(key, label, options, selectedValue, openKey, toggleDatasetName, optionDatasetName) {
+    const selected = String(selectedValue || "").trim();
+    const selectedOption = options.find((option) => String(option.value) === selected);
+    const selectedLabel = String(selectedOption?.label || selected || "Not set");
+    const isOpen = openKey === key;
+    return `
+      <div class="forecast-field shared-selector">
+        <div class="shared-selector__label">${this._escapeHtml(label)}</div>
+        <div class="shared-selector__picker">
+          <button
+            type="button"
+            class="shared-selector__control forecast-field__control"
+            aria-haspopup="listbox"
+            aria-expanded="${isOpen ? "true" : "false"}"
+            data-hero-mapping-toggle="${this._escapeHtml(toggleDatasetName)}"
+            data-hero-mapping-key="${this._escapeHtml(key)}"
+          >
+            <span>${this._escapeHtml(selectedLabel)}</span>
+          </button>
+          ${isOpen ? `
+            <div class="shared-selector__menu forecast-field__menu" role="listbox" aria-label="${this._escapeHtml(label)}">
+              ${options.map((option) => {
+                const optionValue = String(option.value);
+                const selectedClass = optionValue === selected ? "is-selected" : "";
+                return `
+                  <button
+                    type="button"
+                    class="shared-selector__option ${selectedClass}"
+                    role="option"
+                    aria-selected="${optionValue === selected ? "true" : "false"}"
+                    data-hero-mapping-option="${this._escapeHtml(optionDatasetName)}"
+                    data-hero-mapping-key="${this._escapeHtml(key)}"
+                    data-hero-mapping-value="${this._escapeHtml(optionValue)}"
+                  >
+                    ${this._escapeHtml(option.label)}
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          ` : ""}
+        </div>
+      </div>
     `;
   }
 
@@ -4747,7 +6902,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Theme", value: this._themeLabel() },
       { label: "Route", value: this._route?.path || this._panel?.url_path || "home-energy-manager" },
       { label: "Screen", value: this._narrow ? "narrow" : "wide" },
-      { label: "Provider", value: this._config.provider || "Configured provider" },
+      { label: "Connection Type", value: this._connectionTypeLabel(this._config?.battery_provider) },
       { label: "Debug", value: this._debugEnabled ? "Enabled" : "Disabled" },
     ];
     const focusKey = this._loadSettingsFocus();
@@ -4805,6 +6960,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
             >
               Open Debug page
             </button>
+          </div>
+          <div class="settings-toggle">
+            <label class="toggle-row" for="hem-connection-type">
+              <span class="toggle-row__label">Connection Type</span>
+              <span class="toggle-row__control">
+                <select id="hem-connection-type" data-connection-type-field="battery_provider" aria-label="Connection type">
+                  ${[
+                    { value: "bytewatt_web", label: "ByteWatt Web" },
+                    { value: "bytewatt_local", label: "ByteWatt Local" },
+                    { value: "other", label: "Other / template" },
+                  ].map((option) => `
+                    <option value="${option.value}" ${this._batteryProviderKey(this._config?.battery_provider) === option.value ? "selected" : ""}>
+                      ${option.label}
+                    </option>
+                  `).join("")}
+                </select>
+              </span>
+            </label>
+            <p>
+              This setting controls which battery connection mode HEM uses for policy warnings and live value labels.
+            </p>
+            <button type="button" class="panel-nav__item" data-connection-type-save>Save Connection Type</button>
           </div>
         </article>
         <article class="panel-card">
@@ -5165,7 +7342,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <section class="status">
           <div class="status__banner">${connectionLabel}</div>
           ${statusMeta}
-          ${["pricing", "forecast_setup"].includes(this._page) ? "" : this._renderSharedBatterySelector()}
+          ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
         </section>
 
         ${this._pageContent()}
@@ -5184,7 +7361,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
 
-    this.shadowRoot.querySelectorAll("[data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field]").forEach((field) => {
+    this.shadowRoot.querySelectorAll("[data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day]").forEach((field) => {
       if (field.__hemNativeInputStopBound) {
         return;
       }
@@ -5254,6 +7431,55 @@ class HomeEnergyManagerPanel extends HTMLElement {
           event.preventDefault();
           event.stopPropagation();
           this._handlePricingUiAddRule(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
+          return true;
+        }
+        const policyChargeToggleNow = path.find((node) => node?.dataset?.policyChargeToggleNow !== undefined);
+        if (policyChargeToggleNow) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeToggleNow();
+          return true;
+        }
+        const policyChargeStopNow = path.find((node) => node?.dataset?.policyChargeStopNow !== undefined);
+        if (policyChargeStopNow) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeStopNow();
+          return true;
+        }
+        const policyChargeStartRow = path.find((node) => node?.dataset?.policyChargeStartRow !== undefined);
+        if (policyChargeStartRow) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeStartRow();
+          return true;
+        }
+        const policyChargeSaveRow = path.find((node) => node?.dataset?.policyChargeSaveRow !== undefined);
+        if (policyChargeSaveRow) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeSaveRow();
+          return true;
+        }
+        const policyChargeCancelRow = path.find((node) => node?.dataset?.policyChargeCancelRow !== undefined);
+        if (policyChargeCancelRow) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeCancelRow();
+          return true;
+        }
+        const policyChargeSave = path.find((node) => node?.dataset?.policyChargeSave !== undefined);
+        if (policyChargeSave) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeSave();
+          return true;
+        }
+        const policyChargeCancel = path.find((node) => node?.dataset?.policyChargeCancel !== undefined);
+        if (policyChargeCancel) {
+          event.preventDefault();
+          event.stopPropagation();
+          this._handlePolicyChargeCancel();
           return true;
         }
         const pageButton = path.find((node) => node?.dataset?.page);
@@ -5477,6 +7703,22 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-policy-charge-modify-row]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePolicyChargeModifyRow(button.dataset.policyChargeModifyRow);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-policy-charge-delete-row]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePolicyChargeDeleteRow(button.dataset.policyChargeDeleteRow);
+      };
+    });
+
     if (this._delegatedHandlersBound) {
       return;
     }
@@ -5502,6 +7744,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._syncPricingUiRuleDraft(recordType);
         this._updatePricingActionLinks();
         this._schedulePricingAutoCommit(recordType);
+        return;
+      }
+      if (target?.dataset?.policyChargeField !== undefined) {
+        const model = this._readPolicyChargeForm();
+        model.warning = "";
+        model.updated_at = new Date().toISOString();
+        this._policyChargeUiDirty = true;
+        this._savePolicyChargeUi(model);
+        if (target.type === "checkbox") {
+          this._holdRenderWindow(1200);
+          this._render();
+          return;
+        }
+        return;
+      }
+      if (target?.dataset?.policyChargeRowField !== undefined || target?.dataset?.policyChargeRowDay !== undefined) {
+        this._policyChargeDraft = this._readPolicyChargeRowForm();
         return;
       }
       if (this._isPricingInteractionTarget(target)) {
@@ -5610,6 +7869,65 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("click", async (event) => {
       const path = event.composedPath?.() || [];
+      const connectionTypeSave = path.find((node) => node?.dataset?.connectionTypeSave !== undefined);
+      if (connectionTypeSave) {
+        event.preventDefault();
+        event.stopPropagation();
+        await this._saveConnectionType();
+        return;
+      }
+      const batteryHeroReset = path.find((node) => node?.dataset?.batteryHeroReset);
+      if (batteryHeroReset) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._clearBatteryHeroOverride(String(batteryHeroReset.dataset.batteryHeroReset || ""));
+        return;
+      }
+      const batteryHeroResetAll = path.find((node) => node?.dataset?.batteryHeroResetAll !== undefined);
+      if (batteryHeroResetAll) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._clearAllBatteryHeroOverrides();
+        return;
+      }
+      const solarHeroResetAll = path.find((node) => node?.dataset?.solarHeroResetAll !== undefined);
+      if (solarHeroResetAll) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._clearAllSolarHeroOverrides();
+        return;
+      }
+      const heroMappingToggle = path.find((node) => node?.dataset?.heroMappingToggle !== undefined);
+      if (heroMappingToggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        const toggleType = String(heroMappingToggle.dataset.heroMappingToggle || "");
+        const mappingKey = String(heroMappingToggle.dataset.heroMappingKey || "");
+        if (toggleType === "field") {
+          this._heroMappingFieldSelectorOpenKey = this._heroMappingFieldSelectorOpenKey === mappingKey ? "" : mappingKey;
+          this._heroMappingScopeSelectorOpenKey = "";
+        } else if (toggleType === "scope") {
+          this._heroMappingScopeSelectorOpenKey = this._heroMappingScopeSelectorOpenKey === mappingKey ? "" : mappingKey;
+          this._heroMappingFieldSelectorOpenKey = "";
+        }
+        this._holdRenderWindow(10000);
+        this._render();
+        return;
+      }
+      const heroMappingOption = path.find((node) => node?.dataset?.heroMappingOption !== undefined);
+      if (heroMappingOption) {
+        event.preventDefault();
+        event.stopPropagation();
+        const optionType = String(heroMappingOption.dataset.heroMappingOption || "");
+        const mappingKey = String(heroMappingOption.dataset.heroMappingKey || "");
+        const mappingValue = String(heroMappingOption.dataset.heroMappingValue || "");
+        if (optionType === "field") {
+          this._setBatteryHeroOverrideField(mappingKey, mappingValue);
+        } else if (optionType === "scope") {
+          this._setBatteryHeroOverrideScope(mappingKey, mappingValue);
+        }
+        return;
+      }
       const sharedBatteryToggle = path.find((node) => node?.dataset?.sharedSettingsTargetToggle);
       if (sharedBatteryToggle) {
         event.preventDefault();
@@ -5649,6 +7967,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
       if (this._batterySelectorOpen && !path.some((node) => node?.classList?.contains?.("shared-selector"))) {
         this._closeSharedBatterySelector();
+        return;
+      }
+
+      if ((this._heroMappingFieldSelectorOpenKey || this._heroMappingScopeSelectorOpenKey) && !path.some((node) => node?.classList?.contains?.("shared-selector"))) {
+        this._heroMappingFieldSelectorOpenKey = "";
+        this._heroMappingScopeSelectorOpenKey = "";
+        this._render();
         return;
       }
 
@@ -6101,6 +8426,9 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._pricingGroupEditorOpen = false;
     panel._pricingRecordEditorMode = "";
     panel._pricingTypeSelectorOpen = false;
+    panel._policyChargeEditorOpen = false;
+    panel._policyChargeDraft = {};
+    panel._policyChargeUiDirty = false;
     panel._pricingUiGroupDraft = {};
     panel._pricingUiRuleDrafts = {
       buy: panel._pricingUiRuleDefaults("buy"),
@@ -6117,6 +8445,10 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._pricingFocusHoldUntil = 0;
     panel._pricingFileLoadKey = "";
     panel._pricingFileLoading = false;
+    panel._policyChargeFileLoadKey = "";
+    panel._policyChargeFileLoading = false;
+    panel._policyChargeFileScheduleSet = null;
+    panel._policyChargeFileLoadedAt = 0;
     panel._pricingAutoCommitTimer = null;
     panel._lastPricingAutoCommitSignature = "";
     HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, panel);
@@ -6127,6 +8459,7 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
       set: (value) => {
         panel._hass = value;
         panel._ensurePricingFileLoaded();
+        panel._ensurePolicyChargeFileLoaded();
         panel._render();
       },
     });

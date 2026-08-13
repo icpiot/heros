@@ -75,8 +75,10 @@ def build_reporting_payload(
         or dt_util.now().date().isoformat()
     )
     power_diagram = battery_data.get("Power_Diagram") or {}
+    power_diagram_source = "provider_power_diagram"
     if not isinstance(power_diagram, dict) or not power_diagram:
         power_diagram = _synthesized_power_diagram(battery_data, reporting_date=reporting_date)
+        power_diagram_source = "synthesized_from_backend_snapshot"
     saved_at = dt_util.utcnow().isoformat()
     return {
         "aggregate": aggregate,
@@ -87,6 +89,9 @@ def build_reporting_payload(
             "label": label,
             "reporting_date": reporting_date,
             "saved_at": saved_at,
+            "source": "backend_reporting",
+            "storage": "local_archive",
+            "power_diagram_source": power_diagram_source,
         },
         "live": {
             "soc": battery_data.get("soc"),
@@ -320,6 +325,15 @@ class ByteWattReportHistory:
             _LOGGER.warning("Failed to read ByteWatt missing dates for %s: %s", scope_key, err)
             return {}
 
+    async def async_scope_summary(self, scope_key: str) -> dict[str, Any]:
+        """Return compact archive summary details for one scope."""
+        scope_key = _safe_filename(scope_key)
+        try:
+            return await self.hass.async_add_executor_job(self.scope_summary_sync, scope_key)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Failed to read ByteWatt scope summary for %s: %s", scope_key, err)
+            return {}
+
     def _store_snapshot_sync(
         self,
         scope_key: str,
@@ -465,6 +479,38 @@ class ByteWattReportHistory:
         if not isinstance(missing, dict):
             return {}
         return {str(key): (value if isinstance(value, dict) else {}) for key, value in missing.items() if key}
+
+    def scope_summary_sync(self, scope_key: str) -> dict[str, Any]:
+        """Return compact archive summary details for one scope."""
+        if not self.history_file.exists():
+            return {}
+        try:
+            history = json.loads(self.history_file.read_text(encoding="utf-8"))
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Unable to read existing ByteWatt history file: %s", err)
+            return {}
+
+        scopes = history.get("scopes") or {}
+        scope = scopes.get(scope_key) or {}
+        records = scope.get("records") or {}
+        valid_dates = sorted(
+            str(key)
+            for key, reporting in records.items()
+            if key and _reporting_has_power_diagram_data(reporting or {})
+        )
+        missing = self._missing_dates_sync(scope_key)
+        csv_path = self.base_dir / f"{scope_key}.csv"
+        return {
+            "scope_key": scope_key,
+            "label": str(scope.get("label") or scope_key),
+            "record_count": len(valid_dates),
+            "first_record_date": valid_dates[0] if valid_dates else "",
+            "last_record_date": valid_dates[-1] if valid_dates else "",
+            "missing_count": len(missing),
+            "last_updated": str(scope.get("updated") or history.get("updated") or ""),
+            "csv_filename": csv_path.name if csv_path.exists() else "",
+            "history_filename": self.history_file.name if self.history_file.exists() else "",
+        }
 
     def _write_scope_csv(
         self,
