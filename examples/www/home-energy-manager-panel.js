@@ -1,8 +1,8 @@
 import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "430";
-const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=348";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "432";
+const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=350";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";

@@ -1,4 +1,5 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "044";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "046";
+const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HOME_ENERGY_MANAGER_REPORT_CARD_TAG = `home-energy-manager-report-card-${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}`;
 
 class ByteWattReportCard extends HTMLElement {
@@ -19,6 +20,8 @@ class ByteWattReportCard extends HTMLElement {
       consumed: true,
     };
     this._liveReportCacheByScope = this._liveReportCacheByScope || new Map();
+    this._historyDataCacheBySource = this._historyDataCacheBySource || new Map();
+    this._historyRefreshRequestedAt = this._historyRefreshRequestedAt || new Map();
   }
 
   set pendingSelection(option) {
@@ -166,6 +169,12 @@ class ByteWattReportCard extends HTMLElement {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   }
 
+  _formatTimeLabel(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "now";
+    const pad = (number) => String(number).padStart(2, "0");
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
   _todayLocalDate() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -252,7 +261,9 @@ class ByteWattReportCard extends HTMLElement {
   async _reloadHistory() {
     const url = this._historyUrl();
     if (!url) return;
+    const historyKey = `${url}|${this._historyScopeKey()}`;
     this._historyLoading = true;
+    this._historyLoadingKey = historyKey;
     this._historyLoadError = "";
     try {
       const response = await fetch(url, { cache: "no-store" });
@@ -261,10 +272,15 @@ class ByteWattReportCard extends HTMLElement {
       }
       const payload = await response.json();
       this._historyData = payload && typeof payload === "object" ? payload : null;
+      if (this._historyData) {
+        this._historyDataCacheBySource = this._historyDataCacheBySource || new Map();
+        this._historyDataCacheBySource.set(historyKey, this._historyData);
+      }
     } catch (error) {
       this._historyLoadError = String(error?.message || error || "History fetch failed");
     } finally {
       this._historyLoading = false;
+      this._historyLoadingKey = "";
       this.render();
     }
   }
@@ -272,18 +288,26 @@ class ByteWattReportCard extends HTMLElement {
   async _ensureHistoryForSelectedDate() {
     if (!this._hass || !this._historyConfigured()) return;
     const selectedDate = this._selectedReportDate();
-    const liveDate = String(this._reporting()?.power_diagram?.date || this._reporting()?.reporting_date || "").trim();
-    if (!selectedDate || selectedDate === liveDate) return;
-    if (this._historyRecordForDate(selectedDate)) return;
-    const requestKey = `${this._historyScopeKey()}|${selectedDate}`;
-    if (this._historyRequestedKey === requestKey) return;
+    if (!selectedDate) return;
+    const isToday = this._isTodaySelection(selectedDate);
+    const scopeKey = this._historyScopeKey();
+    const hasRecord = Boolean(this._historyRecordForDate(selectedDate));
+    if (!isToday && hasRecord) return;
+    const requestKey = `${scopeKey}|${selectedDate}|${isToday ? "today" : "archive"}`;
+    const now = Date.now();
+    const lastRequestedAt = Number(this._historyRefreshRequestedAt?.get(requestKey) || 0);
+    if (isToday && hasRecord && now - lastRequestedAt < TODAY_HISTORY_REFRESH_MS) return;
+    if (!isToday && this._historyRequestedKey === requestKey) return;
+    if (this._historyLoading && this._historyLoadingKey === `${this._historyUrl()}|${scopeKey}`) return;
     this._historyRequestedKey = requestKey;
+    this._historyRefreshRequestedAt = this._historyRefreshRequestedAt || new Map();
+    this._historyRefreshRequestedAt.set(requestKey, now);
     const history = this._history();
     const payload = {
-      scope_key: this._historyScopeKey(),
+      scope_key: scopeKey,
       start_date: selectedDate,
       end_date: selectedDate,
-      force: false,
+      force: isToday,
     };
     if (history?.entry_id) payload.entry_id = history.entry_id;
     try {
@@ -293,6 +317,39 @@ class ByteWattReportCard extends HTMLElement {
       this._historyLoadError = String(error?.message || error || "History download failed");
       this.render();
     }
+  }
+
+  _timeSeriesPointCount(reporting) {
+    const powerDiagram = reporting?.power_diagram || {};
+    const timeCount = Array.isArray(powerDiagram.time) ? powerDiagram.time.length : 0;
+    const series = powerDiagram.series && typeof powerDiagram.series === "object" ? powerDiagram.series : {};
+    const seriesCount = Math.max(
+      0,
+      ...Object.values(series).map((value) => Array.isArray(value) ? value.length : 0),
+    );
+    return Math.max(timeCount, seriesCount);
+  }
+
+  _lastDisplayedTimeSeriesReport(selectedDate) {
+    const last = this._lastReportingForDisplay?.reporting;
+    if (!last || this._timeSeriesPointCount(last) <= 2) {
+      return null;
+    }
+    const snapshot = this._clonePlain(last);
+    snapshot.reporting_date = selectedDate || snapshot.reporting_date || this._formatLocalDate(this._todayLocalDate());
+    snapshot.meta = {
+      ...(snapshot.meta || {}),
+      source: "backend_reporting",
+      source_detail: "previous_chart_refreshing",
+      storage: "local_archive_memory",
+      power_diagram_source: "previous_chart_snapshot",
+      reporting_date: snapshot.reporting_date,
+    };
+    snapshot.power_diagram = {
+      ...(snapshot.power_diagram || {}),
+      date: snapshot.reporting_date,
+    };
+    return snapshot;
   }
 
   _reportingForDisplay() {
@@ -324,11 +381,12 @@ class ByteWattReportCard extends HTMLElement {
         ? this._aggregatePendingReporting(reporting, currentSelection, selectedDate)
         : this._selectedBatteryPendingReporting(reporting, currentSelection, selectedDate);
       this._cacheLiveReport(liveReporting);
+      const displayReporting = this._lastDisplayedTimeSeriesReport(selectedDate) || liveReporting;
       const displayState = {
-        reporting: liveReporting,
+        reporting: displayReporting,
         selectedDate,
         usingHistory: false,
-        missingHistory: false,
+        missingHistory: true,
       };
       this._lastReportingForDisplay = displayState;
       return displayState;
@@ -1144,9 +1202,12 @@ class ByteWattReportCard extends HTMLElement {
     const isLoading = metaSource === "synthesized_live_entities" || metaSource === "selected_battery_pending";
     const isLive = metaSource === "live_direct_api";
     const isRefreshingLive = isLive && sourceDetail.includes("refreshing");
+    const isRefreshingChart = sourceDetail === "previous_chart_refreshing";
     const toneClass = isLoading ? "data-source-banner--fallback" : isLive ? "data-source-banner--live" : "data-source-banner--backend";
     const helper = isLoading
       ? "Report Loading"
+      : isRefreshingChart
+        ? "Refreshing today's chart history while keeping the last time-series graph visible."
       : isLive
         ? isRefreshingLive
           ? "Showing the last live snapshot while the selected scope refreshes."
@@ -1154,7 +1215,7 @@ class ByteWattReportCard extends HTMLElement {
       : "This view is using the backend reporting payload stored through the HEM report archive flow.";
     return `
       <section class="data-source-banner ${toneClass}">
-        <div class="data-source-title">${isLoading ? "Report Loading" : isRefreshingLive ? "Refreshing Live Data" : isLive ? "Live Reporting Active" : "Backend Reporting Active"}</div>
+        <div class="data-source-title">${isLoading ? "Report Loading" : isRefreshingChart ? "Refreshing Today's Report Data" : isRefreshingLive ? "Refreshing Live Data" : isLive ? "Live Reporting Active" : "Backend Reporting Active"}</div>
         <div class="data-source-copy">${helper}</div>
         <div class="data-source-meta">Source: ${this._escape(source)} | Storage: ${this._escape(storage)} | Diagram: ${this._escape(diagramSource)}</div>
       </section>
@@ -1286,12 +1347,14 @@ class ByteWattReportCard extends HTMLElement {
     const selectionLabel = selection?.aggregate
       ? "All Batteries"
       : String(selection?.remark || selection?.sys_sn || selection?.label || "Selected battery");
-    const historyNotice = this._historyConfigured() && selectedDate && selectedDate !== String(this._reporting()?.power_diagram?.date || this._reporting()?.reporting_date || "").trim()
+    const historyNotice = this._historyConfigured() && selectedDate
       ? this._historyRecordForDate(selectedDate)
-        ? `<div class="chart-history-note">Archived report loaded for ${this._escape(selectedDate)}.</div>`
+        ? this._isTodaySelection(selectedDate)
+          ? `<div class="chart-history-note">Today's time-series report loaded through ${this._escape(this._formatTimeLabel(new Date()))}.</div>`
+          : `<div class="chart-history-note">Archived report loaded for ${this._escape(selectedDate)}.</div>`
         : this._historyLoading
-          ? `<div class="chart-history-note">Loading archived report for ${this._escape(selectedDate)}...</div>`
-          : `<div class="chart-history-note chart-history-note--warn">No stored archive found yet for ${this._escape(selectedDate)}. HEM has requested it.</div>`
+          ? `<div class="chart-history-note">Loading report history for ${this._escape(selectedDate)}...</div>`
+          : `<div class="chart-history-note chart-history-note--warn">No stored report history found yet for ${this._escape(selectedDate)}. HEM has requested it.</div>`
       : "";
 
     return `
@@ -1456,16 +1519,18 @@ class ByteWattReportCard extends HTMLElement {
     const historyKey = `${this._historyUrl()}|${this._historyScopeKey()}`;
     if (historyKey !== this._historySourceKey) {
       this._historySourceKey = historyKey;
-      this._historyData = null;
+      this._historyData = this._historyDataCacheBySource?.get(historyKey) || null;
       this._historyLoadError = "";
-      this._historyRequestedKey = "";
     }
     if (this._historyConfigured() && !this._historyData && !this._historyLoading) {
       this._reloadHistory();
     }
     const displayState = this._reportingForDisplay();
     const reporting = displayState.reporting;
-    if (displayState.missingHistory && !this._historyLoading) {
+    const shouldRefreshTodayHistory = this._historyConfigured()
+      && this._isTodaySelection(displayState.selectedDate)
+      && !this._historyLoading;
+    if ((displayState.missingHistory || shouldRefreshTodayHistory) && !this._historyLoading) {
       this._ensureHistoryForSelectedDate();
     }
 
