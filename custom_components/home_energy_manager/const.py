@@ -50,6 +50,7 @@ SERVICE_STOP_FEEDIN_NOW = "stop_feedin_now"
 SERVICE_FORCE_RECONNECT = "force_reconnect"  # Force client reconnection for troubleshooting
 SERVICE_HEALTH_CHECK = "health_check"  # Check connection health and return diagnostics
 SERVICE_TOGGLE_DIAGNOSTICS = "toggle_diagnostics"  # Toggle diagnostic logging
+SERVICE_REFRESH_STATE = "refresh_state"
 SERVICE_PRICING_UPSERT_RULE = "pricing_upsert_rule"
 SERVICE_PRICING_REMOVE_RULE = "pricing_remove_rule"
 SERVICE_PRICING_SET_HOLIDAYS = "pricing_set_holidays"
@@ -60,6 +61,8 @@ SERVICE_PRICING_REMOVE_RECORD = "pricing_remove_record"
 SERVICE_SET_PANEL_THEME = "set_panel_theme"
 SERVICE_SET_FORECAST_MAPPING = "set_forecast_mapping"
 SERVICE_SET_BATTERY_MAPPING = "set_battery_mapping"
+SERVICE_SET_HERO_MAPPING = "set_hero_mapping"
+SERVICE_POLICY_CHARGE_SAVE = "policy_charge_save"
 
 # Service attributes
 ATTR_END_DISCHARGE = "end_discharge"
@@ -101,6 +104,10 @@ ATTR_NOTES = "notes"
 ATTR_HOLIDAY_DATES = "holiday_dates"
 ATTR_HOLIDAY_SOURCE = "holiday_source"
 ATTR_REGION = "region"
+ATTR_POLICY_ENABLED = "policy_enabled"
+ATTR_POLICY_NAME = "policy_name"
+ATTR_IMMEDIATE_CUTOFF_SOC = "immediate_cutoff_soc"
+ATTR_ROWS = "rows"
 
 # Sensor types
 SENSOR_SOC = "soc"
@@ -146,6 +153,7 @@ SENSOR_BATTERY_WEAR_COST = "battery_wear_cost"
 SENSOR_DAILY_COST_ESTIMATE = "daily_cost_estimate"
 SENSOR_DAILY_INCOME_ESTIMATE = "daily_income_estimate"
 SENSOR_PRICING_SCHEDULE = "pricing_schedule"
+SENSOR_POLICY_CHARGE_SCHEDULE = "policy_charge_schedule"
 
 # Grid stats sensor types
 SENSOR_TOTAL_SOLAR = "total_solar_generation"
@@ -223,6 +231,8 @@ CONF_PV_CHARGING_BATTERY_ENTITY = "pv_charging_battery_entity"
 CONF_GRID_BATTERY_CHARGE_ENTITY = "grid_battery_charge_entity"
 CONF_BATTERY_CHARGED_TODAY_ENTITY = "battery_charged_today_entity"
 CONF_BATTERY_DISCHARGED_TODAY_ENTITY = "battery_discharged_today_entity"
+CONF_BATTERY_HERO_MAPPING = "battery_hero_mapping"
+CONF_SOLAR_HERO_MAPPING = "solar_hero_mapping"
 
 FORECAST_PROVIDER_NONE = "none"
 FORECAST_PROVIDER_FORECAST_SOLAR = "forecast_solar"
@@ -251,3 +261,8 @@ def signal_pending_changed(entry_id: str) -> str:
 def signal_pricing_changed(entry_id: str) -> str:
     """Dispatcher signal name for pricing-store changes on a given entry."""
     return f"bytewatt_pricing_{entry_id}"
+
+
+def signal_policy_charge_changed(entry_id: str) -> str:
+    """Dispatcher signal name for policy-charge-store changes on a given entry."""
+    return f"bytewatt_policy_charge_{entry_id}"

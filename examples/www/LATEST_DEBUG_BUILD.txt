@@ -1,2 +1,2 @@
 home-energy-manager-debug-card.js
-/local/community/home-energy-manager/home-energy-manager-debug-card.js?v=032
+/local/community/home-energy-manager/home-energy-manager-debug-card.js?v=035

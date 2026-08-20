@@ -948,6 +948,70 @@ pricing_set_holidays:
       selector:
         text:
 
+policy_charge_save:
+  name: Save Policy Charge
+  description: Save the shared HEM battery charge schedule for the currently selected settings target.
+  fields:
+    policy_enabled:
+      name: Policy Enabled
+      description: Turn the HEM charge policy on or off for the current target.
+      required: false
+      selector:
+        boolean:
+    policy_name:
+      name: Policy Name
+      description: Human-friendly label for the charge policy.
+      required: false
+      selector:
+        text:
+    immediate_cutoff_soc:
+      name: Immediate Cutoff SOC
+      description: Charging cutoff SOC used by the immediate Charge Now action.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    rows:
+      name: Charge Rows
+      description: List of charge rows including row_id, start_time, end_time, cutoff_soc, and day_types.
+      required: false
+      selector:
+        object:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+set_hero_mapping:
+  name: Set Hero Mapping
+  description: Persist the battery and solar hero mapping overrides used by the setup panel.
+  fields:
+    battery_hero_mapping:
+      name: Battery Hero Mapping
+      description: JSON object containing persisted battery hero mapping overrides.
+      required: false
+      selector:
+        text:
+    solar_hero_mapping:
+      name: Solar Hero Mapping
+      description: JSON object containing persisted solar hero mapping overrides.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
 set_forecast_mapping:
   name: Set Forecast Mapping
   description: Persist the forecast provider and mapped Home Assistant forecast sensor entities.

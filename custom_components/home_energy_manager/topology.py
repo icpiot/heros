@@ -84,6 +84,8 @@ class HomeEnergyScope:
     @property
     def effective_system_id(self) -> str:
         """Return the best system identifier for settings endpoints."""
+        if self.aggregate:
+            return ""
         return self.settings_system_id or self.system_id
 
 

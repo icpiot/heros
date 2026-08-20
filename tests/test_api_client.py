@@ -33,6 +33,7 @@ encrypt_password = api_auth.encrypt_password
 ApiError = api_client.ByteWattAPIError
 _stat_value = api_client._stat_value
 _decode_json_object = api_client._decode_json_object
+_provider_power_diagram = api_client._provider_power_diagram
 ApiClient = api_client.NeovoltClient
 
 
@@ -190,3 +191,49 @@ async def test_async_get_logs_in_before_request_when_token_missing(monkeypatch):
     assert login_calls["count"] == 1
     assert len(client.session.calls) == 1
     assert client.session.calls[0]["headers"]["Authorization"] == "Bearer fresh-token"
+
+
+def test_provider_power_diagram_normalizes_web_chart_payload():
+    payload = _provider_power_diagram(
+        {
+            "time": ["0:00", "0:05"],
+            "cbat": [64.6, 64.5],
+            "homePower": [0.4, 0.5],
+            "ppvinverterPv": [0.0, 0.2],
+            "feedInDetailList": [
+                {"value": 0.001, "value1": 2.693, "value2": 2.694, "value3": 0},
+                {"value": 0.047, "value1": 1.148, "value2": 1.195, "value3": 0},
+            ],
+            "gridDetailList": [
+                {"value": 0.0, "value1": 0.35, "value2": 0.36, "value3": 0},
+                {"value": 0.0, "value1": 0.45, "value2": 0.44, "value3": 0},
+            ],
+            "soc": 64.9,
+            "maximumPower": 3,
+            "powerSource": "grid",
+        },
+        report_date="2026-08-12",
+        scope_label="All systems",
+        summary={
+            "soc": 64.9,
+            "solar_generation": 25.24,
+            "load_consumption": 30.21,
+            "feed_in": 0.09,
+            "grid_consumption": 4.83,
+            "battery_charge": 0,
+            "battery_discharge": 0,
+        },
+    )
+
+    assert payload["date"] == "2026-08-12"
+    assert payload["meta"]["label"] == "All systems"
+    assert payload["meta"]["maximum_power"] == 3.0
+    assert payload["series"]["bat"] == [64.6, 64.5]
+    assert payload["series"]["load"] == [0.4, 0.5]
+    assert payload["series"]["solar"] == [0.0, 0.2]
+    assert payload["series"]["feed_in"] == [2.694, 1.195]
+    assert payload["series"]["consumed"] == [0.36, 0.45]
+    assert payload["summary"]["grid_consumption"] == 4.83
+    assert payload["raw_provider"]["powerSource"] == "grid"
+    assert payload["provider_payload"]["soc"] == 64.9
+    assert payload["provider_payload"]["gridDetailList"][0]["value2"] == 0.36

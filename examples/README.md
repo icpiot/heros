@@ -115,6 +115,14 @@ Notes:
 
 - The archive is stored per scope, so `All systems` and each battery can keep
   separate history.
+- The report card's date control should reuse the stored archive first and only
+  trigger a backend fetch for the selected day when that scope/date is missing.
+- For ByteWatt web history, the dated power diagram comes from the provider
+  `staticsByDay` endpoint and is cached locally by HEM per scope/date so the
+  report page does not need to re-download the same day every time.
+- That provider payload is the web-app level of detail. A future Modbus-backed
+  history source can be richer, but it should still normalize into the same HEM
+  report payload shape.
 - The date picker clamps to today. Future dates are not queried.
 - Once a day exists locally, it should load fast on later visits.
 - `Today` is live reporting and should not be treated as an archive download.
@@ -138,7 +146,7 @@ type: module
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=304
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=344
 type: module
 ```
 
@@ -180,7 +188,7 @@ type: module
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=304
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=344
 type: module
 ```
 
@@ -194,8 +202,8 @@ type: module
 Current build stamp in this repo:
 
 - Policy card: `008`
-- Reporting loader URL: `302`
-- Reporting loader import cache-buster: `300`
+- Reporting loader URL: `326`
+- Reporting loader import cache-buster: `326`
 - Reporting archive file: `008`
 - Debug card: `035`
 

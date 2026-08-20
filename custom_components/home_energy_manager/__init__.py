@@ -183,7 +183,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=378"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=430"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -568,10 +568,12 @@ async def _ensure_report_history_range(
     )
 
     for index, day in enumerate(dates, start=1):
+        history_sys_sn = None if scope_key == "all" else scope_key
         battery_data = await client.get_battery_data(
             station_id=station_id or None,
             report_date=day,
             include_realtime=day == dates[-1] and not force,
+            sys_sn=history_sys_sn,
         )
         reporting = build_reporting_payload(
             battery_data or {},

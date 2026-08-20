@@ -253,7 +253,7 @@ class SettingsManager:
             "execution_cycle_label": execution_cycle,
             "charge_slot_limit": len(charge_slots),
             "discharge_slot_limit": len(discharge_slots),
-            "force_charge_active": bool(self._force_charge_active),
+            "force_charge_active": self._force_charge_active,
             "force_charge_limit": self._force_charge_limit,
         }
 
@@ -492,20 +492,143 @@ class SettingsManager:
 
     async def start_force_charge(self, battery_limit: int = 100) -> bool:
         """Trigger the immediate force-charge action."""
+        result = await self.start_force_charge_with_feedback(battery_limit)
+        return bool(result.get("ok"))
+
+    async def start_force_charge_with_feedback(
+        self,
+        battery_limit: int = 100,
+        *,
+        allow_aggregate_fallback: bool = True,
+    ) -> dict[str, Any]:
+        """Trigger immediate force charge and keep provider feedback."""
         api = BatterySettingsAPI(self._client)
-        ok = await api.force_charge(battery_limit=battery_limit)
+        result = await api.force_charge_result(battery_limit=battery_limit)
+        result = await self._maybe_retry_force_charge_all(
+            api,
+            result,
+            battery_limit,
+            allow_aggregate_fallback=allow_aggregate_fallback,
+        )
+        command_ok = bool(result.get("ok"))
+        verified_active: Optional[bool] = None
+        aggregate_target = not str(getattr(self._client, "host_system_id", "") or "").strip()
+        if command_ok and aggregate_target:
+            self._force_charge_active = True
+            self._force_charge_limit = float(battery_limit)
+            return result
+        if command_ok:
+            await asyncio.sleep(4)
+            verified_active = await api.get_force_charge_status(max_retries=8, retry_delay=3)
+        ok = command_ok and verified_active is True
         if ok:
             self._force_charge_active = True
             self._force_charge_limit = float(battery_limit)
-        return ok
+        elif verified_active is False:
+            result = {
+                **result,
+                "ok": True,
+                "message": (
+                    f"{result.get('message') or 'Force charge command accepted.'} "
+                    "Live charging has not appeared yet; HEM will keep polling for the inverter state."
+                ),
+                "pending_live_status": True,
+                "verified_active": verified_active,
+            }
+        elif command_ok:
+            result = {
+                **result,
+                "ok": True,
+                "message": (
+                    f"{result.get('message') or 'Force charge command accepted.'} "
+                    "Live charging could not be confirmed yet; HEM will keep polling for the inverter state."
+                ),
+                "pending_live_status": True,
+                "verified_active": verified_active,
+            }
+        return result
+
+    async def _maybe_retry_force_charge_all(
+        self,
+        api: BatterySettingsAPI,
+        result: dict[str, Any],
+        battery_limit: int,
+        *,
+        allow_aggregate_fallback: bool,
+    ) -> dict[str, Any]:
+        """Retry against all batteries when one selected battery is already full."""
+        if bool(result.get("ok")) or not allow_aggregate_fallback:
+            return result
+        response = result.get("response") or {}
+        if not isinstance(response, dict) or response.get("code") != 6164:
+            return result
+        original_system_id = str(getattr(self._client, "host_system_id", "") or "")
+        if not original_system_id:
+            return result
+        original_sys_sn = str(getattr(self._client, "host_sys_sn", "") or "")
+        self._client.host_system_id = ""
+        self._client.host_sys_sn = ""
+        try:
+            fallback = await api.force_charge_result(battery_limit=battery_limit)
+        finally:
+            self._client.host_system_id = original_system_id
+            self._client.host_sys_sn = original_sys_sn
+        original_message = str(result.get("message") or "Selected battery force charge failed.")
+        fallback_message = str(fallback.get("message") or "All-battery fallback failed.")
+        return {
+            **fallback,
+            "message": (
+                f"{original_message} Retried all batteries because the selected battery is already at/above "
+                f"{int(battery_limit)}%. {fallback_message}"
+            ),
+            "fallback_from": result,
+            "fallback_target": "all",
+        }
 
     async def stop_force_charge(self) -> bool:
         """Stop the immediate force-charge action."""
+        result = await self.stop_force_charge_with_feedback()
+        return bool(result.get("ok"))
+
+    async def stop_force_charge_with_feedback(self) -> dict[str, Any]:
+        """Stop immediate force charge and keep provider feedback."""
         api = BatterySettingsAPI(self._client)
-        ok = await api.stop_charge()
+        result = await api.stop_charge_result()
+        command_ok = bool(result.get("ok"))
+        verified_active: Optional[bool] = None
+        aggregate_target = not str(getattr(self._client, "host_system_id", "") or "").strip()
+        if command_ok and aggregate_target:
+            self._force_charge_active = False
+            return result
+        if command_ok:
+            await asyncio.sleep(4)
+            verified_active = await api.get_force_charge_status(max_retries=8, retry_delay=3)
+        ok = command_ok and verified_active is False
         if ok:
             self._force_charge_active = False
-        return ok
+        elif verified_active is True:
+            result = {
+                **result,
+                "ok": True,
+                "message": (
+                    f"{result.get('message') or 'Stop command accepted.'} "
+                    "Live charging has not cleared yet; HEM will keep polling for the inverter state."
+                ),
+                "pending_live_status": True,
+                "verified_active": verified_active,
+            }
+        elif command_ok:
+            result = {
+                **result,
+                "ok": True,
+                "message": (
+                    f"{result.get('message') or 'Stop command accepted.'} "
+                    "Live stop could not be confirmed yet; HEM will keep polling for the inverter state."
+                ),
+                "pending_live_status": True,
+                "verified_active": verified_active,
+            }
+        return result
 
     async def submit_feedin_one_shot(
         self,

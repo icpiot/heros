@@ -39,6 +39,89 @@ Configure the integration through the Home Assistant UI:
 3. Search for "ByteWatt"
 4. Enter your ByteWatt/Neovolt account credentials
 
+## Setup persistence
+
+Home Energy Manager setup mappings and hero-mapping overrides should not use
+browser-only storage as their source of truth.
+
+This includes:
+
+- forecast setup mappings
+- battery setup mappings
+- battery hero mapping overrides
+- solar hero mapping overrides
+
+These values should be loaded from Home Assistant-backed config and saved
+through Home Energy Manager services so they survive browser changes, cache
+clears, and different devices.
+
+The panel may still keep a few browser-local UI preferences such as the last
+open page, selected battery target, debug toggle, settings focus, or remembered
+entry id. Those are convenience hints only and must not become the source of
+truth for shared HEM configuration.
+
+## Setup page mapping model
+
+The Home Energy Manager setup page currently separates the provider payload
+from the HEM-facing hero mapping layer.
+
+Setup sections:
+
+- `Bytewatt Sensors`
+- `Battery Hero Mapping Summary`
+- `Solar Hero Mapping Summary`
+- `HEM Hero Sensors`
+
+The direct provider payload shown by `Bytewatt Sensors` is scope-aware and can
+include:
+
+- `all_systems`
+- `selected_scope`
+- `live_batteries`
+
+This allows setup and debug views to compare:
+
+- aggregate provider values
+- the currently selected battery scope
+- each live per-battery row returned by the provider
+
+When Bytewatt exposes MPPT power fields, the setup page can also surface:
+
+- `ppv1`
+- `ppv2`
+- `ppv3`
+- `ppv4`
+
+Per-battery rows are dynamic. The setup page should not assume there are only
+one or two batteries.
+
+## Direct API expectations
+
+For setup/debug work, the direct API layer should prefer live provider values.
+
+That means:
+
+- battery and solar setup comparisons should read from the current provider payload
+- if a direct provider field is missing, the UI should show `Unavailable`
+- setup/debug views should not silently substitute stored fallback values for missing direct API fields
+
+Battery-facing fields commonly include:
+
+- `soc`
+- `pbat`
+- `pload`
+- `pgrid`
+- `powerSource`
+- `forceChargeMode`
+
+Solar-facing fields commonly include:
+
+- `ppv`
+- `ppv1`
+- `ppv2`
+- `ppv3`
+- `ppv4`
+
 ## Services
 
 This integration provides several services to control your battery system:

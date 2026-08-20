@@ -45,6 +45,7 @@ def test_pricing_panel_ui_overlap_and_delete_logic():
             addEventListener() {},
             removeEventListener() {},
             history: { replaceState() {} },
+            confirm() { return true; },
           },
           document: {
             addEventListener() {},
@@ -171,6 +172,7 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
             addEventListener() {},
             removeEventListener() {},
             history: { replaceState() {} },
+            confirm() { return true; },
           },
           document: {
             addEventListener() {},
@@ -245,7 +247,7 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
 
 
-def test_pricing_panel_ui_prefers_local_file_data_over_stale_sensor_state():
+def test_pricing_panel_ui_prefers_backend_file_data_over_stale_browser_storage():
     script = textwrap.dedent(
         r"""
         const fs = require("fs");
@@ -327,10 +329,10 @@ def test_pricing_panel_ui_prefers_local_file_data_over_stale_sensor_state():
         });
 
         const restored = panel._loadPricingUi();
-        const localGroup = restored.groups.find((group) => group.group_id === "local-only");
-        const ok = !restored.groups.some((group) => group.group_id === "backend-group")
-          && Boolean(localGroup)
-          && restored.activeGroupId === "local-only"
+        const backendGroup = restored.groups.find((group) => group.group_id === "backend-group");
+        const ok = Boolean(backendGroup)
+          && !restored.groups.some((group) => group.group_id === "local-only")
+          && restored.activeGroupId === "backend-group"
           && storage.has("home-energy-manager.panel.pricing.ui");
 
         if (!ok) {

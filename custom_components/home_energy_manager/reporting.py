@@ -216,6 +216,13 @@ def _power_diagram_from_reporting(reporting: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _provider_payload_from_reporting(reporting: dict[str, Any]) -> dict[str, Any]:
+    """Return the stored provider day payload when one exists."""
+    power_diagram = _power_diagram_from_reporting(reporting)
+    provider_payload = power_diagram.get("provider_payload") if isinstance(power_diagram, dict) else {}
+    return provider_payload if isinstance(provider_payload, dict) else {}
+
+
 def _reporting_has_power_diagram_data(reporting: dict[str, Any]) -> bool:
     """Return True when a stored row has chart data worth treating as archived."""
     power_diagram = _power_diagram_from_reporting(reporting)
@@ -500,6 +507,9 @@ class ByteWattReportHistory:
         )
         missing = self._missing_dates_sync(scope_key)
         csv_path = self.base_dir / f"{scope_key}.csv"
+        latest_record = records.get(valid_dates[-1]) if valid_dates else {}
+        latest_power_diagram = _power_diagram_from_reporting(latest_record or {})
+        latest_provider_payload = _provider_payload_from_reporting(latest_record or {})
         return {
             "scope_key": scope_key,
             "label": str(scope.get("label") or scope_key),
@@ -510,6 +520,11 @@ class ByteWattReportHistory:
             "last_updated": str(scope.get("updated") or history.get("updated") or ""),
             "csv_filename": csv_path.name if csv_path.exists() else "",
             "history_filename": self.history_file.name if self.history_file.exists() else "",
+            "provider_payload_present": bool(latest_provider_payload),
+            "provider_payload_key_count": len(latest_provider_payload),
+            "provider_payload_keys": sorted(str(key) for key in latest_provider_payload.keys()),
+            "raw_provider_present": isinstance(latest_power_diagram.get("raw_provider"), dict)
+            and bool(latest_power_diagram.get("raw_provider")),
         }
 
     def _write_scope_csv(

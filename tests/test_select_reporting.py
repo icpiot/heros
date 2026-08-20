@@ -208,6 +208,25 @@ def test_history_hint_exposes_inventory_and_scope_summaries():
     assert '"scope_key": "all"' in source
 
 
+def test_coordinator_retries_inverter_inventory_when_only_one_system_is_cached():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "coordinator.py"
+    ).read_text(encoding="utf-8")
+
+    assert "async def _refresh_inverter_inventory_if_needed" in source
+    assert "await self.client.fetch_inverter_list()" in source
+    assert "Expanded inverter inventory" in source
+
+
+def test_history_backfill_forwards_scope_to_provider_fetch():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "__init__.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'history_sys_sn = None if scope_key == "all" else scope_key' in source
+    assert "sys_sn=history_sys_sn" in source
+
+
 def test_live_battery_summary_keeps_per_battery_mppt_source_fields():
     source = Path(__file__).resolve().parents[1].joinpath(
         "custom_components", "home_energy_manager", "coordinator.py"

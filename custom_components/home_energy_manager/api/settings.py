@@ -39,6 +39,7 @@ class BatterySettingsAPI:
     PUT_ENDPOINT = "api/iterate/sysSet/setCycleStrategy"
     FORCE_CHARGE_ENDPOINT = "api/iterate/sysSet/forceCharge"
     STOP_CHARGE_ENDPOINT = "api/iterate/sysSet/stopCharge"
+    CHARGE_PROMPT_ENDPOINT = "api/iterate/sysSet/customerSetChargePrompt"
     FORCE_CHARGE_STATUS_ENDPOINT = "api/iterate/sysSet/getForceChargeStatus?id="
     FORCE_CHARGE_LIMIT_ENDPOINT = "api/iterate/sysSet/getForceChargeLimit?id="
 
@@ -162,49 +163,133 @@ class BatterySettingsAPI:
                 await asyncio.sleep(retry_delay)
         return None
 
-    async def force_charge(
+    async def force_charge_result(
         self,
         battery_limit: int = 100,
         max_retries: int = DEFAULT_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
-    ) -> bool:
+    ) -> dict[str, object]:
+        host_id = self._host_id()
         payload = {
-            "id": self._host_id(),
+            "id": host_id,
             "batUseCap": int(battery_limit),
         }
+        prompt_response = None
+        if not host_id:
+            prompt_endpoint = f"{self.CHARGE_PROMPT_ENDPOINT}?type=0&batUseCap={int(battery_limit)}"
+            prompt_response = await _with_relogin(
+                self._client, lambda: self._client._async_get(prompt_endpoint)
+            )
         for attempt in range(max_retries):
             response = await _with_relogin(
                 self._client, lambda: self._client._async_put(self.FORCE_CHARGE_ENDPOINT, payload)
             )
             if response and response.get("code") == 200:
-                return True
+                return {
+                    "ok": True,
+                    "message": self._force_charge_message(payload, response),
+                    "data": response.get("data"),
+                    "payload": payload,
+                    "prompt_response": prompt_response,
+                    "response": response,
+                }
             _LOGGER.debug(
                 "forceCharge attempt %d/%d returned: %s",
                 attempt + 1, max_retries, response,
             )
             if attempt < max_retries - 1:
                 await asyncio.sleep(retry_delay)
-        return False
+        return {
+            "ok": False,
+            "message": self._force_charge_message(payload, response),
+            "data": (response or {}).get("data"),
+            "payload": payload,
+            "prompt_response": prompt_response,
+            "response": response,
+        }
 
-    async def stop_charge(
+    def _force_charge_message(self, payload: dict[str, object], response: dict[str, object] | None) -> str:
+        target = str(payload.get("id") or "")
+        target_label = 'all batteries (id="")' if not target else f"battery id {target}"
+        cap = payload.get("batUseCap")
+        code = (response or {}).get("code")
+        msg = str((response or {}).get("msg") or (response or {}).get("expMsg") or "Force charge request failed")
+        data = (response or {}).get("data")
+        data_text = f", data={data}" if data is not None else ""
+        return f"Sent forceCharge to {target_label} with batUseCap={cap}. Response code={code}, msg={msg}{data_text}."
+
+    async def force_charge(
         self,
+        battery_limit: int = 100,
         max_retries: int = DEFAULT_RETRIES,
         retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> bool:
-        payload = {"id": self._host_id()}
+        result = await self.force_charge_result(
+            battery_limit=battery_limit,
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+        )
+        return bool(result.get("ok"))
+
+    async def stop_charge_result(
+        self,
+        max_retries: int = DEFAULT_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> dict[str, object]:
+        host_id = self._host_id()
+        payload = {"id": host_id}
+        prompt_response = None
+        if not host_id:
+            prompt_response = await _with_relogin(
+                self._client, lambda: self._client._async_get(f"{self.CHARGE_PROMPT_ENDPOINT}?type=2")
+            )
         for attempt in range(max_retries):
             response = await _with_relogin(
                 self._client, lambda: self._client._async_put(self.STOP_CHARGE_ENDPOINT, payload)
             )
             if response and response.get("code") == 200:
-                return True
+                return {
+                    "ok": True,
+                    "message": self._stop_charge_message(payload, response),
+                    "data": response.get("data"),
+                    "payload": payload,
+                    "prompt_response": prompt_response,
+                    "response": response,
+                }
             _LOGGER.debug(
                 "stopCharge attempt %d/%d returned: %s",
                 attempt + 1, max_retries, response,
             )
             if attempt < max_retries - 1:
                 await asyncio.sleep(retry_delay)
-        return False
+        return {
+            "ok": False,
+            "message": self._stop_charge_message(payload, response),
+            "data": (response or {}).get("data"),
+            "payload": payload,
+            "prompt_response": prompt_response,
+            "response": response,
+        }
+
+    def _stop_charge_message(self, payload: dict[str, object], response: dict[str, object] | None) -> str:
+        target = str(payload.get("id") or "")
+        target_label = 'all batteries (id="")' if not target else f"battery id {target}"
+        code = (response or {}).get("code")
+        msg = str((response or {}).get("msg") or (response or {}).get("expMsg") or "Stop charge request failed")
+        data = (response or {}).get("data")
+        data_text = f", data={data}" if data is not None else ""
+        return f"Sent stopCharge to {target_label}. Response code={code}, msg={msg}{data_text}."
+
+    async def stop_charge(
+        self,
+        max_retries: int = DEFAULT_RETRIES,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
+    ) -> bool:
+        result = await self.stop_charge_result(
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+        )
+        return bool(result.get("ok"))
 
 
 class GridFeedInSettingsAPI:

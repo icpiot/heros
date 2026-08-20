@@ -14,7 +14,12 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN
 from .const import CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
 from .coordinator import ByteWattDataUpdateCoordinator
-from .reporting import ByteWattReportHistory, build_reporting_payload
+from .reporting import build_reporting_payload
+
+try:  # pragma: no cover - test harness may stub reporting without this helper
+    from .reporting import ByteWattReportHistory
+except ImportError:  # pragma: no cover - fallback for focused unit tests
+    ByteWattReportHistory = None  # type: ignore[assignment]
 from .settings_manager import SettingsManager
 from .topology import ByteWattScope, DiscoveredInverter
 
@@ -306,31 +311,32 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             })
         history_hint["inventory_scopes"] = inventory_scopes
         try:
-            history_store = ByteWattReportHistory(
-                self._hass,
-                self._config_entry.entry_id,
-            )
-            history_summary = history_store.scope_summary_sync(history_scope_key)
-            base_url = str(history_hint.get("base_url") or "").rstrip("/")
-            scope_summaries: list[dict[str, Any]] = []
-            for scope in inventory_scopes:
-                scope_key = str(scope.get("scope_key") or "").strip()
-                if not scope_key:
-                    continue
-                scope_summary = history_store.scope_summary_sync(scope_key)
-                csv_filename = str(scope_summary.get("csv_filename") or "").strip()
-                history_filename = str(scope_summary.get("history_filename") or "").strip()
-                if base_url and csv_filename:
-                    scope_summary["csv_url"] = f"{base_url}/{csv_filename}"
-                if base_url and history_filename:
-                    scope_summary["history_url"] = f"{base_url}/{history_filename}"
-                scope_summaries.append({
-                    "scope_key": scope_key,
-                    "label": str(scope.get("label") or scope_key),
-                    "aggregate": bool(scope.get("aggregate")),
-                    **scope_summary,
-                })
-            history_hint["scope_summaries"] = scope_summaries
+            if ByteWattReportHistory is not None:
+                history_store = ByteWattReportHistory(
+                    self._hass,
+                    self._config_entry.entry_id,
+                )
+                history_summary = history_store.scope_summary_sync(history_scope_key)
+                base_url = str(history_hint.get("base_url") or "").rstrip("/")
+                scope_summaries: list[dict[str, Any]] = []
+                for scope in inventory_scopes:
+                    scope_key = str(scope.get("scope_key") or "").strip()
+                    if not scope_key:
+                        continue
+                    scope_summary = history_store.scope_summary_sync(scope_key)
+                    csv_filename = str(scope_summary.get("csv_filename") or "").strip()
+                    history_filename = str(scope_summary.get("history_filename") or "").strip()
+                    if base_url and csv_filename:
+                        scope_summary["csv_url"] = f"{base_url}/{csv_filename}"
+                    if base_url and history_filename:
+                        scope_summary["history_url"] = f"{base_url}/{history_filename}"
+                    scope_summaries.append({
+                        "scope_key": scope_key,
+                        "label": str(scope.get("label") or scope_key),
+                        "aggregate": bool(scope.get("aggregate")),
+                        **scope_summary,
+                    })
+                history_hint["scope_summaries"] = scope_summaries
         except Exception:  # noqa: BLE001
             history_summary = {}
         if history_summary:
@@ -342,25 +348,34 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             if base_url and history_filename:
                 history_summary["history_url"] = f"{base_url}/{history_filename}"
             history_hint["scope_summary"] = history_summary
+        is_aggregate_scope = selected_scope.aggregate if selected_scope is not None else current is None
+        selected_scope_is_battery = selected_scope is not None and not selected_scope.aggregate
+        selected_payload = (
+            selected_battery
+            if selected_scope_is_battery
+            else aggregate_battery
+        )
         monitoring_summary = _compact_summary(
-            selected_battery if (current is not None or (selected_scope is not None and not selected_scope.aggregate)) else aggregate_battery,
+            selected_payload,
             ["soc", "pbat", "pload", "pgrid", "ppv", "powerSource"],
         )
         selection_summary = {
             "label": (
-                current.display_name
+                selected_scope.label
+                if selected_scope_is_battery
+                else "All systems"
+                if is_aggregate_scope
+                else current.display_name
                 if current is not None
-                else selected_scope.label
-                if selected_scope is not None and not selected_scope.aggregate
                 else "All systems"
             ),
-            "system_id": current.system_id if current is not None else selected_scope.system_id if selected_scope is not None and not selected_scope.aggregate else "",
-            "sys_sn": current.sys_sn if current is not None else selected_scope.sys_sn if selected_scope is not None and not selected_scope.aggregate else "All",
-            "remark": current.remark if current is not None else "",
+            "system_id": selected_scope.system_id if selected_scope_is_battery else "" if is_aggregate_scope else current.system_id if current is not None else "",
+            "sys_sn": selected_scope.sys_sn if selected_scope_is_battery else "All" if is_aggregate_scope else current.sys_sn if current is not None else "All",
+            "remark": selected_scope.label if selected_scope_is_battery else "" if is_aggregate_scope else current.remark if current is not None else "",
         }
         reporting = _reporting_payload(
-            aggregate_battery if (current is None and not (selected_scope is not None and not selected_scope.aggregate)) else selected_battery,
-            aggregate=not (current is not None or (selected_scope is not None and not selected_scope.aggregate)),
+            selected_payload,
+            aggregate=is_aggregate_scope,
             label=selection_summary["label"],
             history_hint=history_hint,
         )
@@ -390,6 +405,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "today": _compact_summary(reporting.get("today"), ["solar_generation", "load_consumption", "feed_in", "grid_consumption", "battery_charge", "battery_discharge"]),
             "totals": _compact_summary(reporting.get("totals"), ["solar_generation", "feed_in", "battery_charge", "battery_discharge", "house_consumption", "grid_consumption"]),
             "power_diagram": _compact_summary(reporting.get("power_diagram"), ["date", "meta", "summary", "time", "series"]),
+            "selection": selection_summary,
         }
         battery_policy = self._manager.battery_policy_summary()
         live_battery_power = coordinator_data.get("live_battery_power") or getattr(
@@ -411,9 +427,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         direct_api = {
             "all_systems": _direct_api_summary(aggregate_battery),
             "selected_scope": _direct_api_summary(
-                selected_battery
-                if (current is not None or (selected_scope is not None and not selected_scope.aggregate))
-                else aggregate_battery
+                selected_payload
             ),
             "live_batteries": [
                 {
@@ -476,6 +490,9 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             )
             await self._manager.async_select_settings_target(scope)
             self._hass.data[DOMAIN][self._config_entry.entry_id]["settings_scope"] = scope
+            # Publish the target before the provider refresh, which can take
+            # several seconds, so the panel never falls back to the old scope.
+            self.async_write_ha_state()
             await self.coordinator.async_request_refresh()
             self.async_write_ha_state()
             return
@@ -487,6 +504,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         self._hass.data[DOMAIN][self._config_entry.entry_id]["settings_scope"] = (
             inverter.to_settings_scope()
         )
+        self.async_write_ha_state()
         await self.coordinator.async_request_refresh()
         self.async_write_ha_state()
 

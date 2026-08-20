@@ -44,6 +44,18 @@ def test_panel_reads_configuration_from_home_assistant_panel_property():
     assert "this._config = panel?.config || this._config" in panel_source
 
 
+def test_report_battery_selector_updates_without_replacing_embedded_card():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert "_updateSharedBatterySelectorInPlace()" in panel_source
+    assert "currentSelector.replaceWith(nextSelector)" in panel_source
+    assert "if (this._updateEmbeddedPageInPlace())" in panel_source
+    assert 'this._page !== "report" && this._page !== "debug"' in panel_source
+    assert "if (panel._updateEmbeddedPageInPlace())" in panel_source
+    assert "if (panel._isSharedBatterySelectorHeld())" in panel_source
+    assert "if (panel._panel === value)" in panel_source
+
+
 def test_panel_routes_forecast_setup_and_configured_entity_lookup():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     assert '{ value: "forecast", label: "Forecast"' not in panel_source
@@ -444,6 +456,10 @@ def test_report_page_uses_embedded_report_card_and_documents_storage_layers():
     assert "Payload source" in body
     assert "Payload storage" in body
     assert "Diagram source" in body
+    assert "Stored provider payload" in body
+    assert "Provider payload keys" in body
+    assert "Provider payload fields" in body
+    assert "Stored raw provider subset" in body
     assert "Archive health" in body
     assert "Archive age" in body
     assert "Archive freshness" in body
@@ -482,6 +498,17 @@ def test_report_card_exposes_backend_vs_fallback_source_banner():
     assert "synthesized_from_backend_snapshot" in report_card_source
     assert "Live Fallback Active" in report_card_source
     assert "Backend Reporting Active" in report_card_source
+
+
+def test_report_card_supports_archived_date_selection_from_history():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "data-report-date" in report_card_source
+    assert "data-shift-date" in report_card_source
+    assert "ensure_report_history" in report_card_source
+    assert "Archived report loaded for" in report_card_source
+    assert "No stored archive found yet" in report_card_source
+    assert "history.json" in report_card_source
 
 
 def test_debug_card_reads_archive_from_ha_without_browser_history_cache():

@@ -6,3 +6,21 @@
 .vscode/
 .venv/
 .codex/
+
+# Local browser/debug captures from Codex UI smoke tests.
+*-selector.png
+*-selector.txt
+browser-smoke.txt
+build-info.json
+cdp-doc.txt
+claimed-tab.json
+hard-refresh.*
+hem-page-audit.json
+iab-doc.txt
+open-tabs.json
+setup-page*.json
+setup-page*.png
+setup-page*.txt
+test-*.json
+test-*.png
+test-*.txt

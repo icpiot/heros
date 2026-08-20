@@ -44,6 +44,8 @@ class ByteWattClient:
         station_id: Optional[str] = None,
         report_date: Optional[str] = None,
         include_realtime: bool = True,
+        sys_sn: Optional[str] = None,
+        include_statistics: bool = True,
     ) -> Dict[str, Any]:
         """Poll the real-time + cumulative battery data endpoints.
 
@@ -55,6 +57,8 @@ class ByteWattClient:
             station_id,
             report_date=report_date,
             include_realtime=include_realtime,
+            sys_sn=sys_sn,
+            include_statistics=include_statistics,
         )
 
     async def get_device_list(self) -> Optional[Dict[str, Any]]:

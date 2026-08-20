@@ -41,7 +41,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/home-energy-manager/home-energy-manager-panel.js?v=378`
+`/local/community/home-energy-manager/home-energy-manager-panel.js?v=423`
 
 The panel ships with built-in theme presets:
 
@@ -212,6 +212,14 @@ detailed sensor history.
 
 InfluxDB is not wired up by HEM yet. The current live reporting/history flow
 still reads and writes only through the local HEM archive.
+
+Each stored report row now keeps both:
+
+- the normalized HEM power-diagram/report payload used by the panel
+- the original dated provider chart payload for that scope/day
+
+That lets HEM reuse previously downloaded web-history days without fetching the
+same provider chart data again.
 
 Report and archive diagnostics should read that HA-served archive directly.
 They must not depend on browser `localStorage` copies of report history.

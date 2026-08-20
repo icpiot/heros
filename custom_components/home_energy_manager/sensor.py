@@ -62,6 +62,7 @@ from .const import (
     SENSOR_DAILY_COST_ESTIMATE,
     SENSOR_DAILY_INCOME_ESTIMATE,
     SENSOR_PRICING_SCHEDULE,
+    SENSOR_POLICY_CHARGE_SCHEDULE,
     SENSOR_TOTAL_SOLAR,
     SENSOR_TOTAL_FEED_IN,
     SENSOR_TOTAL_BATTERY_CHARGE,
@@ -82,8 +83,10 @@ from .const import (
     SENSOR_CO2_REDUCTION,
     SENSOR_TOTAL_BATTERY_DISCHARGE,
     signal_pricing_changed,
+    signal_policy_charge_changed,
 )
 
+from .policy_charge_store import PolicyChargeScheduleStore
 from .pricing_store import PricingScheduleStore
 
 _LOGGER = logging.getLogger(__name__)
@@ -399,6 +402,7 @@ async def async_setup_entry(
 
     pricing_sensors = [
         PricingScheduleSensor(coordinator, entry),
+        PolicyChargeScheduleSensor(coordinator, entry),
     ]
 
     async_add_entities(soc_sensors + grid_sensors + daily_stats_sensors + placeholder_sensors + pricing_sensors)
@@ -656,6 +660,64 @@ class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
             "updated_at": self._schedule.updated_at.isoformat() if self._schedule.updated_at else None,
             "active_type": active_group.pricing_type if active_group is not None else (active.pricing_type if active is not None else None),
             "active_provider": active_group.provider if active_group is not None else (active.provider if active is not None else None),
+        }
+
+
+class PolicyChargeScheduleSensor(CoordinatorEntity, SensorEntity):
+    """Expose persisted policy charge schedules back to the panel."""
+
+    def __init__(self, coordinator: DataUpdateCoordinator, config_entry: ConfigEntry):
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._store = PolicyChargeScheduleStore(coordinator.hass, config_entry.entry_id)
+        self._attr_name = "Policy Charge Schedule"
+        self._attr_unique_id = f"{config_entry.entry_id}_policy_charge_schedule"
+        self._attr_icon = "mdi:battery-charging"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._schedule_set = None
+        self._signal = signal_policy_charge_changed(config_entry.entry_id)
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
+        }
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(async_dispatcher_connect(self.hass, self._signal, self._handle_refresh_signal))
+        await self._refresh_schedule_set()
+
+    def _handle_refresh_signal(self) -> None:
+        self.hass.async_create_task(self._refresh_schedule_set())
+
+    async def _refresh_schedule_set(self) -> None:
+        self._schedule_set = await self._store.async_schedule_set()
+        self.async_write_ha_state()
+
+    async def async_update(self) -> None:
+        await self._refresh_schedule_set()
+
+    @property
+    def available(self) -> bool:
+        return self._schedule_set is not None
+
+    @property
+    def native_value(self):
+        if self._schedule_set is None:
+            return "Unavailable"
+        return f"{len(self._schedule_set.schedules)} scope(s)"
+
+    @property
+    def extra_state_attributes(self):
+        if self._schedule_set is None:
+            return {}
+        return {
+            "schedule_count": len(self._schedule_set.schedules),
+            "schedules": [schedule.to_dict() for schedule in self._schedule_set.schedules],
+            "updated_at": self._schedule_set.updated_at,
         }
 
 

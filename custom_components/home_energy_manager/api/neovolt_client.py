@@ -89,6 +89,91 @@ def _stat_value(stats_data, key):
         return 0
 
 
+def _float_or_none(value: Any) -> float | None:
+    """Coerce provider values to float when possible."""
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _detail_curve_value(rows: Any) -> list[float]:
+    """Extract a power-like curve from provider detail rows.
+
+    The web payload exposes interval objects with ``value`` plus optional
+    ``value1``/``value2`` fields. The screenshoted web chart behaves like a
+    power series rather than a per-interval energy bar, so prefer the larger
+    detailed point when present and fall back to ``value``.
+    """
+    curve: list[float] = []
+    if not isinstance(rows, list):
+        return curve
+    for row in rows:
+        if not isinstance(row, dict):
+            curve.append(0.0)
+            continue
+        candidates = [
+            _float_or_none(row.get("value1")),
+            _float_or_none(row.get("value2")),
+            _float_or_none(row.get("value")),
+        ]
+        numeric = [abs(item) for item in candidates if item is not None]
+        curve.append(max(numeric) if numeric else 0.0)
+    return curve
+
+
+def _provider_power_diagram(
+    stats_data: dict[str, Any],
+    *,
+    report_date: str,
+    summary: dict[str, Any],
+    scope_label: str,
+) -> dict[str, Any]:
+    """Normalize the provider's dated chart payload to the HEM report shape."""
+    provider_snapshot = dict(stats_data) if isinstance(stats_data, dict) else {}
+    time_points = stats_data.get("time") if isinstance(stats_data.get("time"), list) else []
+    solar_curve = stats_data.get("ppvinverterPv") if isinstance(stats_data.get("ppvinverterPv"), list) else stats_data.get("ppv")
+    load_curve = stats_data.get("homePower") if isinstance(stats_data.get("homePower"), list) else stats_data.get("usePower")
+    battery_curve = stats_data.get("cbat") if isinstance(stats_data.get("cbat"), list) else stats_data.get("soc")
+    feed_in_curve = stats_data.get("feedIn") if isinstance(stats_data.get("feedIn"), list) else []
+    consumed_curve = _detail_curve_value(stats_data.get("gridDetailList"))
+    if not any(consumed_curve):
+        consumed_curve = stats_data.get("homePower") if isinstance(stats_data.get("homePower"), list) else []
+    normalized = {
+        "date": report_date,
+        "meta": {
+            "source": "provider",
+            "label": scope_label,
+            "date": report_date,
+            "maximum_power": _float_or_none(stats_data.get("maximumPower")),
+            "raw_keys": sorted(stats_data.keys()),
+        },
+        "summary": summary,
+        "time": list(time_points),
+        "series": {
+            "bat": list(battery_curve) if isinstance(battery_curve, list) else [],
+            "load": list(load_curve) if isinstance(load_curve, list) else [],
+            "solar": list(solar_curve) if isinstance(solar_curve, list) else [],
+            "feed_in": _detail_curve_value(stats_data.get("feedInDetailList")) if isinstance(stats_data.get("feedInDetailList"), list) else list(feed_in_curve),
+            "consumed": list(consumed_curve) if isinstance(consumed_curve, list) else [],
+        },
+        "raw_provider": {
+            "soc": _float_or_none(stats_data.get("soc")),
+            "powerSource": stats_data.get("powerSource"),
+            "maximumPower": _float_or_none(stats_data.get("maximumPower")),
+            "maxPpv": _float_or_none(stats_data.get("maxPpv")),
+            "maxUsePower": _float_or_none(stats_data.get("maxUsePower")),
+            "maxFeedIn": _float_or_none(stats_data.get("maxFeedIn")),
+            "maxGridCharge": _float_or_none(stats_data.get("maxGridCharge")),
+            "inverterMode": stats_data.get("inverterMode"),
+        },
+        "provider_payload": provider_snapshot,
+    }
+    return normalized
+
+
 def _is_success_code(code: Any) -> bool:
     """Return True when an endpoint reports a success code.
 
@@ -249,6 +334,8 @@ class NeovoltClient:
         _retry_count: int = 0,
         report_date: str | None = None,
         include_realtime: bool = True,
+        sys_sn: str | None = None,
+        include_statistics: bool = True,
     ) -> Dict[str, Any]:
         """Get data for a specific battery using the new API endpoint.
 
@@ -276,7 +363,9 @@ class NeovoltClient:
         # First get the real-time power data — failures of THIS call raise.
         url = f"{self.base_url}/api/report/energyStorage/getLastPowerData"
 
-        params = {"sysSn": "All", "stationId": station_id or ""}
+        selected_sys_sn = (sys_sn or "All").strip() or "All"
+        scope_label = selected_sys_sn if selected_sys_sn != "All" else "All systems"
+        params = {"sysSn": selected_sys_sn, "stationId": station_id or ""}
 
         current_date = dt_util.now().strftime("%Y-%m-%d %H:%M:%S")
         headers = self._get_auth_headers()
@@ -305,6 +394,8 @@ class NeovoltClient:
                                         _retry_count + 1,
                                         report_date=report_date,
                                         include_realtime=include_realtime,
+                                        sys_sn=selected_sys_sn,
+                                        include_statistics=include_statistics,
                                     )
                             raise ByteWattAPIError(
                                 f"getLastPowerData HTTP {response.status}: {body[:200]}"
@@ -325,6 +416,8 @@ class NeovoltClient:
                                         _retry_count + 1,
                                         report_date=report_date,
                                         include_realtime=include_realtime,
+                                        sys_sn=selected_sys_sn,
+                                        include_statistics=include_statistics,
                                     )
                             raise ByteWattAPIError(
                                 f"getLastPowerData code={result.get('code')}: {result.get('msg')}"
@@ -333,6 +426,9 @@ class NeovoltClient:
                         power_data = result.get("data", {}) or {}
                         _LOGGER.debug("Received battery power data: %s", power_data)
                         battery_data.update(power_data)
+
+            if not include_statistics:
+                return battery_data
             
             # Now get the energy statistics
             stats_url = f"{self.base_url}/api/report/energy/getEnergyStatistics"
@@ -384,7 +480,14 @@ class NeovoltClient:
                             elif stats_result.get("code") == 6069:
                                 _LOGGER.warning("Session expired (code 6069) during statistics fetch")
                                 if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
-                                    return await self.async_get_battery_data(station_id, _retry_count + 1)
+                                    return await self.async_get_battery_data(
+                                        station_id,
+                                        _retry_count + 1,
+                                        report_date=report_date,
+                                        include_realtime=include_realtime,
+                                        sys_sn=selected_sys_sn,
+                                        include_statistics=include_statistics,
+                                    )
                             else:
                                 _LOGGER.error(
                                     "Failed to get energy statistics with code %s: %s",
@@ -449,7 +552,14 @@ class NeovoltClient:
                             elif today_result.get("code") == 6069:
                                 _LOGGER.warning("Session expired (code 6069) during today's stats fetch")
                                 if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
-                                    return await self.async_get_battery_data(station_id, _retry_count + 1)
+                                    return await self.async_get_battery_data(
+                                        station_id,
+                                        _retry_count + 1,
+                                        report_date=report_date,
+                                        include_realtime=include_realtime,
+                                        sys_sn=selected_sys_sn,
+                                        include_statistics=include_statistics,
+                                    )
                             else:
                                 _LOGGER.error(
                                     "Failed to get today's stats with code %s: %s",
@@ -468,7 +578,8 @@ class NeovoltClient:
             today_stats_url = f"{self.base_url}/api/report/power/staticsByDay"
             today_stats_date = report_date_str
             today_stats_params = {
-                "sysSn": "",
+                "sysSn": selected_sys_sn,
+                "stationId": station_id or "",
                 "date": today_stats_date,
             }
 
@@ -505,10 +616,33 @@ class NeovoltClient:
                                     total_gained = pv_today + grid_import
                                     total_used   = consumed + feed_in + charged
                                     battery_data["Battery_Discharged_Today"] = total_used - total_gained
+                                    battery_data["reporting_date"] = report_date_str
+                                    provider_soc = _float_or_none(stats_data.get("soc"))
+                                    battery_data["Power_Diagram"] = _provider_power_diagram(
+                                        stats_data,
+                                        report_date=report_date_str,
+                                        scope_label=scope_label,
+                                        summary={
+                                            "soc": provider_soc if provider_soc is not None else battery_data.get("soc"),
+                                            "solar_generation": pv_today,
+                                            "load_consumption": consumed,
+                                            "feed_in": feed_in,
+                                            "grid_consumption": grid_import,
+                                            "battery_charge": charged,
+                                            "battery_discharge": battery_data["Battery_Discharged_Today"],
+                                        },
+                                    )
                             elif today_stats_result.get("code") == 6069:
                                 _LOGGER.warning("Session expired (code 6069) during today's detailed stats fetch")
                                 if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
-                                    return await self.async_get_battery_data(station_id, _retry_count + 1)
+                                    return await self.async_get_battery_data(
+                                        station_id,
+                                        _retry_count + 1,
+                                        report_date=report_date,
+                                        include_realtime=include_realtime,
+                                        sys_sn=selected_sys_sn,
+                                        include_statistics=include_statistics,
+                                    )
                             else:
                                 _LOGGER.error(
                                     "Failed to get today's detailed stats with code %s: %s",

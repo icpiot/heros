@@ -6,12 +6,13 @@ import socket
 import statistics
 import time
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional, Set
 
 import voluptuous as vol
 from homeassistant.components.persistent_notification import async_create, async_dismiss
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_time_change,
@@ -20,6 +21,7 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .api.settings import BatterySettingsAPI
 from .bytewatt_client import ByteWattClient
 from .const import (
     DOMAIN,
@@ -39,7 +41,11 @@ from .const import (
     RECENT_DATA_THRESHOLD,
     STALE_DATA_THRESHOLD,
     HTTPS_PORT,
+    signal_policy_charge_changed,
 )
+from .policy_charge_store import PolicyChargeScheduleStore
+from .pricing_store import PricingScheduleStore
+from .topology import DiscoveredInverter
 from .utilities.circuit_breaker import CircuitBreaker, CircuitBreakerState
 from .utilities.connection_stats import ConnectionStatistics
 from .utilities.diagnostic_service import DiagnosticService
@@ -49,6 +55,16 @@ _LOGGER = logging.getLogger(__name__)
 # Notification IDs
 NOTIFICATION_RECOVERY = "bytewatt_recovery"
 NOTIFICATION_ERROR = "bytewatt_error"
+NOTIFICATION_POLICY_CHARGE = "home_energy_manager_policy_charge"
+INVERTER_REDISCOVERY_INTERVAL = timedelta(minutes=15)
+
+
+def _float_or_none(value: Any) -> float | None:
+    """Return a float for API numeric values, or None when unavailable."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
@@ -67,6 +83,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
         self.hass = hass
         self.entry_id = entry_id
         self._last_battery_data = None
+        self._selected_battery_data: dict[str, Any] | None = None
+        self._live_battery_power: list[dict[str, Any]] = []
         self._scan_interval = scan_interval
         self._last_successful_update: Optional[datetime] = None
         self._consecutive_stale_checks = 0
@@ -78,6 +96,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
         # Tracked so we can cancel it on entry unload — otherwise the
         # callback would fire on a torn-down coordinator.
         self._recovery_retry_unsub = None
+        self._last_inverter_rediscovery_attempt: Optional[datetime] = None
 
 
         # Connection health tracking
@@ -165,6 +184,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                 if self._last_battery_data:
                     return {
                         "battery": self._last_battery_data,
+                        "selected_battery": self._selected_battery_data or {},
+                        "live_battery_power": self.live_battery_power_summary,
                         "connection_status": "limited",
                         "circuit_breaker": self.circuit_breaker.state.value
                     }
@@ -176,6 +197,9 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
             # Get battery data
             with self._timed_operation("get_battery_data"):
                 battery_data = await self.client.get_battery_data()
+            await self._refresh_inverter_inventory_if_needed()
+            await self._refresh_live_battery_power()
+            selected_battery_data = await self._refresh_selected_battery_data()
             
             # Refresh battery + grid feed-in settings via the manager.
             # The manager owns its lock so concurrent submit() / refresh() are serialized,
@@ -183,10 +207,12 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
             manager = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {}).get("manager")
             if manager is not None:
                 await manager.refresh()
+                await self._run_policy_charge_schedule(manager)
             
             # If we got battery data, update our cached version and last successful time
             if battery_data:
                 self._last_battery_data = battery_data
+                self._selected_battery_data = selected_battery_data
                 self._last_successful_update = current_time
                 self._consecutive_stale_checks = 0
                 self._recovery_attempts = 0  # Reset recovery attempts on successful update
@@ -218,6 +244,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
             # Return the data along with connection status
             data = {
                 "battery": self._last_battery_data or {},
+                "selected_battery": self._selected_battery_data or {},
+                "live_battery_power": self.live_battery_power_summary,
                 "connection_status": "connected" if battery_data else "partial",
                 "circuit_breaker": self.circuit_breaker.state.value,
                 "last_updated": current_time.isoformat()
@@ -250,6 +278,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 return {
                     "battery": self._last_battery_data,
+                    "selected_battery": self._selected_battery_data or {},
+                    "live_battery_power": self.live_battery_power_summary,
                     "connection_status": "cached",
                     "cache_age": cache_age,
                     "circuit_breaker": self.circuit_breaker.state.value,
@@ -265,6 +295,300 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     )
 
                 raise UpdateFailed(f"Error communicating with API: {err}")
+
+    async def _refresh_selected_battery_data(self) -> dict[str, Any]:
+        """Fetch the direct API payload for the currently selected battery scope."""
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
+        manager = entry_data.get("manager")
+        selected_sys_sn = str(getattr(manager, "current_settings_target_sys_sn", "") or "").strip()
+        if not selected_sys_sn or selected_sys_sn.lower() == "all":
+            return {}
+        try:
+            return await self.client.get_battery_data(sys_sn=selected_sys_sn)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Unable to fetch selected battery data for %s: %s", selected_sys_sn, err)
+            return self._selected_battery_data or {}
+
+    async def _refresh_inverter_inventory_if_needed(self) -> None:
+        """Retry provider inventory discovery when the cached list looks incomplete.
+
+        Some installs start with only one discovered inverter even though the
+        account exposes more battery systems. That leaves the shared battery
+        selector stuck on `All systems`, because live per-battery polling only
+        iterates the discovered inventory. This helper periodically retries the
+        account inventory endpoints and merges in any newly discovered systems.
+        """
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
+        current_inventory = entry_data.get("inverters") or []
+        if len(current_inventory) > 1:
+            return
+
+        now = dt_util.utcnow()
+        last_attempt = self._last_inverter_rediscovery_attempt
+        if last_attempt and (now - last_attempt) < INVERTER_REDISCOVERY_INTERVAL:
+            return
+        self._last_inverter_rediscovery_attempt = now
+
+        try:
+            raw_inverters = await self.client.fetch_inverter_list()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Unable to re-discover inverter inventory for %s: %s", self.entry_id, err)
+            return
+
+        if not raw_inverters:
+            return
+
+        merged: dict[tuple[str, str], DiscoveredInverter] = {}
+        for inverter in current_inventory:
+            if not isinstance(inverter, DiscoveredInverter):
+                continue
+            key = (
+                str(inverter.system_id or "").strip(),
+                str(inverter.sys_sn or "").strip(),
+            )
+            merged[key] = inverter
+
+        for record in raw_inverters:
+            inverter = DiscoveredInverter.from_api_response(record)
+            key = (
+                str(inverter.system_id or "").strip(),
+                str(inverter.sys_sn or "").strip(),
+            )
+            merged[key] = inverter
+
+        if len(merged) <= len(current_inventory):
+            return
+
+        entry_data["inverters"] = list(merged.values())
+        _LOGGER.info(
+            "Expanded inverter inventory for %s from %d to %d record(s)",
+            self.entry_id,
+            len(current_inventory),
+            len(merged),
+        )
+
+    async def _refresh_live_battery_power(self) -> None:
+        """Poll each discovered inverter for live pbat values.
+
+        ByteWatt's aggregate view can hide per-battery flow, so this keeps a
+        compact live summary for the policy page and control-state decisions.
+        """
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
+        inverters = entry_data.get("inverters") or []
+        readings: list[dict[str, Any]] = []
+        seen_sys_sns: set[str] = set()
+        for inverter in inverters:
+            sys_sn = str(getattr(inverter, "sys_sn", "") or "").strip()
+            if not sys_sn or sys_sn.lower() == "all" or sys_sn in seen_sys_sns:
+                continue
+            seen_sys_sns.add(sys_sn)
+            try:
+                live_data = await self.client.get_battery_data(
+                    sys_sn=sys_sn,
+                    include_statistics=False,
+                )
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Unable to fetch live battery power for %s: %s", sys_sn, err)
+                continue
+            pbat = _float_or_none(live_data.get("pbat"))
+            charge_rate_w = abs(pbat) if pbat is not None and pbat < 0 else 0.0
+            discharge_rate_w = pbat if pbat is not None and pbat > 0 else 0.0
+            readings.append(
+                {
+                    "label": str(getattr(inverter, "display_name", "") or sys_sn),
+                    "system_id": str(getattr(inverter, "system_id", "") or ""),
+                    "sys_sn": sys_sn,
+                    "soc": _float_or_none(live_data.get("soc")),
+                    "pbat": pbat,
+                    "charge_rate_w": charge_rate_w,
+                    "discharge_rate_w": discharge_rate_w,
+                    "load_w": _float_or_none(live_data.get("pload")),
+                    "grid_w": _float_or_none(live_data.get("pgrid")),
+                    "solar_w": _float_or_none(live_data.get("ppv")),
+                    "ppv1": _float_or_none(live_data.get("ppv1")),
+                    "ppv2": _float_or_none(live_data.get("ppv2")),
+                    "ppv3": _float_or_none(live_data.get("ppv3")),
+                    "ppv4": _float_or_none(live_data.get("ppv4")),
+                    "power_source": live_data.get("powerSource"),
+                    "force_charge_mode": live_data.get("forceChargeMode"),
+                }
+            )
+        self._live_battery_power = readings
+
+    @property
+    def live_battery_power_summary(self) -> dict[str, Any]:
+        batteries = list(self._live_battery_power)
+        charging_count = sum(
+            1
+            for battery in batteries
+            if (battery.get("charge_rate_w") or 0) > 0 or battery.get("force_charge_mode") is True
+        )
+        return {
+            "batteries": batteries,
+            "total_charge_rate_w": sum(float(battery.get("charge_rate_w") or 0) for battery in batteries),
+            "total_discharge_rate_w": sum(float(battery.get("discharge_rate_w") or 0) for battery in batteries),
+            "any_charging": charging_count > 0,
+            "partial_charging": 0 < charging_count < len(batteries),
+        }
+
+    async def _run_policy_charge_schedule(self, manager) -> None:
+        """Evaluate the shared charge policy for the currently selected target scope.
+
+        The current monitoring client only exposes reliable live SOC for the active
+        selected target/all-systems view, so this runner intentionally executes the
+        schedule for that active scope rather than pretending to enforce every saved
+        scope with missing data.
+        """
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self.entry_id, {})
+        policy_store = entry_data.get("policy_charge_store") or PolicyChargeScheduleStore(self.hass, self.entry_id)
+        pricing_store = entry_data.get("pricing_store") or PricingScheduleStore(self.hass, self.entry_id)
+        scope = entry_data.get("settings_scope")
+        if scope is not None and getattr(scope, "aggregate", False):
+            scope_key = "all"
+        elif scope is not None:
+            scope_key = str(getattr(scope, "effective_system_id", "") or getattr(scope, "system_id", "") or getattr(scope, "sys_sn", "") or "all").strip() or "all"
+        else:
+            scope_key = str(manager.current_settings_target_id or manager.current_settings_target_sys_sn or "all").strip() or "all"
+        schedule_set = await policy_store.async_schedule_set()
+        schedule = schedule_set.scope(scope_key)
+        if schedule is None and len(schedule_set.schedules) == 1:
+            schedule = schedule_set.schedules[0]
+        if schedule is None or not schedule.policy_enabled:
+            return
+
+        holiday_set = set()
+        try:
+            pricing_schedule = await pricing_store.async_schedule()
+            holiday_set = {item.isoformat() for item in pricing_schedule.holiday_dates}
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Unable to load pricing holidays for policy charge: %s", err)
+
+        battery_data = self._last_battery_data or {}
+        soc_value = battery_data.get("soc")
+        try:
+            soc = float(soc_value) if soc_value is not None else None
+        except (TypeError, ValueError):
+            soc = None
+
+        now_local = dt_util.now()
+        active_row = schedule.active_row(now_local, soc=soc, holiday_dates=holiday_set)
+        manual_stop_holds_window = self._policy_charge_manual_stop_holds_window(schedule, now_local, holiday_set)
+
+        original_system_id = getattr(manager._client, "host_system_id", "") or ""  # noqa: SLF001
+        original_sys_sn = getattr(manager._client, "host_sys_sn", "") or ""  # noqa: SLF001
+        manager._client.host_system_id = schedule.system_id  # noqa: SLF001
+        manager._client.host_sys_sn = "" if schedule.scope_key == "all" else schedule.sys_sn  # noqa: SLF001
+        try:
+            await self._ensure_bytewatt_schedule_disabled(schedule.system_id, manager)
+            api = BatterySettingsAPI(manager._client)  # noqa: SLF001
+            force_charge_active = await api.get_force_charge_status(max_retries=1, retry_delay=0)
+            if force_charge_active is not None:
+                manager._force_charge_active = force_charge_active  # noqa: SLF001
+            if active_row is not None and not force_charge_active and not manual_stop_holds_window:
+                result = await manager.start_force_charge_with_feedback(
+                    active_row.cutoff_soc,
+                    allow_aggregate_fallback=schedule.scope_key == "all",
+                )
+                started = bool(result.get("ok"))
+                feedback_message = (
+                    f"HEM schedule started charging: {active_row.label} "
+                    f"({active_row.start_time}-{active_row.end_time}, SOC {active_row.cutoff_soc}%)."
+                    if started
+                    else str(result.get("message") or "HEM schedule charge start failed")
+                )
+                await policy_store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="scheduler_start_force_charge",
+                    ok=started,
+                    message=feedback_message,
+                    charging_now=started,
+                )
+                if started:
+                    async_create(
+                        self.hass,
+                        feedback_message,
+                        title="HEM Charge Schedule",
+                        notification_id=NOTIFICATION_POLICY_CHARGE,
+                    )
+                async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
+            elif active_row is not None and not force_charge_active and manual_stop_holds_window:
+                await policy_store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="scheduler_manual_stop_hold",
+                    ok=True,
+                    message="HEM schedule is active, but manual stop is holding charge off until the next schedule window.",
+                    charging_now=False,
+                )
+                async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
+            elif active_row is not None and force_charge_active:
+                await policy_store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="scheduler_force_charge_already_active",
+                    ok=True,
+                    message=(
+                        f"HEM schedule is active for {active_row.label}, and force charge is already active "
+                        f"(SOC {soc if soc is not None else 'unknown'} / cutoff {active_row.cutoff_soc}%)."
+                    ),
+                    charging_now=True,
+                )
+                async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
+            elif active_row is None and force_charge_active:
+                result = await manager.stop_force_charge_with_feedback()
+                await policy_store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="scheduler_stop_force_charge",
+                    ok=bool(result.get("ok")),
+                    message=str(result.get("message") or "Scheduled charge stopped"),
+                    charging_now=False if result.get("ok") else True,
+                )
+                async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
+            elif active_row is None:
+                await policy_store.async_record_feedback(
+                    scope_key=schedule.scope_key,
+                    action="scheduler_no_active_charge_row",
+                    ok=True,
+                    message=(
+                        f"HEM Charge Policy evaluated: no active row matched now "
+                        f"(SOC {soc if soc is not None else 'unknown'})."
+                    ),
+                    charging_now=False,
+                )
+                async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
+        finally:
+            manager._client.host_system_id = original_system_id  # noqa: SLF001
+            manager._client.host_sys_sn = original_sys_sn  # noqa: SLF001
+
+    def _policy_charge_manual_stop_holds_window(self, schedule, now_local: datetime, holiday_set: set[str]) -> bool:
+        """Avoid immediately restarting a HEM scheduled charge after a manual stop."""
+        if schedule.last_command_action != "stop_force_charge" or schedule.last_command_ok is not True:
+            return False
+        try:
+            stopped_at = datetime.fromisoformat(str(schedule.last_command_at).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return False
+        if stopped_at.tzinfo is None:
+            stopped_at = dt_util.as_local(stopped_at.replace(tzinfo=timezone.utc))
+        else:
+            stopped_at = dt_util.as_local(stopped_at)
+        if stopped_at.date() != now_local.date():
+            return False
+        return any(
+            row.matches(stopped_at, holiday_dates=holiday_set)
+            and row.matches(now_local, holiday_dates=holiday_set)
+            for row in schedule.rows
+        )
+
+    async def _ensure_bytewatt_schedule_disabled(self, system_id: str, manager) -> None:
+        """Turn off provider-side charge/discharge cycles when HEM owns the schedule."""
+        api = BatterySettingsAPI(manager._client)  # noqa: SLF001
+        current = await api.fetch_current_settings(max_retries=1, retry_delay=0)
+        if current is None:
+            return
+        if int(current.grid_charge_cycle or 0) == 0 and int(current.ctr_dis_cycle or 0) == 0:
+            return
+        current.grid_charge_cycle = 0
+        current.ctr_dis_cycle = 0
+        await api.put(current, max_retries=1, retry_delay=0)
     
     async def start_heartbeat(self) -> None:
         """Start the heartbeat service to monitor and recover the integration."""

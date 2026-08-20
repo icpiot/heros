@@ -36,6 +36,13 @@ def _valid_reporting_payload() -> dict[str, object]:
             },
             "summary": {"soc": 42},
             "meta": {},
+            "raw_provider": {"soc": 42, "powerSource": "grid"},
+            "provider_payload": {
+                "soc": 42,
+                "time": ["00:00", "00:05"],
+                "ppvinverterPv": [5, 6],
+                "gridDetailList": [{"value2": 9}, {"value2": 10}],
+            },
         },
     }
 
@@ -146,4 +153,8 @@ def test_scope_summary_reports_counts_dates_and_archive_filenames(tmp_path):
     assert summary["missing_count"] == 1
     assert summary["csv_filename"] == "all.csv"
     assert summary["history_filename"] == "history.json"
+    assert summary["provider_payload_present"] is True
+    assert summary["provider_payload_key_count"] == 4
+    assert summary["provider_payload_keys"] == ["gridDetailList", "ppvinverterPv", "soc", "time"]
+    assert summary["raw_provider_present"] is True
     assert summary["last_updated"]
