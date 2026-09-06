@@ -38,12 +38,12 @@ jobs:
         run: python -m compileall -q custom_components/ scripts/ tests/
       - name: Validate JSON files
         run: |
-          python -c "import json; json.load(open('custom_components/bytewatt/manifest.json'))"
-          python -c "import json; json.load(open('custom_components/bytewatt/strings.json'))"
-          python -c "import json; json.load(open('custom_components/bytewatt/translations/en.json'))"
+          python -c "import json; json.load(open('custom_components/heros/manifest.json'))"
+          python -c "import json; json.load(open('custom_components/heros/strings.json'))"
+          python -c "import json; json.load(open('custom_components/heros/translations/en.json'))"
           python -c "import json; json.load(open('hacs.json'))"
       - name: Validate services.yaml
-        run: python -c "import yaml; yaml.safe_load(open('custom_components/bytewatt/services.yaml'))"
+        run: python -c "import yaml; yaml.safe_load(open('custom_components/heros/services.yaml'))"
 
   pytest:
     name: Unit tests

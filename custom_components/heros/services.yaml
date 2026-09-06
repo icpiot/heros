@@ -1147,7 +1147,8 @@ set_forecast_history_source:
         number:
           min: -90
           max: 90
-          step: 0.000001
+          step: any
+          mode: box
     forecast_history_longitude:
       name: Longitude
       description: Solar site longitude used by Forecast.Solar.
@@ -1156,7 +1157,8 @@ set_forecast_history_source:
         number:
           min: -180
           max: 180
-          step: 0.000001
+          step: any
+          mode: box
     forecast_history_declination:
       name: Panel Declination
       description: Panel tilt in degrees, 0 horizontal to 90 vertical.
@@ -1238,7 +1240,8 @@ test_forecast_history_source:
         number:
           min: -90
           max: 90
-          step: 0.000001
+          step: any
+          mode: box
     forecast_history_longitude:
       name: Longitude
       description: Solar site longitude used by Forecast.Solar.
@@ -1247,7 +1250,8 @@ test_forecast_history_source:
         number:
           min: -180
           max: 180
-          step: 0.000001
+          step: any
+          mode: box
     forecast_history_declination:
       name: Panel Declination
       description: Panel tilt in degrees.
