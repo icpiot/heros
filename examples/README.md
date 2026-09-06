@@ -120,6 +120,12 @@ Notes:
 - For ByteWatt web history, the dated power diagram comes from the provider
   `staticsByDay` endpoint and is cached locally by HEM per scope/date so the
   report page does not need to re-download the same day every time.
+- Mapped solar forecast entities are also captured into HEM report snapshots
+  going forward, so future forecast-accuracy reports can compare stored
+  forecasts against measured generation.
+- Forecast.Solar historic averages are optional benchmark/backfill data and
+  require a provider plan/API key that allows the `history` endpoint. They are
+  not the same as a forecast that was issued on a past date.
 - That provider payload is the web-app level of detail. A future Modbus-backed
   history source can be richer, but it should still normalize into the same HEM
   report payload shape.
@@ -146,7 +152,7 @@ type: module
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=344
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=395
 type: module
 ```
 
@@ -188,7 +194,7 @@ type: module
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=344
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=395
 type: module
 ```
 
@@ -202,8 +208,8 @@ type: module
 Current build stamp in this repo:
 
 - Policy card: `008`
-- Reporting loader URL: `326`
-- Reporting loader import cache-buster: `326`
+- Reporting loader URL: `374`
+- Reporting loader import cache-buster: `374`
 - Reporting archive file: `008`
 - Debug card: `035`
 

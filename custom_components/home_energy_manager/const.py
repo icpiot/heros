@@ -60,6 +60,8 @@ SERVICE_PRICING_UPSERT_RECORD = "pricing_upsert_record"
 SERVICE_PRICING_REMOVE_RECORD = "pricing_remove_record"
 SERVICE_SET_PANEL_THEME = "set_panel_theme"
 SERVICE_SET_FORECAST_MAPPING = "set_forecast_mapping"
+SERVICE_SET_FORECAST_HISTORY_SOURCE = "set_forecast_history_source"
+SERVICE_TEST_FORECAST_HISTORY_SOURCE = "test_forecast_history_source"
 SERVICE_SET_BATTERY_MAPPING = "set_battery_mapping"
 SERVICE_SET_HERO_MAPPING = "set_hero_mapping"
 SERVICE_POLICY_CHARGE_SAVE = "policy_charge_save"
@@ -212,6 +214,15 @@ CONF_FORECAST_POWER_IN_24_HOURS_ENTITY = "forecast_power_in_24_hours_entity"
 CONF_FORECAST_PEAK_TODAY_ENTITY = "forecast_peak_today_entity"
 CONF_FORECAST_PEAK_TOMORROW_ENTITY = "forecast_peak_tomorrow_entity"
 CONF_SOLAR_FORECAST_ENTITY = "solar_forecast_entity"
+CONF_FORECAST_HISTORY_PROVIDER = "forecast_history_provider"
+CONF_FORECAST_HISTORY_API_KEY = "forecast_history_api_key"
+CONF_FORECAST_HISTORY_LATITUDE = "forecast_history_latitude"
+CONF_FORECAST_HISTORY_LONGITUDE = "forecast_history_longitude"
+CONF_FORECAST_HISTORY_DECLINATION = "forecast_history_declination"
+CONF_FORECAST_HISTORY_AZIMUTH = "forecast_history_azimuth"
+CONF_FORECAST_HISTORY_KWP = "forecast_history_kwp"
+CONF_FORECAST_HISTORY_DAMPING = "forecast_history_damping"
+CONF_FORECAST_HISTORY_HORIZON = "forecast_history_horizon"
 CONF_PANEL_THEME = "panel_theme"
 CONF_BATTERY_PROVIDER = "battery_provider"
 CONF_BATTERY_PERCENTAGE_ENTITY = "battery_percentage_entity"
@@ -240,7 +251,7 @@ FORECAST_PROVIDER_OTHER = "other"
 
 # Config entry schema version — bump and add an async_migrate_entry branch
 # whenever you change the shape of entry.data.
-CURRENT_ENTRY_VERSION = 3
+CURRENT_ENTRY_VERSION = 4
 
 # Maximum number of feed-in slots the inverter supports (per the
 # timePeriodLimit field on getFeedStrategyList — confirmed against a HAR

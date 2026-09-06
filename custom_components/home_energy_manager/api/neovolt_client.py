@@ -1,4 +1,6 @@
 """API client for Home Energy Manager provider connections."""
+import base64
+import json
 import logging
 import asyncio
 import aiohttp
@@ -99,6 +101,21 @@ def _float_or_none(value: Any) -> float | None:
         return None
 
 
+def _jwt_claims(token: str | None) -> dict[str, Any]:
+    """Decode JWT claims without verifying the signature."""
+    parts = str(token or "").split(".")
+    if len(parts) < 2:
+        return {}
+    payload = parts[1]
+    payload += "=" * (-len(payload) % 4)
+    try:
+        decoded = base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8")
+        claims = json.loads(decoded)
+    except (ValueError, UnicodeDecodeError):
+        return {}
+    return claims if isinstance(claims, dict) else {}
+
+
 def _detail_curve_value(rows: Any) -> list[float]:
     """Extract a power-like curve from provider detail rows.
 
@@ -185,6 +202,16 @@ def _is_success_code(code: Any) -> bool:
     """
     return str(code).strip() in {"0", "200", "000000"}
 
+
+def _safe_candidate_text(value: Any) -> str:
+    """Normalize candidate identifier text."""
+    candidate = str(value or "").strip()
+    if not candidate:
+        return ""
+    if candidate.lower() in {"all", "null", "none", "unknown", "unavailable"}:
+        return ""
+    return candidate
+
 class NeovoltClient:
     """API Client for provider connections."""
     
@@ -206,6 +233,8 @@ class NeovoltClient:
         self.token: Optional[str] = None
         self.host_system_id = host_system_id   # systemId of the Host inverter
         self.host_sys_sn = host_sys_sn         # sysSn of the Host inverter
+        self.user_id: str = ""
+        self.user_id_candidates: list[str] = []
     
     async def async_login(self) -> bool:
         """Login to the provider API using encrypted password."""
@@ -248,7 +277,7 @@ class NeovoltClient:
                     if result is None:
                         return False
 
-                    if result.get("code") not in (0, 200):
+                    if not _is_success_code(result.get("code")):
                         _LOGGER.error(
                             "Login rejected with code %s: %s",
                             result.get("code"), result.get("msg"),
@@ -269,6 +298,23 @@ class NeovoltClient:
                     else:
                         _LOGGER.error("No token found in login response")
                         return False
+
+                    login_data = result.get("data", {}) if isinstance(result.get("data"), dict) else {}
+                    claims = _jwt_claims(self.token)
+                    direct_user_id = _safe_candidate_text(
+                        login_data.get("userId")
+                        or login_data.get("user_id")
+                        or claims.get("user_id")
+                        or claims.get("userId")
+                        or claims.get("uid")
+                    )
+                    if not direct_user_id:
+                        subject = _safe_candidate_text(claims.get("sub"))
+                        if subject and "@" not in subject and "." not in subject:
+                            direct_user_id = subject
+                    self.user_id = direct_user_id
+                    self.user_id_candidates = [direct_user_id] if direct_user_id else []
+                    self._remember_user_id_candidates(result, login_data, claims)
 
                     _LOGGER.debug("Successfully logged in to provider API")
                     return True
@@ -322,7 +368,9 @@ class NeovoltClient:
                         )
                         return None
 
-                    return result.get("data")
+                    payload = result.get("data")
+                    self._remember_user_id_candidates(result, payload)
+                    return payload
 
         except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as error:
             _LOGGER.error("Error fetching device list: %s", error)
@@ -365,7 +413,12 @@ class NeovoltClient:
 
         selected_sys_sn = (sys_sn or "All").strip() or "All"
         scope_label = selected_sys_sn if selected_sys_sn != "All" else "All systems"
-        params = {"sysSn": selected_sys_sn, "stationId": station_id or ""}
+        effective_station_id = (
+            ""
+            if selected_sys_sn == "All"
+            else str(station_id or "").strip()
+        )
+        params = {"sysSn": selected_sys_sn, "stationId": effective_station_id}
 
         current_date = dt_util.now().strftime("%Y-%m-%d %H:%M:%S")
         headers = self._get_auth_headers()
@@ -407,7 +460,7 @@ class NeovoltClient:
                                 "getLastPowerData returned a non-JSON or non-object body"
                             )
 
-                        if result.get("code") not in (0, 200):
+                        if not _is_success_code(result.get("code")):
                             if result.get("code") == 6069:
                                 _LOGGER.warning("Session expired (code 6069), attempting to re-login")
                                 if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
@@ -424,6 +477,7 @@ class NeovoltClient:
                             )
 
                         power_data = result.get("data", {}) or {}
+                        self._remember_user_id_candidates(result, power_data)
                         _LOGGER.debug("Received battery power data: %s", power_data)
                         battery_data.update(power_data)
 
@@ -447,7 +501,7 @@ class NeovoltClient:
             
             stats_params = {
                 "sysSn": "All", 
-                "stationId": station_id or "",
+                "stationId": effective_station_id,
                 "beginDate": begin_date,
                 "endDate": end_date
             }
@@ -465,8 +519,9 @@ class NeovoltClient:
                                 return battery_data
                             _LOGGER.debug("Energy statistics response: %s", stats_result)
 
-                            if stats_result.get("code") in (0, 200):
+                            if _is_success_code(stats_result.get("code")):
                                 stats_data = stats_result.get("data", {}) or {}
+                                self._remember_user_id_candidates(stats_result, stats_data)
                                 if stats_data:
                                     battery_data["Total_Solar_Generation"]   = stats_data.get("epvT")
                                     battery_data["Total_Feed_In"]            = stats_data.get("eout")
@@ -509,7 +564,7 @@ class NeovoltClient:
             
             today_params = {
                 "sn": "All",
-                "stationId": station_id or "",
+                "stationId": effective_station_id,
                 "tday": today_date
             }
             
@@ -525,8 +580,9 @@ class NeovoltClient:
                                 return battery_data
                             _LOGGER.debug("Today's stats response: %s", today_result)
 
-                            if today_result.get("code") == 200:
+                            if _is_success_code(today_result.get("code")):
                                 today_data = today_result.get("data", {}) or {}
+                                self._remember_user_id_candidates(today_result, today_data)
                                 if today_data:
                                     battery_data["PV_Generated_Today"]    = today_data.get("epvtoday")
                                     battery_data["Total_PV_Generation"]   = today_data.get("epvtotal")
@@ -577,62 +633,82 @@ class NeovoltClient:
             # Now get today's statistics
             today_stats_url = f"{self.base_url}/api/report/power/staticsByDay"
             today_stats_date = report_date_str
-            today_stats_params = {
-                "sysSn": selected_sys_sn,
-                "stationId": station_id or "",
-                "date": today_stats_date,
-            }
+            if selected_sys_sn == "All" and not self.user_id_candidates and not self.user_id:
+                await self._prime_aggregate_user_ids()
 
-            _LOGGER.debug("Fetching today's detailed stats from: %s with params: %s", today_stats_url, today_stats_params)
-            try:
-                async with asyncio.timeout(DEFAULT_TIMEOUT):
-                    async with self.session.get(
-                        url=today_stats_url, params=today_stats_params, headers=headers,
-                    ) as today_stats_response:
-                        if today_stats_response.status == 200:
+            today_stats_params_candidates = self._detailed_stats_param_candidates(
+                selected_sys_sn,
+                effective_station_id,
+                today_stats_date,
+            )
+
+            chart_loaded = False
+            last_chart_failure = ""
+            for today_stats_params in today_stats_params_candidates:
+                _LOGGER.debug("Fetching today's detailed stats from: %s with params: %s", today_stats_url, today_stats_params)
+                try:
+                    async with asyncio.timeout(DEFAULT_TIMEOUT):
+                        async with self.session.get(
+                            url=today_stats_url, params=today_stats_params, headers=headers,
+                        ) as today_stats_response:
+                            if today_stats_response.status != 200:
+                                last_chart_failure = f"HTTP {today_stats_response.status}"
+                                continue
+
                             today_stats_result = await _decode_json_object(today_stats_response, "staticsByDay")
                             if today_stats_result is None:
-                                return battery_data
+                                last_chart_failure = "non-object JSON body"
+                                continue
                             _LOGGER.debug("Today's detailed stats response: %s", today_stats_result)
+                            self._remember_user_id_candidates(today_stats_result, today_stats_result.get("data"))
 
-                            if today_stats_result.get("code") == 200:
+                            if _is_success_code(today_stats_result.get("code")):
                                 stats_data = today_stats_result.get("data", {}) or {}
                                 # _stat_value coalesces missing / null fields to 0
                                 # so the discharge arithmetic never raises TypeError.
-                                if stats_data:
-                                    pv_today    = _stat_value(stats_data, "epvtoday")
-                                    consumed    = _stat_value(stats_data, "ehomeload")
-                                    feed_in     = _stat_value(stats_data, "efeedIn")
-                                    grid_import = _stat_value(stats_data, "einput")
-                                    charged     = _stat_value(stats_data, "echarge")
+                                if not stats_data:
+                                    last_chart_failure = "empty stats payload"
+                                    continue
 
-                                    battery_data["PV_Generated_Today"]    = pv_today
-                                    battery_data["Consumed_Today"]        = consumed
-                                    battery_data["Feed_In_Today"]         = feed_in
-                                    battery_data["Grid_Import_Today"]     = grid_import
-                                    battery_data["Battery_Charged_Today"] = charged
+                                pv_today    = _stat_value(stats_data, "epvtoday")
+                                consumed    = _stat_value(stats_data, "ehomeload")
+                                feed_in     = _stat_value(stats_data, "efeedIn")
+                                grid_import = _stat_value(stats_data, "einput")
+                                charged     = _stat_value(stats_data, "echarge")
 
-                                    # Discharge = energy used minus energy gained.
-                                    total_gained = pv_today + grid_import
-                                    total_used   = consumed + feed_in + charged
-                                    battery_data["Battery_Discharged_Today"] = total_used - total_gained
-                                    battery_data["reporting_date"] = report_date_str
-                                    provider_soc = _float_or_none(stats_data.get("soc"))
-                                    battery_data["Power_Diagram"] = _provider_power_diagram(
-                                        stats_data,
-                                        report_date=report_date_str,
-                                        scope_label=scope_label,
-                                        summary={
-                                            "soc": provider_soc if provider_soc is not None else battery_data.get("soc"),
-                                            "solar_generation": pv_today,
-                                            "load_consumption": consumed,
-                                            "feed_in": feed_in,
-                                            "grid_consumption": grid_import,
-                                            "battery_charge": charged,
-                                            "battery_discharge": battery_data["Battery_Discharged_Today"],
-                                        },
-                                    )
-                            elif today_stats_result.get("code") == 6069:
+                                battery_data["PV_Generated_Today"]    = pv_today
+                                battery_data["Consumed_Today"]        = consumed
+                                battery_data["Feed_In_Today"]         = feed_in
+                                battery_data["Grid_Import_Today"]     = grid_import
+                                battery_data["Battery_Charged_Today"] = charged
+
+                                # Discharge = energy used minus energy gained.
+                                total_gained = pv_today + grid_import
+                                total_used   = consumed + feed_in + charged
+                                battery_data["Battery_Discharged_Today"] = total_used - total_gained
+                                battery_data["reporting_date"] = report_date_str
+                                provider_soc = _float_or_none(stats_data.get("soc"))
+                                battery_data["Power_Diagram"] = _provider_power_diagram(
+                                    stats_data,
+                                    report_date=report_date_str,
+                                    scope_label=scope_label,
+                                    summary={
+                                        "soc": provider_soc if provider_soc is not None else battery_data.get("soc"),
+                                        "solar_generation": pv_today,
+                                        "load_consumption": consumed,
+                                        "feed_in": feed_in,
+                                        "grid_consumption": grid_import,
+                                        "battery_charge": charged,
+                                        "battery_discharge": battery_data["Battery_Discharged_Today"],
+                                    },
+                                )
+                                if "userId" in today_stats_params:
+                                    self.user_id = _safe_candidate_text(today_stats_params.get("userId"))
+                                    self._remember_user_id_candidates({"userId": self.user_id})
+                                chart_loaded = True
+                                break
+
+                            if today_stats_result.get("code") == 6069:
                                 _LOGGER.warning("Session expired (code 6069) during today's detailed stats fetch")
                                 if _retry_count < MAX_RELOGIN_RETRIES and await self.async_login():
                                     return await self.async_get_battery_data(
@@ -643,19 +719,20 @@ class NeovoltClient:
                                         sys_sn=selected_sys_sn,
                                         include_statistics=include_statistics,
                                     )
-                            else:
-                                _LOGGER.error(
-                                    "Failed to get today's detailed stats with code %s: %s",
-                                    today_stats_result.get("code"), today_stats_result.get("msg"),
-                                )
-                        else:
-                            _LOGGER.error(
-                                "Failed to get today's detailed stats with status %s",
-                                today_stats_response.status,
+                            last_chart_failure = (
+                                f"code {today_stats_result.get('code')}: {today_stats_result.get('msg')}"
                             )
-            except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as today_stats_error:
-                _LOGGER.error("Error fetching today's detailed stats: %s", today_stats_error)
-                return battery_data
+                except (asyncio.TimeoutError, aiohttp.ClientError, ValueError) as today_stats_error:
+                    last_chart_failure = str(today_stats_error)
+                    continue
+
+            if not chart_loaded and last_chart_failure:
+                _LOGGER.error(
+                    "Failed to get today's detailed stats for %s after %d candidate request(s): %s",
+                    scope_label,
+                    len(today_stats_params_candidates),
+                    last_chart_failure,
+                )
 
             _LOGGER.debug("Combined battery data: %s", battery_data)
             return battery_data
@@ -793,6 +870,171 @@ class NeovoltClient:
         return records
 
     @staticmethod
+    def _extract_account_ids(payload: Any) -> list[str]:
+        """Recursively pull aggregate-account identifiers out of arbitrary payloads."""
+        account_ids: list[str] = []
+        seen: set[str] = set()
+        field_names = {
+            "userid",
+            "user_id",
+            "memberid",
+            "member_id",
+            "customerid",
+            "customer_id",
+            "accountid",
+            "account_id",
+            "uid",
+        }
+        patterns = [
+            re.compile(r"(?:userId|user_id|memberId|member_id|customerId|customer_id|accountId|account_id|uid)=([A-Za-z0-9_-]+)"),
+        ]
+
+        def _add(value: Any) -> None:
+            candidate = _safe_candidate_text(value)
+            if not candidate or candidate in seen:
+                return
+            if "@" in candidate or "/" in candidate or "\\" in candidate or "." in candidate or " " in candidate:
+                return
+            seen.add(candidate)
+            account_ids.append(candidate)
+
+        def _walk(node: Any) -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if str(key or "").strip().lower() in field_names:
+                        _add(value)
+                    if isinstance(value, (dict, list)):
+                        _walk(value)
+                    elif isinstance(value, str):
+                        _walk(value)
+                return
+
+            if isinstance(node, list):
+                for item in node:
+                    _walk(item)
+                return
+
+            if isinstance(node, str):
+                text = node.strip()
+                if not text:
+                    return
+                for pattern in patterns:
+                    for match in pattern.finditer(text):
+                        _add(match.group(1))
+                if text[:1] in "[{":
+                    try:
+                        _walk(json.loads(text))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        pass
+
+        _walk(payload)
+        return account_ids
+
+    def _remember_user_id_candidates(self, *payloads: Any) -> None:
+        """Persist any aggregate account identifiers discovered in provider payloads."""
+        candidates = list(self.user_id_candidates or [])
+        seen = set(candidates)
+        current = _safe_candidate_text(self.user_id)
+        if current and current not in seen:
+            candidates.append(current)
+            seen.add(current)
+        for payload in payloads:
+            for candidate in self._extract_account_ids(payload):
+                if candidate in seen:
+                    continue
+                candidates.append(candidate)
+                seen.add(candidate)
+        self.user_id_candidates = candidates
+        if not current and candidates:
+            self.user_id = candidates[0]
+
+    def _aggregate_station_id_candidates(self, station_id: str | None = None) -> list[str]:
+        """Return candidate station IDs for aggregate scope requests."""
+        candidates: list[str] = [""]
+        for raw in (station_id, self.host_system_id):
+            candidate = _safe_candidate_text(raw)
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+        return candidates
+
+    def _detailed_stats_param_candidates(
+        self,
+        selected_sys_sn: str,
+        effective_station_id: str,
+        report_date: str,
+    ) -> list[dict[str, Any]]:
+        """Return ordered request candidates for detailed day-chart fetches."""
+        if selected_sys_sn != "All":
+            return [{
+                "sysSn": selected_sys_sn,
+                "stationId": effective_station_id,
+                "date": report_date,
+            }]
+
+        seen: set[tuple[tuple[str, Any], ...]] = set()
+        candidates: list[dict[str, Any]] = []
+        for user_id in self.user_id_candidates or []:
+            candidate = {
+                "userId": user_id,
+                "date": report_date,
+            }
+            key = tuple(sorted(candidate.items()))
+            if key not in seen:
+                seen.add(key)
+                candidates.append(candidate)
+        current = _safe_candidate_text(self.user_id)
+        if current:
+            candidate = {
+                "userId": current,
+                "date": report_date,
+            }
+            key = tuple(sorted(candidate.items()))
+            if key not in seen:
+                seen.add(key)
+                candidates.append(candidate)
+        for station_id in self._aggregate_station_id_candidates(effective_station_id):
+            candidate = {
+                "sysSn": selected_sys_sn,
+                "stationId": station_id,
+                "date": report_date,
+            }
+            key = tuple(sorted(candidate.items()))
+            if key not in seen:
+                seen.add(key)
+                candidates.append(candidate)
+        return candidates
+
+    async def _prime_aggregate_user_ids(self) -> None:
+        """Try to discover the aggregate chart userId before falling back."""
+        if self.user_id_candidates or self.user_id:
+            return
+
+        device_list = await self.async_get_device_list()
+        self._remember_user_id_candidates(device_list)
+        if self.user_id_candidates or self.user_id:
+            return
+
+        endpoints = [
+            "api/stable/home/getCustomMenuEssList?inverterMode=0",
+            "api/stable/home/getCustomMenuEssList?inverterMode=1",
+        ]
+        for endpoint in endpoints:
+            response = await self._async_get(endpoint)
+            if response is None:
+                continue
+            if response.get("code") == 6069:
+                if not await self.async_login():
+                    continue
+                response = await self._async_get(endpoint)
+                if response is None:
+                    continue
+            if not _is_success_code(response.get("code")):
+                continue
+            self._remember_user_id_candidates(response, response.get("data"))
+            if self.user_id_candidates or self.user_id:
+                return
+
+    @staticmethod
     def _dedupe_inverter_records(records: list[Dict[str, Any]]) -> list[Dict[str, Any]]:
         """Return unique inverter records, keeping the first seen per identity."""
         unique: list[Dict[str, Any]] = []
@@ -879,6 +1121,7 @@ class NeovoltClient:
             )
             return None
         data = response.get("data")
+        self._remember_user_id_candidates(response, data)
         return data if isinstance(data, dict) else None
 
     async def fetch_inverter_list(self) -> list:
@@ -904,6 +1147,7 @@ class NeovoltClient:
                     response = await _do(endpoint)
             if response and _is_success_code(response.get("code")):
                 payload = response.get("data")
+                self._remember_user_id_candidates(response, payload)
                 collected.extend(self._extract_inverter_records(payload))
                 discovered_system_ids.update(self._extract_system_ids(payload))
             else:

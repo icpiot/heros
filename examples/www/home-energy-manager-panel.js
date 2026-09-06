@@ -1,8 +1,8 @@
 import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "432";
-const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=350";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "482";
+const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=395";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -635,15 +635,18 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._render();
       return;
     }
-    if (this._updateEmbeddedPageInPlace()) {
-      return;
-    }
     if (this._isSharedBatterySelectorHeld()) {
+      if (this._updateEmbeddedPageInPlace()) {
+        return;
+      }
       this._holdRenderWindow(5000);
       return;
     }
     if (this._isForecastSelectorHeld()) {
       this._holdRenderWindow(5000);
+      return;
+    }
+    if (this._updateEmbeddedPageInPlace()) {
       return;
     }
     if (this._shouldHoldRender()) {
@@ -703,6 +706,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _shouldHoldRender() {
     const activeElement = this.shadowRoot?.activeElement;
     return Date.now() < this._renderHoldUntil
+      || this._isSharedBatterySelectorHeld()
       || this._isPricingInteractionTarget(activeElement)
       || this._isPricingEditorHeld()
       || this._isForecastInteractionTarget(activeElement)
@@ -716,7 +720,6 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _holdBatterySelectorWindow(duration = 8000) {
     this._batterySelectorHoldUntil = Math.max(this._batterySelectorHoldUntil, Date.now() + duration);
-    this._holdRenderWindow(duration);
   }
 
   _holdForecastWindow(duration = 8000) {
@@ -858,6 +861,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._deferredRenderTimer = window.setTimeout(() => {
       this._deferredRenderTimer = null;
       if (!this._shouldHoldRender()) {
+        if (this._isSharedBatterySelectorHeld()) {
+          if (this._updateEmbeddedPageInPlace()) {
+            return;
+          }
+          this._holdRenderWindow(5000);
+          return;
+        }
         if (this._updateEmbeddedPageInPlace()) {
           return;
         }
@@ -4738,17 +4748,42 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _selectedSettingsTargetLabel() {
     const selector = this._settingsTargetState();
+    const pending = String(this._pendingBatterySelection || "").trim();
+    if (pending) {
+      return this._displayBatteryScopeLabel(pending);
+    }
     const options = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
     const current = String(selector?.state || "").trim();
     if (current && current !== "unavailable") {
-      return current;
+      return this._displayBatteryScopeLabel(current);
     }
-    return options.includes("All systems") ? "All systems" : current || "Unavailable";
+    const reporting = selector?.attributes?.reporting || {};
+    const reportingSelection = reporting?.selection || {};
+    const reportingLabel = String(
+      reporting?.aggregate
+        ? "All Batteries"
+        : reportingSelection?.label
+          || reportingSelection?.remark
+          || reportingSelection?.sys_sn
+          || reporting?.label
+          || ""
+    ).trim();
+    if (reportingLabel) {
+      return this._displayBatteryScopeLabel(reportingLabel);
+    }
+    return options.includes("All systems") ? "All Batteries" : current || "Unavailable";
   }
 
   _sharedBatterySelectorOptions(selector) {
     const labels = new Set();
     labels.add("All systems");
+    const liveBatteries = Array.isArray(selector?.attributes?.direct_api?.live_batteries)
+      ? selector.attributes.direct_api.live_batteries
+      : [];
+    liveBatteries.forEach((battery) => {
+      const label = String(battery?.label || battery?.sys_sn || battery?.system_id || "").trim();
+      if (label) labels.add(label);
+    });
     const directOptions = Array.isArray(selector?.attributes?.options) ? selector.attributes.options : [];
     directOptions.forEach((option) => {
       const label = String(option || "").trim();
@@ -4764,6 +4799,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
       });
     }
     return Array.from(labels);
+  }
+
+  _displayBatteryScopeLabel(label) {
+    const normalized = String(label || "").trim();
+    if (!normalized) {
+      return "";
+    }
+    return normalized === "All systems" ? "All Batteries" : normalized;
   }
 
   _liveBatteryChargeSource(policyState = {}) {
@@ -6068,30 +6111,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
     ];
     return `
       <section class="report">
-        <article class="panel-card panel-card--wide report__hero">
+        <article class="panel-card report__hero report__hero--compact">
           <div class="panel-card__header">
             <h2>Report</h2>
             <span>Power diagram, reports, and exports</span>
           </div>
-          <p>
-            The report page now uses the existing HEM reporting card and local archive pipeline.
-            It is being expanded into a report catalog with multiple report types grouped by
-            category, while the background archive keeps building daily scope snapshots.
-          </p>
-        </article>
-
-        <article class="panel-card panel-card--wide">
-          <div class="panel-card__header">
-            <h2>Report Catalog</h2>
-            <span>Category-first menu</span>
-          </div>
-          <p>
-            Planned report names are shown here with a <strong>TBB</strong> suffix until each
-            report is built. Built items keep the same menu placement without the suffix.
-          </p>
-          <div class="report-catalog">
-            ${this._reportCatalog()}
-          </div>
+          <p>The live chart stays first. Catalog, archive, and storage notes sit below it.</p>
         </article>
 
         <section class="report__stack">
@@ -6099,14 +6124,23 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <div class="panel-card__embedded" data-embedded="report"></div>
           </div>
 
+          <article class="panel-card panel-card--wide report__catalog-card">
+            <div class="panel-card__header">
+              <h2>Report Catalog</h2>
+              <span>Category-first menu</span>
+            </div>
+            <p>Built items keep their slot. Planned items remain marked <strong>TBB</strong>.</p>
+            <div class="report-catalog">
+              ${this._reportCatalog()}
+            </div>
+          </article>
+
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
               <h2>Archive Snapshot</h2>
               <span>At-a-glance status</span>
             </div>
-            <p>
-              ${archiveSnapshotSummary}
-            </p>
+            <p>${archiveSnapshotSummary}</p>
             ${archiveActionLinks ? `
               <div class="pricing-rule__actions--inline report-actions">
                 ${archiveActionLinks}
@@ -6124,11 +6158,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <h2>Archive Scope Coverage</h2>
               <span>All systems + battery scopes</span>
             </div>
-            <p>
-              These cards mirror the archive scope inventory HEM currently exposes for reporting.
-              Coverage is shown against the configured archive horizon so you can see which scopes
-              have stored rows, known missing dates, or no history yet.
-            </p>
+            <p>Coverage is shown against the configured archive horizon for each report scope.</p>
             <div class="report-scope-grid">
               ${archiveScopeOverviewCards || '<div class="panel-empty">No archive scopes reported yet.</div>'}
             </div>
@@ -6139,14 +6169,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <h2>Archive Status</h2>
               <span>Background storage</span>
             </div>
-            <p>
-              HEM keeps a compact local reporting archive under Home Assistant so the report card,
-              history tools, and CSV exports can reuse downloaded provider snapshots without
-              re-fetching every day on every page load. The payload source rows below identify
-              whether the current report came from backend reporting, which storage layer it
-              belongs to, and whether the chart itself came from a provider power diagram or
-              from HEM synthesis.
-            </p>
+            <p>Payload source rows show whether the current report came from backend reporting, which storage layer it belongs to, and whether the chart itself came from a provider power diagram or HEM synthesis.</p>
             ${archiveActionLinks ? `
               <div class="pricing-rule__actions--inline report-actions">
                 ${archiveActionLinks}
@@ -6164,11 +6187,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <h2>Storage Strategy</h2>
               <span>Local archive + Influx</span>
             </div>
-            <p>
-              The compact HEM archive and InfluxDB have different jobs. HEM keeps provider-aware
-              daily report snapshots for panel rendering and exports, while InfluxDB is the long-term
-              detailed sensor store for deeper time-series analysis.
-            </p>
+            <p>HEM keeps compact provider-aware daily report snapshots for panel rendering and exports, while InfluxDB is the long-term detailed sensor store for deeper time-series analysis.</p>
             <ul class="key-list key-list--compact">
               ${this._valueList(storageItems)}
             </ul>
@@ -7029,6 +7048,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Connection Type", value: this._connectionTypeLabel(this._config?.battery_provider) },
       { label: "Debug", value: this._debugEnabled ? "Enabled" : "Disabled" },
     ];
+    const forecastHistoryItems = [
+      { label: "Provider", value: this._config?.forecast_history_provider || "forecast_solar" },
+      { label: "API key", value: this._config?.forecast_history_api_key ? "Configured" : "Not set" },
+      { label: "Latitude", value: this._config?.forecast_history_latitude || "Not set" },
+      { label: "Longitude", value: this._config?.forecast_history_longitude || "Not set" },
+      { label: "Declination", value: this._config?.forecast_history_declination || "Not set" },
+      { label: "Azimuth", value: this._config?.forecast_history_azimuth || "Not set" },
+      { label: "Panel power", value: this._config?.forecast_history_kwp ? `${this._config.forecast_history_kwp} kWp` : "Not set" },
+      { label: "Damping", value: this._config?.forecast_history_damping || "Not set" },
+      { label: "Horizon", value: this._config?.forecast_history_horizon || "Not set" },
+    ];
     const focusKey = this._loadSettingsFocus();
     const focusCards = this._settingsFocusCards();
     const activeFocus = this._settingsFocusDetail(focusKey);
@@ -7057,6 +7087,21 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 value: this._configuredEntityId(item.configKey) || "Not set",
               })),
             ])}
+          </ul>
+        </article>
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header">
+            <h2>Forecast Historic Average</h2>
+            <span>Optional source</span>
+          </div>
+          <p>
+            Forecast.Solar history is a long-term average benchmark, not an archived
+            past forecast. Configure and test it through Home Assistant actions; HEM
+            stores successful forecast snapshots going forward and can cache historic
+            averages after the source is enabled.
+          </p>
+          <ul class="key-list key-list--compact">
+            ${this._valueList(forecastHistoryItems)}
           </ul>
         </article>
         <article class="panel-card">
@@ -7271,12 +7316,25 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!host || !element) {
       return false;
     }
-    if (this._page === "report") {
-      element.pendingSelection = this._pendingBatterySelection || "";
-    }
+    this._syncEmbeddedSelectionStateInPlace();
     if (this._hass) {
       element.hass = this._hass;
     }
+    return true;
+  }
+
+  _syncEmbeddedSelectionStateInPlace() {
+    if (!this.shadowRoot || this._page !== "report") {
+      return false;
+    }
+    const host = this.shadowRoot.querySelector('[data-embedded="report"]');
+    const element = host?.firstElementChild;
+    if (!host || !element) {
+      return false;
+    }
+    const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
+    element.pendingSelection = this._pendingBatterySelection || "";
+    element.selectorOpen = hasPendingSelection;
     return true;
   }
 
@@ -7337,7 +7395,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
             currentElement.setConfig(config);
           }
           if (tag === "home-energy-manager-report-card") {
+            const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
             currentElement.pendingSelection = this._pendingBatterySelection || "";
+            currentElement.selectorOpen = hasPendingSelection;
           }
           if (this._hass) {
             currentElement.hass = this._hass;
@@ -7388,7 +7448,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
           element.setConfig(config);
         }
         if (tag === "home-energy-manager-report-card") {
+          const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
           element.pendingSelection = this._pendingBatterySelection || "";
+          element.selectorOpen = hasPendingSelection;
         }
         if (this._hass) {
           element.hass = this._hass;
@@ -7416,6 +7478,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (selector && state !== "unknown" && state !== "unavailable") {
       if (this._pendingBatterySelection && this._pendingBatterySelectionResolved(selector)) {
         this._pendingBatterySelection = "";
+        this._syncEmbeddedSelectionStateInPlace();
       }
       this._lastAvailableSettingsTargetState = selector;
       return selector;
@@ -7445,7 +7508,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
           || ""
         ).trim();
     return pending === "All systems"
-      ? Boolean(reporting?.aggregate || reportingSelection.label === "All systems" || reporting.label === "All systems")
+      ? Boolean(
+          reporting?.aggregate
+          || reportingSelection.label === "All systems"
+          || reportingSelection.label === "All Batteries"
+          || reporting.label === "All systems"
+          || reporting.label === "All Batteries"
+        )
       : Boolean(reportingKey && reportingKey === pending);
   }
 
@@ -7471,32 +7540,24 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._batterySelectorOpen = false;
     this._holdBatterySelectorWindow(600);
     this._updateSharedBatterySelectorInPlace();
+    this._syncEmbeddedSelectionStateInPlace();
   }
 
   _openSharedBatterySelector() {
     this._batterySelectorOpen = true;
     this._holdBatterySelectorWindow();
     this._updateSharedBatterySelectorInPlace();
+    this._syncEmbeddedSelectionStateInPlace();
   }
 
   _renderSharedBatterySelector() {
-    const selector = this._settingsTargetState();
-    const options = this._sharedBatterySelectorOptions(selector);
-    const current = String(selector?.state || "").trim();
-    const pendingSelection = String(this._pendingBatterySelection || "").trim();
-    const selectedOption = options.includes(pendingSelection)
-      ? pendingSelection
-      : options.includes(current) && current !== "unavailable"
-        ? current
-        : "All systems";
-    const hasOptions = options.length > 0;
-    const selectedLabel = hasOptions ? selectedOption : "No batteries available";
-    const dropdown = this._batterySelectorOpen && hasOptions
+    const selectorState = this._sharedBatterySelectorState();
+    const dropdown = selectorState.showMenu
       ? `
           <div class="shared-selector__menu" role="listbox" aria-label="Battery Selection">
-            ${options
+            ${selectorState.options
               .map((option) => {
-                const selected = option === selectedOption;
+                const selected = option === selectorState.selectedOption;
                 return `
                   <button
                     type="button"
@@ -7505,7 +7566,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
                     aria-selected="${selected ? "true" : "false"}"
                     data-shared-settings-target-option="${this._escapeHtml(option)}"
                   >
-                    ${this._escapeHtml(option)}
+                    ${this._escapeHtml(this._displayBatteryScopeLabel(option))}
                   </button>
                 `;
               })
@@ -7521,12 +7582,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
             type="button"
             class="shared-selector__control"
             aria-haspopup="listbox"
-            aria-expanded="${this._batterySelectorOpen && hasOptions ? "true" : "false"}"
+            aria-expanded="${selectorState.showMenu ? "true" : "false"}"
             aria-labelledby="hem-shared-battery-label"
             data-shared-settings-target-toggle="${this._settingsTargetId()}"
-            ${hasOptions ? "" : "disabled"}
+            ${selectorState.hasOptions ? "" : "disabled"}
           >
-            <span>${this._escapeHtml(selectedLabel)}</span>
+            <span>${this._escapeHtml(selectorState.selectedLabel)}</span>
           </button>
           ${dropdown}
         </div>
@@ -7534,8 +7595,29 @@ class HomeEnergyManagerPanel extends HTMLElement {
     `;
   }
 
+  _sharedBatterySelectorState() {
+    const selector = this._settingsTargetState();
+    const options = this._sharedBatterySelectorOptions(selector);
+    const current = String(selector?.state || "").trim();
+    const pendingSelection = String(this._pendingBatterySelection || "").trim();
+    const selectedOption = options.includes(pendingSelection)
+      ? pendingSelection
+      : options.includes(current) && current !== "unavailable"
+        ? current
+        : "All systems";
+    const hasOptions = options.length > 0;
+    return {
+      selector,
+      options,
+      selectedOption,
+      hasOptions,
+      selectedLabel: hasOptions ? this._displayBatteryScopeLabel(selectedOption) : "No batteries available",
+      showMenu: this._batterySelectorOpen && hasOptions,
+    };
+  }
+
   _updateSharedBatterySelectorLabelInPlace(option) {
-    const label = String(option || "").trim();
+    const label = this._displayBatteryScopeLabel(option);
     if (!label || !this.shadowRoot) {
       return;
     }
@@ -7564,13 +7646,57 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!currentSelector) {
       return false;
     }
-    const template = document.createElement("template");
-    template.innerHTML = this._renderSharedBatterySelector().trim();
-    const nextSelector = template.content.firstElementChild;
-    if (!nextSelector) {
-      return false;
+    const state = this._sharedBatterySelectorState();
+    const control = currentSelector.querySelector("[data-shared-settings-target-toggle]");
+    const labelNode = control?.querySelector("span");
+    if (control) {
+      control.setAttribute("aria-expanded", state.showMenu ? "true" : "false");
+      if (state.hasOptions) {
+        control.removeAttribute("disabled");
+      } else {
+        control.setAttribute("disabled", "");
+      }
     }
-    currentSelector.replaceWith(nextSelector);
+    if (labelNode) {
+      labelNode.textContent = state.selectedLabel;
+    }
+
+    const existingMenu = currentSelector.querySelector(".shared-selector__menu");
+    if (!state.showMenu) {
+      existingMenu?.remove();
+      return true;
+    }
+
+    const menuMarkup = `
+      <div class="shared-selector__menu" role="listbox" aria-label="Battery Selection">
+        ${state.options
+          .map((option) => {
+            const selected = option === state.selectedOption;
+            return `
+              <button
+                type="button"
+                class="shared-selector__option ${selected ? "is-selected" : ""}"
+                role="option"
+                aria-selected="${selected ? "true" : "false"}"
+                data-shared-settings-target-option="${this._escapeHtml(option)}"
+              >
+                ${this._escapeHtml(this._displayBatteryScopeLabel(option))}
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    `.trim();
+
+    if (existingMenu) {
+      existingMenu.outerHTML = menuMarkup;
+    } else {
+      const picker = currentSelector.querySelector(".shared-selector__picker");
+      if (!picker) {
+        return false;
+      }
+      picker.insertAdjacentHTML("beforeend", menuMarkup);
+    }
     return true;
   }
 
@@ -7579,6 +7705,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     this._processPricingUrlAction();
+    const preservedEmbeddedCards = this._preserveEmbeddedCardsForRender();
 
     const connectionName = this._connectionName();
     const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
@@ -7628,10 +7755,44 @@ class HomeEnergyManagerPanel extends HTMLElement {
     `;
 
     try {
+      this._restorePreservedEmbeddedCards(preservedEmbeddedCards);
       this._mountEmbeddedCards();
     } finally {
       this._bindInteractiveControls();
     }
+  }
+
+  _preserveEmbeddedCardsForRender() {
+    if (!this.shadowRoot || (this._page !== "report" && this._page !== "debug")) {
+      return null;
+    }
+    const selectors = this._page === "report"
+      ? ['[data-embedded="report"]']
+      : ['[data-embedded="debug"]'];
+    const preserved = [];
+    selectors.forEach((selector) => {
+      const host = this.shadowRoot.querySelector(selector);
+      const element = host?.firstElementChild || null;
+      if (host && element) {
+        preserved.push({ selector, element });
+      }
+    });
+    return preserved.length ? preserved : null;
+  }
+
+  _restorePreservedEmbeddedCards(preserved) {
+    if (!this.shadowRoot || !Array.isArray(preserved) || !preserved.length) {
+      return false;
+    }
+    preserved.forEach(({ selector, element }) => {
+      const host = this.shadowRoot.querySelector(selector);
+      if (!host || !element) {
+        return;
+      }
+      host.textContent = "";
+      host.appendChild(element);
+    });
+    return true;
   }
 
   _bindInteractiveControls() {
@@ -8229,10 +8390,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
         this._batterySelectorOpen = false;
         this._holdBatterySelectorWindow(10000);
         this._pendingBatterySelection = option;
+        this._syncEmbeddedSelectionStateInPlace();
         this._commitSharedBatterySelectionUi(option);
-        if (this._page === "report" || this._page === "debug") {
-          this._updateEmbeddedPageInPlace();
-        }
         await this._selectSharedBatteryOption(option);
         if (this._page !== "report" && this._page !== "debug" && !this._updateEmbeddedPageInPlace()) {
           this._render();
@@ -8641,6 +8800,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       });
     } catch (error) {
       this._pendingBatterySelection = "";
+      this._syncEmbeddedSelectionStateInPlace();
       this._updateSharedBatterySelectorInPlace();
       console.error("Failed to update battery selection", error);
     } finally {
@@ -8748,11 +8908,14 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
         panel._hass = value;
         panel._ensurePricingFileLoaded();
         panel._ensurePolicyChargeFileLoaded();
-        if (panel._updateEmbeddedPageInPlace()) {
+        if (panel._isSharedBatterySelectorHeld()) {
+          if (panel._updateEmbeddedPageInPlace()) {
+            return;
+          }
+          panel._holdRenderWindow(5000);
           return;
         }
-        if (panel._isSharedBatterySelectorHeld()) {
-          panel._holdRenderWindow(5000);
+        if (panel._updateEmbeddedPageInPlace()) {
           return;
         }
         if (panel._isForecastSelectorHeld()) {

@@ -30,6 +30,7 @@ Top-level structure:
 - `live`
 - `today`
 - `totals`
+- `forecast`
 - `power_diagram`
 
 ### `meta`
@@ -51,6 +52,11 @@ Current values:
 - `source: backend_reporting`
 - `storage: local_archive`
 - `power_diagram_source: provider_power_diagram` or `synthesized_from_backend_snapshot`
+
+For aggregate `All Batteries` reporting, HEM should prefer a real
+`provider_power_diagram` and only fall back to
+`synthesized_from_backend_snapshot` when the provider day chart endpoint
+returns no usable series for that scope/date.
 
 ### `live`
 
@@ -91,6 +97,9 @@ Keys:
 - `house_consumption`
 - `grid_consumption`
 
+Zero totals are valid data and must be preserved as `0`, not replaced by the
+matching current-day value just because Python treated `0` as falsy.
+
 ### `power_diagram`
 
 Chart payload used by the report card.
@@ -110,6 +119,40 @@ Keys:
 `provider_payload` is the full dated provider chart payload saved with the
 archive row so future report features can reuse the original downloaded source
 without calling the web chart endpoint again for the same day/scope.
+
+Provider chart curves are stored in the provider scale as returned by the web
+chart payload. In the current Bytewatt web flow that means the power-diagram
+series and related point-in-time power summary values are typically expressed
+in `kW`, while direct live battery snapshots such as `pbat`, `pload`, `pgrid`,
+and `ppv` remain raw provider realtime values in `W`.
+
+The report-card UI may still normalize those live realtime power values into
+`kW` for chart-axis and summary display so the live report reads consistently
+with the provider chart, but the stored direct API payload must stay in its
+original units.
+
+### `forecast`
+
+Mapped solar forecast values captured when the reporting payload was built.
+
+Expected keys:
+
+- `provider`
+- `saved_at`
+- `entities`
+- `values`
+
+The `entities` map records the configured source entity IDs. The `values` map
+records the state, unit, and source `last_updated` timestamp for each mapped
+forecast sensor. This is HEM-owned forecast snapshot history going forward; it
+is not a provider historic-average curve.
+
+Forecast.Solar historic-average data, when configured later, should remain a
+separate benchmark source so reports can distinguish:
+
+- actual measured generation
+- forecast snapshots captured by HEM at the time
+- provider historic averages for the same site/plane/date
 
 ## History attribute
 
@@ -236,6 +279,9 @@ history drill-down rather than a static bar chart:
   data so the report catalog can present both sources separately
 - solar reporting should also separate predicted vs actual values so the
   report catalog can show forecasted solar apart from measured solar output
+- report payloads can include a `forecast` section containing the configured
+  forecast provider, mapped forecast entity IDs, current forecast values,
+  units, source entity timestamps, and the snapshot timestamp
 - profit-style reports should support top-line financial totals such as total
   income and total expenses, a ratio or progress strip, and a monthly/yearly/
   since-installation chart driven by profit-related series

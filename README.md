@@ -9,6 +9,10 @@ cards kept as optional building blocks rather than the primary UI.
 
 Requires Home Assistant **2024.11.0** or later.
 
+Current live development validation is against Home Assistant OS with Core
+**2026.9.0**, Supervisor **2026.08.0**, Operating System **18.2**, and Frontend
+**20260826.4**.
+
 ## Features
 
 - **Real-time monitoring** — SOC, grid / house / PV / battery power flows
@@ -23,6 +27,9 @@ Requires Home Assistant **2024.11.0** or later.
 - **Multi-inverter support** — pick which inverter is the Host during setup, change
   it later via Configure (no need to delete and re-add).
 - **Automatic recovery** — heartbeat monitoring, circuit breaker, auto-reconnect.
+- **Forecast history support** — mapped solar forecast entities are captured in
+  HEM report snapshots going forward, with optional Forecast.Solar
+  historic-average source settings for future benchmark/backfill reports.
 
 ## Installation
 
@@ -41,7 +48,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/home-energy-manager/home-energy-manager-panel.js?v=423`
+`/local/community/home-energy-manager/home-energy-manager-panel.js?v=482`
 
 The panel ships with built-in theme presets:
 
@@ -124,6 +131,20 @@ When Bytewatt exposes MPPT power fields, the Setup page can also surface:
 
 Per-battery rows are dynamic. HEM does not assume there are only two batteries.
 If Bytewatt returns more live battery rows, the setup summaries expand to match.
+
+### Forecast history
+
+HEM now records mapped solar forecast values inside each reporting snapshot so
+future predicted-vs-actual reports have HEM-owned forecast history rather than
+depending only on Home Assistant Recorder.
+
+The optional Forecast.Solar historic-average source is configured separately
+from the live forecast sensor mapping. It is intended for benchmark/backfill
+data when the provider plan supports the Forecast.Solar `history` endpoint.
+Public Forecast.Solar access does not provide this history endpoint.
+
+See [docs/FORECAST_HISTORY.md](C:\Dev\repos\home-energy-manager\docs\FORECAST_HISTORY.md)
+for the required settings and service flow.
 
 ## Entities
 

@@ -26,11 +26,12 @@ from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
 from .coordinator import ByteWattDataUpdateCoordinator
+from .forecast_history import async_test_forecast_history_source, forecast_history_source_from_config
 from .policy_charge import PolicyChargeSchedule
 from .policy_charge_store import PolicyChargeScheduleStore
 from .pricing import PricingRateGroup, PricingRateRecord, PricingRule
 from .pricing_store import PricingScheduleStore
-from .reporting import ByteWattReportHistory, build_reporting_payload
+from .reporting import ByteWattReportHistory, build_forecast_snapshot, build_reporting_payload
 from .settings_manager import SettingsManager, SettingsValidationError
 from .topology import DiscoveredInverter
 from .const import (
@@ -73,6 +74,15 @@ from .const import (
     CONF_BATTERY_HERO_MAPPING,
     CONF_SOLAR_HERO_MAPPING,
     CONF_PANEL_THEME,
+    CONF_FORECAST_HISTORY_PROVIDER,
+    CONF_FORECAST_HISTORY_API_KEY,
+    CONF_FORECAST_HISTORY_LATITUDE,
+    CONF_FORECAST_HISTORY_LONGITUDE,
+    CONF_FORECAST_HISTORY_DECLINATION,
+    CONF_FORECAST_HISTORY_AZIMUTH,
+    CONF_FORECAST_HISTORY_KWP,
+    CONF_FORECAST_HISTORY_DAMPING,
+    CONF_FORECAST_HISTORY_HORIZON,
     CONF_RECOVERY_ENABLED,
     CONF_HEARTBEAT_INTERVAL,
     CONF_MAX_DATA_AGE,
@@ -119,6 +129,8 @@ from .const import (
     SERVICE_PRICING_REMOVE_RECORD,
     SERVICE_SET_PANEL_THEME,
     SERVICE_SET_FORECAST_MAPPING,
+    SERVICE_SET_FORECAST_HISTORY_SOURCE,
+    SERVICE_TEST_FORECAST_HISTORY_SOURCE,
     SERVICE_SET_BATTERY_MAPPING,
     SERVICE_SET_HERO_MAPPING,
     SERVICE_POLICY_CHARGE_SAVE,
@@ -183,7 +195,7 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=432"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=482"
 PANEL_CONFIG = {
     "title": "Home Energy Manager (HEM)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -207,6 +219,15 @@ PANEL_CONFIG = {
     "forecast_peak_today_entity": "",
     "forecast_peak_tomorrow_entity": "",
     "solar_forecast_entity": "",
+    "forecast_history_provider": "forecast_solar",
+    "forecast_history_api_key": "",
+    "forecast_history_latitude": "",
+    "forecast_history_longitude": "",
+    "forecast_history_declination": "",
+    "forecast_history_azimuth": "",
+    "forecast_history_kwp": "",
+    "forecast_history_damping": "",
+    "forecast_history_horizon": "",
     "battery_provider": "bytewatt_web",
     "battery_percentage_entity": "",
     "battery_power_entity": "",
@@ -253,6 +274,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         _register_panel_theme_service(hass)
     if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
         _register_forecast_mapping_service(hass)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_HISTORY_SOURCE):
+        _register_forecast_history_services(hass)
     if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
         _register_battery_mapping_service(hass)
     if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
@@ -290,6 +313,15 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_FORECAST_PEAK_TODAY_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TODAY_ENTITY, ""),
             CONF_FORECAST_PEAK_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY, ""),
             CONF_SOLAR_FORECAST_ENTITY: entry.data.get(CONF_SOLAR_FORECAST_ENTITY, ""),
+            CONF_FORECAST_HISTORY_PROVIDER: entry.data.get(CONF_FORECAST_HISTORY_PROVIDER, "forecast_solar"),
+            CONF_FORECAST_HISTORY_API_KEY: "configured" if entry.data.get(CONF_FORECAST_HISTORY_API_KEY) else "",
+            CONF_FORECAST_HISTORY_LATITUDE: entry.data.get(CONF_FORECAST_HISTORY_LATITUDE, ""),
+            CONF_FORECAST_HISTORY_LONGITUDE: entry.data.get(CONF_FORECAST_HISTORY_LONGITUDE, ""),
+            CONF_FORECAST_HISTORY_DECLINATION: entry.data.get(CONF_FORECAST_HISTORY_DECLINATION, ""),
+            CONF_FORECAST_HISTORY_AZIMUTH: entry.data.get(CONF_FORECAST_HISTORY_AZIMUTH, ""),
+            CONF_FORECAST_HISTORY_KWP: entry.data.get(CONF_FORECAST_HISTORY_KWP, ""),
+            CONF_FORECAST_HISTORY_DAMPING: entry.data.get(CONF_FORECAST_HISTORY_DAMPING, ""),
+            CONF_FORECAST_HISTORY_HORIZON: entry.data.get(CONF_FORECAST_HISTORY_HORIZON, ""),
             CONF_BATTERY_PROVIDER: entry.data.get(CONF_BATTERY_PROVIDER, "bytewatt_web"),
             CONF_BATTERY_POWER_ENTITY: entry.data.get(CONF_BATTERY_POWER_ENTITY, ""),
             CONF_BATTERY_TEMPERATURE_ENTITY: entry.data.get(CONF_BATTERY_TEMPERATURE_ENTITY, ""),
@@ -375,6 +407,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "manager": manager,
         "pricing_store": pricing_store,
         "policy_charge_store": policy_charge_store,
+        "config": dict(entry.data),
+        "options": dict(entry.options or {}),
     }
 
     # Register the panel before network refreshes so HEM remains available even
@@ -431,6 +465,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _register_panel_theme_service(hass)
         if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_MAPPING):
             _register_forecast_mapping_service(hass)
+        if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_HISTORY_SOURCE):
+            _register_forecast_history_services(hass)
         if not hass.services.has_service(DOMAIN, SERVICE_SET_BATTERY_MAPPING):
             _register_battery_mapping_service(hass)
         if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
@@ -567,18 +603,23 @@ async def _ensure_report_history_range(
         notification_id=f"home_energy_manager_history_{entry_id}",
     )
 
+    today_date = dt_util.now().date().isoformat()
     for index, day in enumerate(dates, start=1):
         history_sys_sn = None if scope_key == "all" else scope_key
         battery_data = await client.get_battery_data(
             station_id=station_id or None,
             report_date=day,
-            include_realtime=day == dates[-1] and not force,
+            include_realtime=day == today_date and not force,
             sys_sn=history_sys_sn,
         )
         reporting = build_reporting_payload(
             battery_data or {},
             aggregate=(scope_key == "all"),
             label=history_label,
+            forecast=build_forecast_snapshot(
+                hass,
+                {**entry_data.get("config", {}), **entry_data.get("options", {})},
+            ),
         )
         if battery_data:
             await history.async_store_snapshot(
@@ -710,6 +751,9 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     v2 → v3: adds the extended forecast mapping slots so Solar Setup can
     preserve the richer forecast.solar metrics on reload.
+
+    v3 → v4: adds optional Forecast.Solar historic-average source settings
+    used for benchmark/backfill testing.
     """
     _LOGGER.info("Migrating ByteWatt entry from v%s to v%s", entry.version, CURRENT_ENTRY_VERSION)
 
@@ -717,6 +761,28 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         new_data = dict(entry.data)
         new_data.setdefault(CONF_HOST_SYSTEM_ID, "")
         new_data.setdefault(CONF_HOST_SYS_SN, "")
+        new_data.setdefault(CONF_FORECAST_PROVIDER, "none")
+        new_data.setdefault(CONF_FORECAST_GENERATION_TODAY_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_NOW_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_PEAK_TODAY_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_PEAK_TOMORROW_ENTITY, "")
+        new_data.setdefault(CONF_SOLAR_FORECAST_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_PROVIDER, "forecast_solar")
+        new_data.setdefault(CONF_FORECAST_HISTORY_API_KEY, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_LATITUDE, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_LONGITUDE, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_DECLINATION, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_AZIMUTH, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_KWP, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_DAMPING, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_HORIZON, "")
 
         # Track inverter count explicitly so the post-migration decision
         # below doesn't depend on whether a variable got bound inside a
@@ -795,6 +861,27 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         new_data.setdefault(CONF_FORECAST_PEAK_TODAY_ENTITY, "")
         new_data.setdefault(CONF_FORECAST_PEAK_TOMORROW_ENTITY, "")
         new_data.setdefault(CONF_SOLAR_FORECAST_ENTITY, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_PROVIDER, "forecast_solar")
+        new_data.setdefault(CONF_FORECAST_HISTORY_API_KEY, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_LATITUDE, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_LONGITUDE, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_DECLINATION, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_AZIMUTH, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_KWP, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_DAMPING, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_HORIZON, "")
+        hass.config_entries.async_update_entry(entry, data=new_data, version=CURRENT_ENTRY_VERSION)
+    elif entry.version < 4:
+        new_data = dict(entry.data)
+        new_data.setdefault(CONF_FORECAST_HISTORY_PROVIDER, "forecast_solar")
+        new_data.setdefault(CONF_FORECAST_HISTORY_API_KEY, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_LATITUDE, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_LONGITUDE, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_DECLINATION, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_AZIMUTH, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_KWP, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_DAMPING, "")
+        new_data.setdefault(CONF_FORECAST_HISTORY_HORIZON, "")
         hass.config_entries.async_update_entry(entry, data=new_data, version=CURRENT_ENTRY_VERSION)
 
     return True
@@ -871,6 +958,11 @@ def _configured_entry_ids(hass: HomeAssistant) -> list[str]:
     ]
 
 
+def _registered_entry_ids(hass: HomeAssistant) -> list[str]:
+    """Return configured Home Energy Manager config-entry IDs, even before runtime data is ready."""
+    return [entry.entry_id for entry in hass.config_entries.async_entries(DOMAIN)]
+
+
 def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall) -> str | None:
     """Use the explicit entry_id if given; otherwise the first configured entry."""
     requested = str(call.data.get(ATTR_ENTRY_ID) or "").strip()
@@ -887,6 +979,26 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall) -> str | None:
         raise HomeAssistantError("No ByteWatt integration is configured")
     raise HomeAssistantError(
         f"Multiple ByteWatt integrations are configured — pass entry_id to "
+        f"disambiguate. Available: {entries}"
+    )
+
+
+def _resolve_registered_entry_id(hass: HomeAssistant, call: ServiceCall) -> str:
+    """Resolve against configured HEM entries even when runtime stores have not populated yet."""
+    requested = str(call.data.get(ATTR_ENTRY_ID) or "").strip()
+    entries = _registered_entry_ids(hass)
+    if requested:
+        if requested not in entries:
+            raise HomeAssistantError(
+                f"Unknown Home Energy Manager entry_id {requested!r}. Registered entries: {entries}"
+            )
+        return requested
+    if len(entries) == 1:
+        return entries[0]
+    if not entries:
+        raise HomeAssistantError("No Home Energy Manager integration is configured")
+    raise HomeAssistantError(
+        f"Multiple Home Energy Manager integrations are configured — pass entry_id to "
         f"disambiguate. Available: {entries}"
     )
 
@@ -975,7 +1087,7 @@ def _register_panel_theme_service(hass: HomeAssistant) -> None:
         return
 
     async def handle_set_panel_theme(call: ServiceCall) -> None:
-        entry_id = _resolve_entry_id(hass, call)
+        entry_id = _resolve_registered_entry_id(hass, call)
         theme = str(call.data.get(CONF_PANEL_THEME) or "").strip()
         if not theme:
             raise HomeAssistantError("panel_theme is required")
@@ -1055,6 +1167,120 @@ def _register_forecast_mapping_service(hass: HomeAssistant) -> None:
     )
 
 
+def _forecast_history_service_schema(require_key_fields: bool) -> vol.Schema:
+    required = vol.Required if require_key_fields else vol.Optional
+    return vol.Schema({
+        vol.Optional(CONF_FORECAST_HISTORY_PROVIDER, default="forecast_solar"): cv.string,
+        vol.Optional(CONF_FORECAST_HISTORY_API_KEY): cv.string,
+        required(CONF_FORECAST_HISTORY_LATITUDE): vol.Coerce(float),
+        required(CONF_FORECAST_HISTORY_LONGITUDE): vol.Coerce(float),
+        required(CONF_FORECAST_HISTORY_DECLINATION): vol.Coerce(float),
+        required(CONF_FORECAST_HISTORY_AZIMUTH): vol.Coerce(float),
+        required(CONF_FORECAST_HISTORY_KWP): vol.Coerce(float),
+        vol.Optional(CONF_FORECAST_HISTORY_DAMPING): vol.Coerce(float),
+        vol.Optional(CONF_FORECAST_HISTORY_HORIZON): cv.string,
+        vol.Optional(ATTR_ENTRY_ID): cv.string,
+    })
+
+
+def _forecast_history_payload_from_call(entry: ConfigEntry, call: ServiceCall) -> dict[str, Any]:
+    payload = {
+        **entry.data,
+        **{
+            key: call.data[key]
+            for key in (
+                CONF_FORECAST_HISTORY_PROVIDER,
+                CONF_FORECAST_HISTORY_API_KEY,
+                CONF_FORECAST_HISTORY_LATITUDE,
+                CONF_FORECAST_HISTORY_LONGITUDE,
+                CONF_FORECAST_HISTORY_DECLINATION,
+                CONF_FORECAST_HISTORY_AZIMUTH,
+                CONF_FORECAST_HISTORY_KWP,
+                CONF_FORECAST_HISTORY_DAMPING,
+                CONF_FORECAST_HISTORY_HORIZON,
+            )
+            if key in call.data
+        },
+    }
+    return payload
+
+
+async def _handle_set_forecast_history_source(hass: HomeAssistant, call: ServiceCall) -> None:
+    entry_id = _resolve_entry_id(hass, call)
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None:
+        raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+    payload = _forecast_history_payload_from_call(entry, call)
+    try:
+        source = forecast_history_source_from_config(payload)
+    except (KeyError, TypeError, ValueError) as err:
+        raise HomeAssistantError(f"Forecast history source is incomplete: {err}") from err
+    new_data = {
+        **entry.data,
+        CONF_FORECAST_HISTORY_PROVIDER: source.provider,
+        CONF_FORECAST_HISTORY_API_KEY: source.api_key,
+        CONF_FORECAST_HISTORY_LATITUDE: source.latitude,
+        CONF_FORECAST_HISTORY_LONGITUDE: source.longitude,
+        CONF_FORECAST_HISTORY_DECLINATION: source.declination,
+        CONF_FORECAST_HISTORY_AZIMUTH: source.azimuth,
+        CONF_FORECAST_HISTORY_KWP: source.kwp,
+        CONF_FORECAST_HISTORY_DAMPING: "" if source.damping is None else source.damping,
+        CONF_FORECAST_HISTORY_HORIZON: source.horizon,
+    }
+    hass.config_entries.async_update_entry(entry, data=new_data)
+    if entry_id in hass.data.get(DOMAIN, {}):
+        hass.data[DOMAIN][entry_id]["config"] = dict(new_data)
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def _handle_test_forecast_history_source(hass: HomeAssistant, call: ServiceCall) -> None:
+    entry_id = _resolve_entry_id(hass, call)
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if entry is None:
+        raise HomeAssistantError(f"Unknown entry_id {entry_id!r}")
+    payload = _forecast_history_payload_from_call(entry, call)
+    try:
+        source = forecast_history_source_from_config(payload)
+        result = await async_test_forecast_history_source(hass, source)
+    except (KeyError, TypeError, ValueError) as err:
+        raise HomeAssistantError(f"Forecast history source is incomplete: {err}") from err
+    except Exception as err:  # pragma: no cover - HA surfaces the provider error.
+        raise HomeAssistantError(f"Forecast history source test failed: {err}") from err
+
+    status = "successful" if result["ok"] else "failed"
+    counts = result.get("sample_counts") or {}
+    notify_create(
+        hass,
+        (
+            f"Forecast.Solar historic-average test {status}.\n\n"
+            f"HTTP status: {result.get('status')}\n"
+            f"Message: {result.get('message_text') or result.get('message_type') or 'n/a'}\n"
+            f"Samples: watts={counts.get('watts', 0)}, watt_hours={counts.get('watt_hours', 0)}, "
+            f"watt_hours_day={counts.get('watt_hours_day', 0)}"
+        ),
+        title="HEM Forecast History Test",
+        notification_id="home_energy_manager_forecast_history_test",
+    )
+
+
+def _register_forecast_history_services(hass: HomeAssistant) -> None:
+    """Register Forecast.Solar historic-average settings and test services."""
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_FORECAST_HISTORY_SOURCE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_FORECAST_HISTORY_SOURCE,
+            _handle_set_forecast_history_source,
+            schema=_forecast_history_service_schema(require_key_fields=True),
+        )
+    if not hass.services.has_service(DOMAIN, SERVICE_TEST_FORECAST_HISTORY_SOURCE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_TEST_FORECAST_HISTORY_SOURCE,
+            _handle_test_forecast_history_source,
+            schema=_forecast_history_service_schema(require_key_fields=False),
+        )
+
+
 async def _handle_set_battery_mapping(hass: HomeAssistant, call: ServiceCall) -> None:
     entry_id = _resolve_entry_id(hass, call)
     entry = hass.config_entries.async_get_entry(entry_id)
@@ -1130,6 +1356,9 @@ async def _handle_set_hero_mapping(hass: HomeAssistant, call: ServiceCall) -> No
         CONF_BATTERY_HERO_MAPPING: str(call.data.get(CONF_BATTERY_HERO_MAPPING) or "{}").strip() or "{}",
         CONF_SOLAR_HERO_MAPPING: str(call.data.get(CONF_SOLAR_HERO_MAPPING) or "{}").strip() or "{}",
     }
+    if entry_id in hass.data.get(DOMAIN, {}):
+        hass.data[DOMAIN][entry_id]["config"] = dict(new_data)
+        hass.data[DOMAIN][entry_id]["options"] = dict(entry.options or {})
     hass.config_entries.async_update_entry(entry, data=new_data)
     await hass.config_entries.async_reload(entry.entry_id)
 
@@ -1419,7 +1648,7 @@ def _register_services(hass: HomeAssistant) -> None:
             _LOGGER.error("No ByteWatt integrations found to toggle diagnostics")
 
     async def handle_set_panel_theme(call: ServiceCall) -> None:
-        entry_id = _resolve_entry_id(hass, call)
+        entry_id = _resolve_registered_entry_id(hass, call)
         theme = str(call.data.get(CONF_PANEL_THEME) or "").strip()
         if not theme:
             raise HomeAssistantError("panel_theme is required")
@@ -1826,6 +2055,7 @@ def _register_services(hass: HomeAssistant) -> None:
     )
     _register_panel_theme_service(hass)
     _register_forecast_mapping_service(hass)
+    _register_forecast_history_services(hass)
     _register_battery_mapping_service(hass)
     hass.services.async_register(
         DOMAIN, SERVICE_PRICING_UPSERT_RULE, handle_pricing_upsert_rule,

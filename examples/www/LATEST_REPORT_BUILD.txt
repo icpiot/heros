@@ -1,1 +1,1 @@
-home-energy-manager-report-card.js?v=350
+home-energy-manager-report-card.js?v=395

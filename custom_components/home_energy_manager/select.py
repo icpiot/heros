@@ -11,10 +11,24 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DEVICE_MANUFACTURER, DEVICE_MODEL, DEVICE_NAME, DOMAIN
+from .const import (
+    CONF_FORECAST_HISTORY_API_KEY,
+    CONF_FORECAST_HISTORY_AZIMUTH,
+    CONF_FORECAST_HISTORY_DAMPING,
+    CONF_FORECAST_HISTORY_DECLINATION,
+    CONF_FORECAST_HISTORY_HORIZON,
+    CONF_FORECAST_HISTORY_KWP,
+    CONF_FORECAST_HISTORY_LATITUDE,
+    CONF_FORECAST_HISTORY_LONGITUDE,
+    CONF_FORECAST_HISTORY_PROVIDER,
+    DEVICE_MANUFACTURER,
+    DEVICE_MODEL,
+    DEVICE_NAME,
+    DOMAIN,
+)
 from .const import CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
 from .coordinator import ByteWattDataUpdateCoordinator
-from .reporting import build_reporting_payload
+from .reporting import build_forecast_snapshot, build_reporting_payload
 
 try:  # pragma: no cover - test harness may stub reporting without this helper
     from .reporting import ByteWattReportHistory
@@ -32,9 +46,10 @@ def _reporting_payload(
     aggregate: bool,
     label: str,
     history_hint: dict[str, Any] | None = None,
+    forecast: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a compact reporting payload for custom Lovelace cards."""
-    payload = build_reporting_payload(battery_data, aggregate=aggregate, label=label)
+    payload = build_reporting_payload(battery_data, aggregate=aggregate, label=label, forecast=forecast)
     power_diagram = payload.get("power_diagram") or {}
     payload["power_diagram"] = {
         **power_diagram,
@@ -69,6 +84,22 @@ def _direct_api_summary(value: dict[str, Any] | None) -> dict[str, Any]:
         "ppv3": source.get("ppv3"),
         "ppv4": source.get("ppv4"),
         "powerSource": source.get("powerSource"),
+    }
+
+
+def _forecast_history_source_summary(config_entry: ConfigEntry) -> dict[str, Any]:
+    """Expose non-secret forecast history source config for panel/Jinja checks."""
+    config = {**config_entry.data, **config_entry.options}
+    return {
+        "provider": config.get(CONF_FORECAST_HISTORY_PROVIDER) or "forecast_solar",
+        "api_key_configured": bool(str(config.get(CONF_FORECAST_HISTORY_API_KEY) or "").strip()),
+        "latitude": config.get(CONF_FORECAST_HISTORY_LATITUDE, ""),
+        "longitude": config.get(CONF_FORECAST_HISTORY_LONGITUDE, ""),
+        "declination": config.get(CONF_FORECAST_HISTORY_DECLINATION, ""),
+        "azimuth": config.get(CONF_FORECAST_HISTORY_AZIMUTH, ""),
+        "kwp": config.get(CONF_FORECAST_HISTORY_KWP, ""),
+        "damping": config.get(CONF_FORECAST_HISTORY_DAMPING, ""),
+        "horizon": config.get(CONF_FORECAST_HISTORY_HORIZON, ""),
     }
 
 
@@ -260,6 +291,19 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             backfill_years = max(1, int(raw_backfill_years or DEFAULT_HISTORY_BACKFILL_YEARS))
         except (TypeError, ValueError):
             backfill_years = DEFAULT_HISTORY_BACKFILL_YEARS
+        if selected_scope is not None and selected_scope.aggregate:
+            history_scope_key = "all"
+            current_scope_label = "All Batteries"
+        elif selected_scope is not None:
+            history_scope_key = str(selected_scope.sys_sn or selected_scope.system_id or "all").strip() or "all"
+            current_scope_label = str(selected_scope.label or history_scope_key).strip() or history_scope_key
+        elif current is not None:
+            history_scope_key = str(current.sys_sn or current.system_id or "all").strip() or "all"
+            current_scope_label = str(current.display_name or history_scope_key).strip() or history_scope_key
+        else:
+            history_scope_key = "all"
+            current_scope_label = "All Batteries"
+
         history_hint = {
             "enabled": True,
             "base_url": f"/local/home-energy-manager-history/{self._config_entry.entry_id}/",
@@ -268,12 +312,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 .get(self._config_entry.entry_id, {})
                 .get("history_status", "")
             ).strip(),
-            "current_scope": (
-                selected_scope.sys_sn
-                if selected_scope is not None and not selected_scope.aggregate
-                else current.sys_sn if current is not None
-                else "all"
-            ),
+            "current_scope": history_scope_key,
             "entry_id": self._config_entry.entry_id,
             "backfill_years": backfill_years,
             "backfill_days": _history_backfill_days(self._config_entry),
@@ -294,15 +333,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 "label": inverter.display_name,
                 "aggregate": False,
             })
-        history_scope_key = str(history_hint["current_scope"] or "all").strip() or "all"
         history_summary = {}
-        current_scope_label = (
-            selected_scope.label
-            if selected_scope is not None and not selected_scope.aggregate
-            else current.display_name
-            if current is not None
-            else history_scope_key
-        )
         if history_scope_key not in seen_scope_keys and history_scope_key != "all":
             inventory_scopes.append({
                 "scope_key": history_scope_key,
@@ -378,6 +409,10 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             aggregate=is_aggregate_scope,
             label=selection_summary["label"],
             history_hint=history_hint,
+            forecast=build_forecast_snapshot(
+                self._hass,
+                {**self._config_entry.data, **self._config_entry.options},
+            ),
         )
         reporting_meta = reporting.get("meta") or {}
         timezone_obj = getattr(self.coordinator.client, "_timezone", None)
@@ -404,6 +439,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "live": _compact_summary(reporting.get("live"), ["soc", "battery_power", "house_consumption", "grid_power", "pv_power", "power_source"]),
             "today": _compact_summary(reporting.get("today"), ["solar_generation", "load_consumption", "feed_in", "grid_consumption", "battery_charge", "battery_discharge"]),
             "totals": _compact_summary(reporting.get("totals"), ["solar_generation", "feed_in", "battery_charge", "battery_discharge", "house_consumption", "grid_consumption"]),
+            "forecast": reporting.get("forecast") or {},
             "power_diagram": _compact_summary(reporting.get("power_diagram"), ["date", "meta", "summary", "time", "series"]),
             "selection": selection_summary,
         }
@@ -450,12 +486,26 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             ],
         }
         feedin_policy = self._manager.feedin_policy_summary()
+        forecast_history_source = _forecast_history_source_summary(self._config_entry)
+        forecast_history_attrs = {
+            "forecast_history_provider": forecast_history_source["provider"],
+            "forecast_history_api_key_configured": forecast_history_source["api_key_configured"],
+            "forecast_history_latitude": forecast_history_source["latitude"],
+            "forecast_history_longitude": forecast_history_source["longitude"],
+            "forecast_history_declination": forecast_history_source["declination"],
+            "forecast_history_azimuth": forecast_history_source["azimuth"],
+            "forecast_history_kwp": forecast_history_source["kwp"],
+            "forecast_history_damping": forecast_history_source["damping"],
+            "forecast_history_horizon": forecast_history_source["horizon"],
+        }
         if current is None:
             return {
                 "selection": selection_summary,
                 "monitoring_summary": monitoring_summary,
                 "reporting": reporting_summary,
                 "history": history_hint,
+                "forecast_history_source": forecast_history_source,
+                **forecast_history_attrs,
                 "battery_policy": battery_policy_summary,
                 "direct_api": direct_api,
                 "feedin_policy": {
@@ -469,6 +519,8 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             "monitoring_summary": monitoring_summary,
             "reporting": reporting_summary,
             "history": history_hint,
+            "forecast_history_source": forecast_history_source,
+            **forecast_history_attrs,
             "battery_policy": battery_policy_summary,
             "direct_api": direct_api,
             "feedin_policy": {

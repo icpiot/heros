@@ -13,10 +13,81 @@ from typing import Any, Dict, Iterable
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
+from .const import (
+    CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY,
+    CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY,
+    CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY,
+    CONF_FORECAST_GENERATION_TODAY_ENTITY,
+    CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
+    CONF_FORECAST_PEAK_TODAY_ENTITY,
+    CONF_FORECAST_PEAK_TOMORROW_ENTITY,
+    CONF_FORECAST_POWER_IN_1_HOUR_ENTITY,
+    CONF_FORECAST_POWER_IN_12_HOURS_ENTITY,
+    CONF_FORECAST_POWER_IN_24_HOURS_ENTITY,
+    CONF_FORECAST_POWER_NOW_ENTITY,
+    CONF_FORECAST_PROVIDER,
+    CONF_SOLAR_FORECAST_ENTITY,
+    FORECAST_PROVIDER_NONE,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 HISTORY_DIR_NAME = "home-energy-manager-history"
 HISTORY_FILE_NAME = "history.json"
+
+FORECAST_SNAPSHOT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("generation_today", CONF_FORECAST_GENERATION_TODAY_ENTITY),
+    ("generation_tomorrow", CONF_FORECAST_GENERATION_TOMORROW_ENTITY),
+    ("generation_this_hour", CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY),
+    ("generation_next_hour", CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY),
+    ("generation_remaining_today", CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY),
+    ("power_now", CONF_FORECAST_POWER_NOW_ENTITY),
+    ("power_in_1_hour", CONF_FORECAST_POWER_IN_1_HOUR_ENTITY),
+    ("power_in_12_hours", CONF_FORECAST_POWER_IN_12_HOURS_ENTITY),
+    ("power_in_24_hours", CONF_FORECAST_POWER_IN_24_HOURS_ENTITY),
+    ("peak_today", CONF_FORECAST_PEAK_TODAY_ENTITY),
+    ("peak_tomorrow", CONF_FORECAST_PEAK_TOMORROW_ENTITY),
+    ("solar_forecast", CONF_SOLAR_FORECAST_ENTITY),
+)
+
+
+def _first_present(*values: Any) -> Any:
+    """Return the first value that is not None."""
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def build_forecast_snapshot(
+    hass: HomeAssistant,
+    config: dict[str, Any],
+    *,
+    saved_at: str | None = None,
+) -> dict[str, Any]:
+    """Capture mapped solar forecast entity states for report history."""
+    provider = str(config.get(CONF_FORECAST_PROVIDER) or FORECAST_PROVIDER_NONE).strip() or FORECAST_PROVIDER_NONE
+    values: dict[str, dict[str, Any]] = {}
+    entities: dict[str, str] = {}
+    for field, config_key in FORECAST_SNAPSHOT_FIELDS:
+        entity_id = str(config.get(config_key) or "").strip()
+        if not entity_id:
+            continue
+        entities[field] = entity_id
+        state = hass.states.get(entity_id)
+        attrs = dict(getattr(state, "attributes", {}) or {}) if state is not None else {}
+        values[field] = {
+            "entity_id": entity_id,
+            "state": getattr(state, "state", None),
+            "unit": attrs.get("unit_of_measurement"),
+            "last_updated": getattr(getattr(state, "last_updated", None), "isoformat", lambda: "")(),
+        }
+    return {
+        "provider": provider,
+        "saved_at": saved_at or dt_util.utcnow().isoformat(),
+        "entities": entities,
+        "values": values,
+    }
 
 
 def _synthesized_power_diagram(
@@ -67,6 +138,7 @@ def build_reporting_payload(
     *,
     aggregate: bool,
     label: str,
+    forecast: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the compact reporting payload used by the custom Lovelace cards."""
     reporting_date = str(
@@ -114,17 +186,36 @@ def build_reporting_payload(
             "co2_reduction_tons": battery_data.get("CO2_Reduction_Tons"),
         },
         "totals": {
-            "solar_generation": battery_data.get("Total_Solar_Generation") or battery_data.get("PV_Generated_Today"),
-            "feed_in": battery_data.get("Total_Feed_In") or battery_data.get("Feed_In_Today"),
-            "battery_charge": battery_data.get("Total_Battery_Charge") or battery_data.get("Battery_Charged_Today"),
-            "battery_discharge": battery_data.get("Total_Battery_Discharge") or battery_data.get("Battery_Discharged_Today"),
-            "house_consumption": battery_data.get("Total_House_Consumption") or battery_data.get("Consumed_Today"),
-            "grid_consumption": battery_data.get("Grid_Power_Consumption") or battery_data.get("Grid_Import_Today"),
-            "pv_power_house": battery_data.get("PV_Power_House") or 0,
-            "pv_charging_battery": battery_data.get("PV_Charging_Battery") or 0,
-            "grid_battery_charge": battery_data.get("Grid_Based_Battery_Charge") or 0,
+            "solar_generation": _first_present(
+                battery_data.get("Total_Solar_Generation"),
+                battery_data.get("PV_Generated_Today"),
+            ),
+            "feed_in": _first_present(
+                battery_data.get("Total_Feed_In"),
+                battery_data.get("Feed_In_Today"),
+            ),
+            "battery_charge": _first_present(
+                battery_data.get("Total_Battery_Charge"),
+                battery_data.get("Battery_Charged_Today"),
+            ),
+            "battery_discharge": _first_present(
+                battery_data.get("Total_Battery_Discharge"),
+                battery_data.get("Battery_Discharged_Today"),
+            ),
+            "house_consumption": _first_present(
+                battery_data.get("Total_House_Consumption"),
+                battery_data.get("Consumed_Today"),
+            ),
+            "grid_consumption": _first_present(
+                battery_data.get("Grid_Power_Consumption"),
+                battery_data.get("Grid_Import_Today"),
+            ),
+            "pv_power_house": _first_present(battery_data.get("PV_Power_House"), 0),
+            "pv_charging_battery": _first_present(battery_data.get("PV_Charging_Battery"), 0),
+            "grid_battery_charge": _first_present(battery_data.get("Grid_Based_Battery_Charge"), 0),
         },
         "power_diagram": power_diagram,
+        "forecast": forecast or {},
     }
 
 
@@ -159,6 +250,8 @@ def _summary_row(
     live = reporting.get("live") or {}
     today = reporting.get("today") or {}
     totals = reporting.get("totals") or {}
+    forecast = reporting.get("forecast") or {}
+    forecast_values = forecast.get("values") if isinstance(forecast, dict) else {}
     power_diagram = _power_diagram_from_reporting(reporting)
     series = power_diagram.get("series") or {}
 
@@ -194,6 +287,9 @@ def _summary_row(
         "pv_power_house": totals.get("pv_power_house"),
         "pv_charging_battery": totals.get("pv_charging_battery"),
         "grid_battery_charge": totals.get("grid_battery_charge"),
+        "forecast_provider": forecast.get("provider") if isinstance(forecast, dict) else "",
+        "forecast_saved_at": forecast.get("saved_at") if isinstance(forecast, dict) else "",
+        "forecast_values": json.dumps(forecast_values or {}, default=_json_default, ensure_ascii=False, separators=(",", ":")),
         "chart_time": json.dumps(power_diagram.get("time") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
         "chart_bat": json.dumps(series.get("bat") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
         "chart_load": json.dumps(series.get("load") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
@@ -566,6 +662,9 @@ class ByteWattReportHistory:
             "pv_power_house",
             "pv_charging_battery",
             "grid_battery_charge",
+            "forecast_provider",
+            "forecast_saved_at",
+            "forecast_values",
             "chart_time",
             "chart_bat",
             "chart_load",

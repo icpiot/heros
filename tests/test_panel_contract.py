@@ -18,6 +18,7 @@ LATEST_DEBUG_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_DEBUG_BUILD.txt"
 LATEST_REPORT_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_REPORT_BUILD.txt"
 README_PATH = ROOT / "README.md"
 EXAMPLES_README_PATH = ROOT / "examples" / "README.md"
+REPORT_CARD_WRAPPER_PATH = ROOT / "examples" / "www" / "home-energy-manager-report-card.js"
 
 
 def test_panel_build_matches_registered_cache_version():
@@ -48,10 +49,15 @@ def test_report_battery_selector_updates_without_replacing_embedded_card():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
 
     assert "_updateSharedBatterySelectorInPlace()" in panel_source
-    assert "currentSelector.replaceWith(nextSelector)" in panel_source
+    assert "direct_api?.live_batteries" in panel_source
+    assert "existingMenu.outerHTML = menuMarkup" in panel_source
+    assert 'picker.insertAdjacentHTML("beforeend", menuMarkup)' in panel_source
+    assert "_syncEmbeddedSelectionStateInPlace()" in panel_source
     assert "if (this._updateEmbeddedPageInPlace())" in panel_source
+    assert "if (this._isSharedBatterySelectorHeld()) {\n      if (this._updateEmbeddedPageInPlace()) {" in panel_source
     assert 'this._page !== "report" && this._page !== "debug"' in panel_source
     assert "if (panel._updateEmbeddedPageInPlace())" in panel_source
+    assert "if (panel._isSharedBatterySelectorHeld()) {\n          if (panel._updateEmbeddedPageInPlace()) {" in panel_source
     assert "if (panel._isSharedBatterySelectorHeld())" in panel_source
     assert "if (panel._panel === value)" in panel_source
 
@@ -163,6 +169,17 @@ def test_examples_readme_report_url_matches_report_build_marker():
     assert readme_builds
     assert marker_build is not None
     assert all(build == marker_build.group(1) for build in readme_builds)
+
+
+def test_report_card_wrapper_import_matches_latest_report_build_chain():
+    wrapper_source = REPORT_CARD_WRAPPER_PATH.read_text(encoding="utf-8")
+    latest_report_build = LATEST_REPORT_BUILD_PATH.read_text(encoding="utf-8")
+    wrapper_build = re.search(r'report-card\.008\.js\?v=(\d+)', wrapper_source)
+    marker_build = re.search(r'report-card\.js\?v=(\d+)', latest_report_build)
+
+    assert wrapper_build is not None
+    assert marker_build is not None
+    assert wrapper_build.group(1) == marker_build.group(1)
 
 
 def test_examples_readme_debug_url_matches_debug_build_marker():
@@ -496,8 +513,150 @@ def test_report_card_exposes_backend_vs_fallback_source_banner():
     assert "local_archive" in report_card_source
     assert "provider_power_diagram" in report_card_source
     assert "synthesized_from_backend_snapshot" in report_card_source
-    assert "Live Fallback Active" in report_card_source
+    assert "Report Loading" in report_card_source
+    assert "Refreshing Live Data" in report_card_source
     assert "Backend Reporting Active" in report_card_source
+
+
+def test_report_card_keeps_render_frozen_while_selector_only_opens():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "_shouldFreezeWhileSelectorOpen()" in report_card_source
+    assert "this._renderDeferredWhileSelectorOpen = true;" in report_card_source
+    assert "if (!next && this._renderDeferredWhileSelectorOpen && this._hasRenderedReport())" in report_card_source
+    assert "if (this._shouldFreezeWhileSelectorOpen()) {" in report_card_source
+
+
+def test_panel_selector_hold_and_theme_service_avoid_stale_entry_flash_paths():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    integration_source = INIT_PATH.read_text(encoding="utf-8")
+
+    hold_body = re.search(
+        r"  _holdBatterySelectorWindow\(duration = 8000\) \{\n(?P<body>.*?)\n  \}\n\n  _holdForecastWindow",
+        panel_source,
+        re.DOTALL,
+    )
+
+    assert hold_body is not None
+    assert "_holdRenderWindow" not in hold_body.group("body")
+    assert 'const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());' in panel_source
+    assert "element.selectorOpen = hasPendingSelection;" in panel_source
+    assert "_resolve_registered_entry_id" in integration_source
+    assert "hass.config_entries.async_entries(DOMAIN)" in integration_source
+    assert "entry_id = _resolve_registered_entry_id(hass, call)" in integration_source
+
+
+def test_report_card_selection_meta_prefers_current_selector_state():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert "_selectionMetaFromOption(option, attrs = this._selectorState()?.attributes || {})" in report_card_source
+    assert "const currentMeta = this._selectionMetaFromOption(selectorState, attrs);" in report_card_source
+    assert "return this._displayBatteryScopeLabel(current);" in panel_source
+
+
+def test_report_card_seeds_live_timeseries_cache_and_normalizes_axis_to_kw():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "_seedLiveTimeSeriesReport(selection, reportDate, reporting, liveSource)" in report_card_source
+    assert "this._recordLiveTimeSeriesPoint({" in report_card_source
+    assert "_liveTimeSeriesTodaySummary(entry)" in report_card_source
+    assert "_mergeTodayTotalsIntoLiveTimeSeriesReport(reporting, entry, selection)" in report_card_source
+    assert "grid_import" in report_card_source
+    assert "today_live_timeseries" in report_card_source
+    assert 'for (let hour = 0; hour <= 24; hour += 2)' in report_card_source
+    assert ">Power (kW)</text>" in report_card_source
+    assert "Left axis shows power in kW, with sub-1kW values labelled in W." in report_card_source
+    assert ' ? "BAT SOC"' in report_card_source
+    assert "chart-series-layer--soc" in report_card_source
+    assert "chart-series-layer--flow" in report_card_source
+
+
+def test_report_card_prefers_provider_chart_for_today_when_backend_series_exists():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "_recordHasRichPowerDiagramData(record)" in report_card_source
+    assert "const richArchiveReport = richSelectedRecord ? this._overlayLiveSummaryOnReport({" in report_card_source
+    assert "const cachedRichReport = cachedReport && this._timeSeriesPointCount(cachedReport) > 2 ? cachedReport : null;" in report_card_source
+    assert "const preferLiveTimeSeriesReport = Boolean(" in report_card_source
+    assert "const richSelectedRecord = this._recordHasRichPowerDiagramData(selectedRecord) ? selectedRecord : null;" in report_card_source
+    assert ": richArchiveReport" in report_card_source
+    assert "!richTodayReport" in report_card_source
+    assert "this._timeSeriesPointCount(richTodayReport) <= 2" in report_card_source
+    assert 'sourceDetail = "today_live_timeseries"' in report_card_source
+    assert '"today_live_overlay"' in report_card_source
+
+
+def test_report_card_tooltip_uses_svg_coordinate_conversion_and_limits_refresh_animation():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "_reportingChartAnimationSignature(reporting)" in report_card_source
+    assert "period: this._periodPreset || \"24h\"" in report_card_source
+    assert "historyFocusTime: this._historyFocusTime || \"12:00\"" in report_card_source
+    assert "chartAnchorTime: this._chartAnchorTime || \"\"" in report_card_source
+    assert "richness: pointCount > 2 ? \"rich\" : pointCount > 0 ? \"sparse\" : \"empty\"" in report_card_source
+    assert "this._chartAnimationSignature !== nextAnimation" in report_card_source
+    assert "const svg = stage?.querySelector(\"svg.chart\");" in report_card_source
+    assert "const localSvgX = (event.clientX - svgRect.left) / svgScaleX;" in report_card_source
+    assert "const cssPointX = (svgRect.left - stageRect.left) + point.x * svgScaleX;" in report_card_source
+    assert "const markerX = (svgRect.left - stageRect.left) + marker.x * svgScaleX;" in report_card_source
+    assert "_refreshReportBodyInPlace()" in report_card_source
+    assert "body.innerHTML = this._renderReportBody(reporting);" in report_card_source
+    assert "data-chart-hit-target" in report_card_source
+    assert "pointer-events:all" in report_card_source
+    assert ".chart-series-layer {\n          pointer-events:none;" in report_card_source
+    assert "_eventInsideChartStage(event)" in report_card_source
+    assert "_eventWithinChartStageBounds(event)" in report_card_source
+    assert "this._chartInteractionModel = this._chartInteractionModel || null;" in report_card_source
+    assert "this._chartInteractionModel = null;" not in report_card_source
+    assert "this.shadowRoot.onclick = (event) => {" not in report_card_source
+    assert "addEventListener(\"pointerdown\", (event) => {" in report_card_source
+    assert "event.preventDefault();\n        event.stopPropagation();" in report_card_source
+    assert "_resetChartHoverState({ keepAnchor = true } = {})" in report_card_source
+    assert 'target.addEventListener("pointerenter"' in report_card_source
+    assert "target.releasePointerCapture(event.pointerId);" in report_card_source
+    assert "this.shadowRoot.onpointerdown = (event) => {" in report_card_source
+    assert "_currentTimeSeriesPoint(now = new Date(), bucketSeconds = 10)" in report_card_source
+    assert "_liveRefreshBucketSeconds()" in report_card_source
+    assert 'return this._periodPreset === "1h" ? 60 : 300;' in report_card_source
+    assert "point: this._currentTimeSeriesPoint(new Date(), this._liveRefreshBucketSeconds())," in report_card_source
+    assert "const selectedDateIsToday = this._isTodaySelection(selectedDate);" in report_card_source
+    assert "const liveSeriesChanged = selectedDateIsToday\n      ? this._captureLiveTimeSeriesSnapshots()\n      : false;" in report_card_source
+    assert "reportingDate: selectedDateIsToday" in report_card_source
+    assert "sampled.setSeconds(Math.floor(sampled.getSeconds() / bucket) * bucket);" in report_card_source
+    assert "return false;\n    } else {\n      time.push(point.label);" in report_card_source
+    assert "_resetHistoricalPeriodForDate(selectedDate = this._selectedReportDate())" in report_card_source
+    assert 'this._periodPreset = "24h";' in report_card_source
+    assert "data-chart-focus-time" in report_card_source
+    assert "_normalizedFocusTime(event.target?.value || this._historyFocusTime)" in report_card_source
+    assert "_commitChartAnchorFromEvent(event)" in report_card_source
+    assert "this._lastChartHoverTime = this._normalizedFocusTime(point.label);" in report_card_source
+    assert "const anchor = this._normalizedFocusTime(this._chartAnchorTime || this._lastChartHoverTime || this._historyFocusTime);" in report_card_source
+    assert "this._chartAnchorTime = this._historyFocusTime;" in report_card_source
+    assert "if (rangeMinutes < 24 * 60)" in report_card_source
+    assert "const anchor = this._historyFocusMinutes();" in report_card_source
+    assert "_powerDiagramHasTrailingPlaceholderTail(powerDiagram)" in report_card_source
+    assert "_trimTrailingPlaceholderTail(powerDiagram)" in report_card_source
+    assert "archive_incomplete_tail: historicalNeedsRefresh" in report_card_source
+    assert "force: isToday || needsRefresh" in report_card_source
+    assert "_historyRefreshInFlight" in report_card_source
+    assert "_historyRefreshCompleted" in report_card_source
+    assert "_historicalDisplaySignature()" in report_card_source
+    assert "if (!selectedDateIsToday) {" in report_card_source
+    assert "historicalSignature === previousHistoricalSignature" in report_card_source
+    assert "this._historyRefreshInFlight.add(requestKey);" in report_card_source
+    assert "if (!isToday && this._historyRefreshCompleted?.has(requestKey)) return;" in report_card_source
+    assert "this._historyRefreshCompleted.add(requestKey);" in report_card_source
+    assert "Archived report for ${this._escape(selectedDate)} is incomplete after" in report_card_source
+
+
+def test_report_card_treats_sparse_synthesized_archive_rows_as_missing_history():
+    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "const powerDiagramSource = String(" in report_card_source
+    assert 'powerDiagramSource === "synthesized_from_backend_snapshot"' in report_card_source
+    assert "return null;" in report_card_source
+    assert 'String(reporting?.meta?.power_diagram_source || "").trim() === "synthesized_from_backend_snapshot"' in report_card_source
 
 
 def test_report_card_supports_archived_date_selection_from_history():
@@ -507,7 +666,7 @@ def test_report_card_supports_archived_date_selection_from_history():
     assert "data-shift-date" in report_card_source
     assert "ensure_report_history" in report_card_source
     assert "Archived report loaded for" in report_card_source
-    assert "No stored archive found yet" in report_card_source
+    assert "No stored report history found yet" in report_card_source
     assert "history.json" in report_card_source
 
 

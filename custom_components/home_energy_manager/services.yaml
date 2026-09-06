@@ -1118,3 +1118,185 @@ set_forecast_mapping:
       required: false
       selector:
         text:
+
+set_forecast_history_source:
+  name: Set Forecast History Source
+  description: Persist the optional Forecast.Solar historic-average source used for future HEM forecast benchmark/backfill work.
+  fields:
+    forecast_history_provider:
+      name: Forecast History Provider
+      description: Historic-average provider. Currently only forecast_solar is supported.
+      required: false
+      default: forecast_solar
+      selector:
+        select:
+          options:
+            - "forecast_solar"
+    forecast_history_api_key:
+      name: Forecast.Solar API Key
+      description: Optional Forecast.Solar API key. Required for history on non-public plans.
+      required: false
+      selector:
+        text:
+          type: password
+    forecast_history_latitude:
+      name: Latitude
+      description: Solar site latitude used by Forecast.Solar.
+      required: true
+      selector:
+        number:
+          min: -90
+          max: 90
+          step: 0.000001
+    forecast_history_longitude:
+      name: Longitude
+      description: Solar site longitude used by Forecast.Solar.
+      required: true
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: 0.000001
+    forecast_history_declination:
+      name: Panel Declination
+      description: Panel tilt in degrees, 0 horizontal to 90 vertical.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 90
+          step: 1
+          unit_of_measurement: °
+    forecast_history_azimuth:
+      name: Panel Azimuth
+      description: Panel azimuth in degrees, -180 north, -90 east, 0 south, 90 west.
+      required: true
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: 1
+          unit_of_measurement: °
+    forecast_history_kwp:
+      name: Panel Power
+      description: Installed panel power in kWp.
+      required: true
+      selector:
+        number:
+          min: 0.001
+          max: 1000
+          step: 0.001
+          unit_of_measurement: kWp
+    forecast_history_damping:
+      name: Damping
+      description: Optional Forecast.Solar damping value.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    forecast_history_horizon:
+      name: Horizon
+      description: Optional Forecast.Solar horizon string.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:
+
+test_forecast_history_source:
+  name: Test Forecast History Source
+  description: Test the optional Forecast.Solar historic-average source and create a Home Assistant notification with the result.
+  fields:
+    forecast_history_provider:
+      name: Forecast History Provider
+      description: Historic-average provider. Currently only forecast_solar is supported.
+      required: false
+      default: forecast_solar
+      selector:
+        select:
+          options:
+            - "forecast_solar"
+    forecast_history_api_key:
+      name: Forecast.Solar API Key
+      description: Optional Forecast.Solar API key used for this test.
+      required: false
+      selector:
+        text:
+          type: password
+    forecast_history_latitude:
+      name: Latitude
+      description: Solar site latitude used by Forecast.Solar.
+      required: false
+      selector:
+        number:
+          min: -90
+          max: 90
+          step: 0.000001
+    forecast_history_longitude:
+      name: Longitude
+      description: Solar site longitude used by Forecast.Solar.
+      required: false
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: 0.000001
+    forecast_history_declination:
+      name: Panel Declination
+      description: Panel tilt in degrees.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 90
+          step: 1
+          unit_of_measurement: °
+    forecast_history_azimuth:
+      name: Panel Azimuth
+      description: Panel azimuth in degrees.
+      required: false
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: 1
+          unit_of_measurement: °
+    forecast_history_kwp:
+      name: Panel Power
+      description: Installed panel power in kWp.
+      required: false
+      selector:
+        number:
+          min: 0.001
+          max: 1000
+          step: 0.001
+          unit_of_measurement: kWp
+    forecast_history_damping:
+      name: Damping
+      description: Optional Forecast.Solar damping value.
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    forecast_history_horizon:
+      name: Horizon
+      description: Optional Forecast.Solar horizon string.
+      required: false
+      selector:
+        text:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple accounts are configured.
+      example: "abcdef1234"
+      required: false
+      selector:
+        text:

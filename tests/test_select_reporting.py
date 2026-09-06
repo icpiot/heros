@@ -70,12 +70,17 @@ def _load_select_module():
     topology_spec.loader.exec_module(topology_module)
 
     reporting_module = types.ModuleType("custom_components.home_energy_manager.reporting")
-    reporting_module.build_reporting_payload = lambda battery_data, aggregate, label: {
+    reporting_module.build_forecast_snapshot = lambda hass, config: {
+        "provider": config.get("forecast_provider", "none"),
+        "values": {},
+    }
+    reporting_module.build_reporting_payload = lambda battery_data, aggregate, label, forecast=None: {
         "aggregate": aggregate,
         "label": label,
         "reporting_date": "2026-07-10",
         "power_diagram": battery_data.get("Power_Diagram", {}),
         "meta": {},
+        "forecast": forecast or {},
     }
 
     sys.modules.setdefault("homeassistant", homeassistant)
@@ -151,6 +156,43 @@ def test_reporting_payload_keeps_daily_chart_series():
     assert power_diagram["summary"]["soc"] == 48.5
 
 
+def test_reporting_payload_keeps_forecast_snapshot_for_panel_attributes():
+    select_module = _load_select_module()
+
+    payload = select_module._reporting_payload(
+        {"Power_Diagram": {"date": "2026-07-10", "time": ["00:00"], "series": {}}},
+        aggregate=True,
+        label="All systems",
+        forecast={"provider": "forecast_solar", "values": {"generation_today": {"state": "18.4"}}},
+    )
+
+    assert payload["forecast"]["provider"] == "forecast_solar"
+    assert payload["forecast"]["values"]["generation_today"]["state"] == "18.4"
+
+
+def test_forecast_history_source_summary_masks_api_key():
+    select_module = _load_select_module()
+
+    class _Entry:
+        data = {
+            "forecast_history_provider": "forecast_solar",
+            "forecast_history_api_key": "secret",
+            "forecast_history_latitude": -33.96899,
+            "forecast_history_longitude": 151.00795,
+            "forecast_history_declination": 30,
+            "forecast_history_azimuth": 0,
+            "forecast_history_kwp": 6.6,
+        }
+        options = {}
+
+    summary = select_module._forecast_history_source_summary(_Entry())
+
+    assert summary["provider"] == "forecast_solar"
+    assert summary["api_key_configured"] is True
+    assert summary["kwp"] == 6.6
+    assert "secret" not in str(summary)
+
+
 def test_direct_api_summary_keeps_mppt_and_power_source_fields():
     select_module = _load_select_module()
 
@@ -206,6 +248,9 @@ def test_history_hint_exposes_inventory_and_scope_summaries():
     assert '"inventory_scopes"' in source
     assert '"scope_summaries"' in source
     assert '"scope_key": "all"' in source
+    assert 'if selected_scope is not None and selected_scope.aggregate:' in source
+    assert 'history_scope_key = "all"' in source
+    assert 'current_scope_label = "All Batteries"' in source
 
 
 def test_coordinator_retries_inverter_inventory_when_only_one_system_is_cached():
@@ -225,6 +270,15 @@ def test_history_backfill_forwards_scope_to_provider_fetch():
 
     assert 'history_sys_sn = None if scope_key == "all" else scope_key' in source
     assert "sys_sn=history_sys_sn" in source
+
+
+def test_history_backfill_only_includes_realtime_for_the_actual_current_day():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "home_energy_manager", "__init__.py"
+    ).read_text(encoding="utf-8")
+
+    assert 'today_date = dt_util.now().date().isoformat()' in source
+    assert 'include_realtime=day == today_date and not force' in source
 
 
 def test_live_battery_summary_keeps_per_battery_mppt_source_fields():

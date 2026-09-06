@@ -169,6 +169,25 @@ class _FakeSession:
         return self.response
 
 
+class _FakeSequenceSession:
+    """Minimal aiohttp session stand-in for ordered GET requests."""
+
+    def __init__(self, responses):
+        self._responses = list(responses)
+        self.calls = []
+
+    def get(self, url, params=None, headers=None, timeout=None):
+        self.calls.append({
+            "url": url,
+            "params": params or {},
+            "headers": headers,
+            "timeout": timeout,
+        })
+        if not self._responses:
+            raise AssertionError("No fake responses left for session.get()")
+        return self._responses.pop(0)
+
+
 @pytest.mark.asyncio
 async def test_async_get_logs_in_before_request_when_token_missing(monkeypatch):
     client = ApiClient.__new__(ApiClient)
@@ -237,3 +256,109 @@ def test_provider_power_diagram_normalizes_web_chart_payload():
     assert payload["raw_provider"]["powerSource"] == "grid"
     assert payload["provider_payload"]["soc"] == 64.9
     assert payload["provider_payload"]["gridDetailList"][0]["value2"] == 0.36
+
+
+def test_extract_account_ids_finds_nested_fields_and_query_fragments():
+    payload = {
+        "menuRoute": "/report/power?userId=q5jS4Up5MpNvz4PrEX&date=2026-08-13",
+        "account": {
+            "customerId": "customer-456",
+        },
+        "embedded": "{\"memberId\":\"member-789\"}",
+    }
+
+    assert ApiClient._extract_account_ids(payload) == [
+        "q5jS4Up5MpNvz4PrEX",
+        "customer-456",
+        "member-789",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_async_get_battery_data_uses_user_id_chart_request_for_all_scope_statistics():
+    client = ApiClient.__new__(ApiClient)
+    client.base_url = "https://monitor.byte-watt.com"
+    client.token = "token"
+    client.host_system_id = "station-host-1"
+    client.host_sys_sn = "25000SB244W00011"
+    client.user_id = "user-123"
+    client.user_id_candidates = ["user-123"]
+    client.async_login = lambda: None  # pragma: no cover - token is already set
+    client.session = _FakeSequenceSession([
+        _FakeGetResponse(json_value={"code": 200, "data": {"epvT": 12.0, "eout": 0.0, "echarge": 0.0, "edischarge": 0.0, "eload": 4.0, "einput": 1.0}}),
+        _FakeGetResponse(json_value={"code": 200, "data": {"epvtoday": 0.01, "eload": 0.61, "eoutput": 0.0, "einput": 0.01, "echarge": 0.0, "edischarge": 0.0}}),
+        _FakeGetResponse(json_value={"code": 200, "data": {
+            "time": ["0:00", "0:05"],
+            "soc": [41.6, 41.4],
+            "homePower": [0.4, 0.5],
+            "ppvinverterPv": [0.0, 0.0],
+            "feedInDetailList": [],
+            "gridDetailList": [{"value2": 0.4}, {"value2": 0.5}],
+            "epvtoday": 0.01,
+            "ehomeload": 0.61,
+            "efeedIn": 0.0,
+            "einput": 0.01,
+            "echarge": 0.0,
+        }}),
+    ])
+
+    result = await client.async_get_battery_data(
+        report_date="2026-08-20",
+        include_realtime=False,
+        sys_sn="All",
+    )
+
+    assert [call["params"].get("stationId") for call in client.session.calls[:2]] == [
+        "",
+        "",
+    ]
+    assert client.session.calls[2]["params"] == {
+        "userId": "user-123",
+        "date": "2026-08-20",
+    }
+    assert result["Power_Diagram"]["meta"]["source"] == "provider"
+    assert result["Power_Diagram"]["time"] == ["0:00", "0:05"]
+
+
+@pytest.mark.asyncio
+async def test_async_get_battery_data_primes_user_id_before_all_scope_chart_request():
+    client = ApiClient.__new__(ApiClient)
+    client.base_url = "https://monitor.byte-watt.com"
+    client.token = "token"
+    client.host_system_id = "station-host-1"
+    client.host_sys_sn = "25000SB244W00011"
+    client.user_id = ""
+    client.user_id_candidates = []
+    client.async_login = lambda: None  # pragma: no cover - token is already set
+    client.session = _FakeSequenceSession([
+        _FakeGetResponse(json_value={"code": 200, "data": {"epvT": 12.0, "eout": 0.0, "echarge": 0.0, "edischarge": 0.0, "eload": 4.0, "einput": 1.0}}),
+        _FakeGetResponse(json_value={"code": 200, "data": {"epvtoday": 0.01, "eload": 0.61, "eoutput": 0.0, "einput": 0.01, "echarge": 0.0, "edischarge": 0.0}}),
+        _FakeGetResponse(json_value={"code": 200, "data": {"menuRoute": "/report/power?userId=user-456&date=2026-08-20"}}),
+        _FakeGetResponse(json_value={"code": 200, "data": {
+            "time": ["0:00", "0:05"],
+            "soc": [41.6, 41.4],
+            "homePower": [0.4, 0.5],
+            "ppvinverterPv": [0.0, 0.0],
+            "feedInDetailList": [],
+            "gridDetailList": [{"value2": 0.4}, {"value2": 0.5}],
+            "epvtoday": 0.01,
+            "ehomeload": 0.61,
+            "efeedIn": 0.0,
+            "einput": 0.01,
+            "echarge": 0.0,
+        }}),
+    ])
+
+    result = await client.async_get_battery_data(
+        report_date="2026-08-20",
+        include_realtime=False,
+        sys_sn="All",
+    )
+
+    assert client.session.calls[2]["url"].endswith("/api/devices/list")
+    assert client.session.calls[3]["params"] == {
+        "userId": "user-456",
+        "date": "2026-08-20",
+    }
+    assert client.user_id == "user-456"
+    assert result["Power_Diagram"]["meta"]["source"] == "provider"
