@@ -6,11 +6,10 @@ It is a generic system for multiple energy providers, not a provider-branded pro
 ## Repository and namespace
 
 - GitHub: https://github.com/icpiot/heros
-- Intended local repository: `C:\Dev\repos\heros`.
-- Local folder move is pending: Windows rejected it because another process has
-  the repository open. Close the project and terminals using it, rename the
-  folder to `heros`, then reopen it. The current task still uses the original
-  local directory until that move succeeds.
+- Local repository: `C:\Dev\repos\heros`.
+- The local folder move is complete and verified. The saved HEROS project in
+  Codex points to this path. Existing tasks may retain their original working
+  directory, so use the explicit new path for commands.
 - Working branch: `codex/heros`
 - Integration package: `custom_components/heros`
 - Integration and service domain: `heros`
@@ -44,10 +43,11 @@ No FoxESS implementation was added during this naming change.
 Baseline and final suite: 118 tests passed, 2 skipped. All served JavaScript
 files pass `node --check`; Python compilation and the Vite production build pass.
 Panel build is 484, policy 009, report loader 397/component 086, debug 036.
-No HA sync or code push is included. Renaming the GitHub repository does not
-publish this branch. Git history retains its historical names.
+The user authorized publication of the rename branch. No HA sync is included.
+Git history retains its historical names.
 Live HA/browser behavior remains unverified; ask the user for a hard refresh
 before continuing when runtime validation requires one.
 
-After completing the pending folder move, reopen Codex from the new local path. Existing tasks may retain
-their old working directory and need to be continued from the renamed project.
+Continue work from the saved HEROS project at the new local path.
+
+FoxESS will initially use its cloud API. Modbus is not installed yet.
