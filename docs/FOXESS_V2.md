@@ -2,10 +2,12 @@
 
 HEROS has an isolated FoxESS V2 web transport in `api/foxess_v2.py`, based on the
 supplied 2026-09-06 handoff. It accepts web username/password credentials and
-does not use an OpenAPI API key. It is not yet wired into the HEROS setup UI,
-ByteWatt settings manager, entities, or reporting model. This prevents unproven
-control operations or invented telemetry mappings from leaking into the shared
-architecture. No Home Assistant instance was modified by this work.
+does not use an OpenAPI API key. It is exposed in the HEROS setup UI as the
+`FoxESS_v2` provider, where setup validates login and plant discovery through
+this V2 client. It is still separate from the Bytewatt settings manager,
+entities, and reporting model. This prevents unproven control operations or
+invented telemetry mappings from leaking into the shared architecture. No Home
+Assistant instance was modified by this work.
 
 ## Signer and runtime
 
