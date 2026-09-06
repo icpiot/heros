@@ -1,4 +1,4 @@
-# Home Energy Manager Task List
+# HEROS Task List
 
 ## Pricing
 

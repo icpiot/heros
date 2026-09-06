@@ -1,4 +1,4 @@
-# Home Energy Manager UI Examples
+# HEROS UI Examples
 
 This folder contains two UI artifacts linked to the current branch work:
 
@@ -7,7 +7,7 @@ This folder contains two UI artifacts linked to the current branch work:
 - `lovelace/home_energy_manager_report_card.yaml`
   Minimal view config for the custom reporting card.
 - `www/home-energy-manager-policy-card.js`
-  A custom card scaffold that mirrors the Home Energy Manager app layout more
+  A custom card scaffold that mirrors the HEROS app layout more
   closely while keeping unsupported controls visibly marked as not enabled.
 - `www/home-energy-manager-report-card.js`
   A thin loader that imports the current reporting build.
@@ -118,16 +118,16 @@ Notes:
 - The report card's date control should reuse the stored archive first and only
   trigger a backend fetch for the selected day when that scope/date is missing.
 - For ByteWatt web history, the dated power diagram comes from the provider
-  `staticsByDay` endpoint and is cached locally by HEM per scope/date so the
+  `staticsByDay` endpoint and is cached locally by HEROS per scope/date so the
   report page does not need to re-download the same day every time.
-- Mapped solar forecast entities are also captured into HEM report snapshots
+- Mapped solar forecast entities are also captured into HEROS report snapshots
   going forward, so future forecast-accuracy reports can compare stored
   forecasts against measured generation.
 - Forecast.Solar historic averages are optional benchmark/backfill data and
   require a provider plan/API key that allows the `history` endpoint. They are
   not the same as a forecast that was issued on a past date.
 - That provider payload is the web-app level of detail. A future Modbus-backed
-  history source can be richer, but it should still normalize into the same HEM
+  history source can be richer, but it should still normalize into the same HEROS
   report payload shape.
 - The date picker clamps to today. Future dates are not queried.
 - Once a day exists locally, it should load fast on later visits.
@@ -152,7 +152,7 @@ type: module
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=395
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=396
 type: module
 ```
 
@@ -194,7 +194,7 @@ type: module
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=395
+url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=396
 type: module
 ```
 

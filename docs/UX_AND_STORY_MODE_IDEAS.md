@@ -1,8 +1,8 @@
 # UX and Story Mode Ideas
 
-This document captures product and interface ideas discussed while comparing Home Energy Manager with commercial battery portals such as AlphaESS and Bytewatt.
+This document captures product and interface ideas discussed while comparing HEROS with commercial battery portals such as AlphaESS and Bytewatt.
 
-The purpose is not to copy a vendor portal. The goal is to keep the familiar energy concepts users already understand, while making Home Energy Manager more transparent, diagnostic, interactive, and vendor-independent.
+The purpose is not to copy a vendor portal. The goal is to keep the familiar energy concepts users already understand, while making HEROS more transparent, diagnostic, interactive, and vendor-independent.
 
 ## Product direction
 
@@ -15,7 +15,7 @@ Most commercial energy portals are good at showing **what is happening now**:
 - State of charge
 - Daily and cumulative energy totals
 
-Home Energy Manager should go further by explaining:
+HEROS should go further by explaining:
 
 1. **What is happening?**
 2. **Why is it happening?**
@@ -218,7 +218,7 @@ The energy-flow overview should stay simple, but each object and flow should be 
 
 ## 8. MPPT and solar diagnostics
 
-AlphaESS and similar portals increasingly expose MPPT information. Home Energy Manager should treat this as a diagnostic capability rather than only another chart.
+AlphaESS and similar portals increasingly expose MPPT information. HEROS should treat this as a diagnostic capability rather than only another chart.
 
 Potential MPPT views:
 
@@ -288,7 +288,7 @@ A health score may be useful, but the underlying evidence should always be visib
 
 ## 11. Expected-versus-actual comparisons
 
-Home Energy Manager should compare planned or expected behaviour with what actually happened.
+HEROS should compare planned or expected behaviour with what actually happened.
 
 Examples:
 
@@ -379,9 +379,9 @@ Examples:
 
 These should be factual, configurable, and easy to disable.
 
-## 16. Ask HEM
+## 16. Ask HEROS
 
-A future **Ask HEM** interface could answer natural-language questions using the system’s stored energy, event, tariff, forecast, and configuration data.
+A future **Ask HEROS** interface could answer natural-language questions using the system’s stored energy, event, tariff, forecast, and configuration data.
 
 Example questions:
 
@@ -394,7 +394,7 @@ Example questions:
 - Is one solar array underperforming?
 - Which automation has had the largest financial effect?
 
-Ask HEM should cite the measurements, events, and assumptions behind each answer.
+Ask HEROS should cite the measurements, events, and assumptions behind each answer.
 
 ## 17. Vendor-independent interface
 
@@ -454,7 +454,7 @@ The following principles should guide implementation:
 
 1. What-if simulation
 2. Capacity and EV scenario modelling
-3. Ask HEM natural-language analysis
+3. Ask HEROS natural-language analysis
 4. Optimiser alternative-decision logging
 5. Cross-provider performance benchmarking
 
@@ -464,14 +464,14 @@ The following principles should guide implementation:
 - How long should detailed decision history be retained?
 - Which explanations can be deterministic, and which require inference?
 - How should confidence be calculated and displayed?
-- Should Ask HEM run fully locally, optionally use an external model, or support both?
+- Should Ask HEROS run fully locally, optionally use an external model, or support both?
 - How should provider-specific controls fit into a common interface?
 - Which features belong in the sidebar panel versus Home Assistant entities and services?
 - How should forecasts and simulations communicate assumptions without overwhelming users?
 
 ## Competitive positioning
 
-Commercial portals such as AlphaESS and Bytewatt establish familiar patterns for energy flows, charts, battery controls, schedules, and increasingly MPPT diagnostics. Their interfaces are useful benchmarks, but Home Energy Manager should differentiate itself through:
+Commercial portals such as AlphaESS and Bytewatt establish familiar patterns for energy flows, charts, battery controls, schedules, and increasingly MPPT diagnostics. Their interfaces are useful benchmarks, but HEROS should differentiate itself through:
 
 - Plain-language reasoning
 - Decision transparency
@@ -485,4 +485,4 @@ Commercial portals such as AlphaESS and Bytewatt establish familiar patterns for
 
 The strongest product statement is:
 
-> Home Energy Manager does not only show what the energy system is doing. It explains why, predicts what comes next, and lets the user safely explore alternatives.
+> HEROS does not only show what the energy system is doing. It explains why, predicts what comes next, and lets the user safely explore alternatives.

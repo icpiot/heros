@@ -82,7 +82,7 @@ export class HemForecastSetupPage extends LitElement {
         <p class="card-label">Selected provider</p>
         <h3>${forecast.providerLabel || "Not configured"}</h3>
         <strong class="hero-value">${forecast.status || "Waiting for a mapping"}</strong>
-        <p>${forecast.nextAction || "Pick a provider profile and map its sensors to HEM fields."}</p>
+        <p>${forecast.nextAction || "Pick a provider profile and map its sensors to HEROS fields."}</p>
       </hem-card>
     `;
   }
@@ -122,7 +122,7 @@ export class HemForecastSetupPage extends LitElement {
     return html`
       <hem-card>
         <p class="card-label">Entity mapping</p>
-        <h3>What HEM reads</h3>
+        <h3>What HEROS reads</h3>
         <section class="rule-list">
           ${Object.entries(labels).map(([key, label]) => html`
             <article>

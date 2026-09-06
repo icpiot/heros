@@ -1,9 +1,9 @@
 # Forecast History
 
-HEM keeps two forecast concepts separate:
+HEROS keeps two forecast concepts separate:
 
-- Forecast snapshots are the values HEM sees from mapped Home Assistant forecast
-  entities at a point in time. These are stored in the HEM report archive going
+- Forecast snapshots are the values HEROS sees from mapped Home Assistant forecast
+  entities at a point in time. These are stored in the HEROS report archive going
   forward.
 - Historic averages are provider benchmark curves based on long-term weather or
   irradiation history for the site. They are useful when there is no captured
@@ -13,7 +13,7 @@ HEM keeps two forecast concepts separate:
 ## Forecast.Solar Historic Averages
 
 Forecast.Solar exposes a `history` route for historic-average production data.
-The public/no-key tier does not allow this endpoint, so HEM treats it as an
+The public/no-key tier does not allow this endpoint, so HEROS treats it as an
 optional source that must be configured and tested before it is used.
 
 Required settings:
@@ -58,6 +58,6 @@ The API key itself must never be exposed through entity attributes.
 
 ## Storage Direction
 
-After a historic-average source has passed testing, HEM should cache/archive the
+After a historic-average source has passed testing, HEROS should cache/archive the
 returned average curves so reports do not repeatedly call the provider for the
 same site, plane, and date window.

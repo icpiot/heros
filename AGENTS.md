@@ -1,4 +1,4 @@
-# Home Energy Manager Development Guide
+# HEROS Development Guide
 
 ## Repository Scope
 
@@ -34,8 +34,8 @@
 - When a UI field name differs from stored mapping keys, translate it before saving so the selected value appears immediately after release.
 - For setup screens that need broad mapping controls, keep the mapping card full-width on desktop and let the dropdown menu inherit that width instead of stacking it into a narrow shared column.
 - Do not store setup mappings or override state in browser-only storage such as `localStorage` when the value is intended to persist as project/user configuration.
-- Setup mappings, hero mapping overrides, and similar configuration choices must persist through Home Energy Manager backend config or another shared HA-backed store so they survive browser changes and are consistent across devices.
-- Browser-local storage is still acceptable for lightweight UI preferences only, such as the active page, battery selector convenience, debug visibility, settings focus, or a remembered `entry_id` hint. Those keys must not become the source of truth for shared HEM configuration.
+- Setup mappings, hero mapping overrides, and similar configuration choices must persist through HEROS backend config or another shared HA-backed store so they survive browser changes and are consistent across devices.
+- Browser-local storage is still acceptable for lightweight UI preferences only, such as the active page, battery selector convenience, debug visibility, settings focus, or a remembered `entry_id` hint. Those keys must not become the source of truth for shared HEROS configuration.
 
 ## Validation
 

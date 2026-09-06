@@ -41,7 +41,7 @@ Configure the integration through the Home Assistant UI:
 
 ## Setup persistence
 
-Home Energy Manager setup mappings and hero-mapping overrides should not use
+HEROS setup mappings and hero-mapping overrides should not use
 browser-only storage as their source of truth.
 
 This includes:
@@ -52,25 +52,25 @@ This includes:
 - solar hero mapping overrides
 
 These values should be loaded from Home Assistant-backed config and saved
-through Home Energy Manager services so they survive browser changes, cache
+through HEROS services so they survive browser changes, cache
 clears, and different devices.
 
 The panel may still keep a few browser-local UI preferences such as the last
 open page, selected battery target, debug toggle, settings focus, or remembered
 entry id. Those are convenience hints only and must not become the source of
-truth for shared HEM configuration.
+truth for shared HEROS configuration.
 
 ## Setup page mapping model
 
-The Home Energy Manager setup page currently separates the provider payload
-from the HEM-facing hero mapping layer.
+The HEROS setup page currently separates the provider payload
+from the HEROS-facing hero mapping layer.
 
 Setup sections:
 
 - `Bytewatt Sensors`
 - `Battery Hero Mapping Summary`
 - `Solar Hero Mapping Summary`
-- `HEM Hero Sensors`
+- `HEROS Hero Sensors`
 
 The direct provider payload shown by `Bytewatt Sensors` is scope-aware and can
 include:

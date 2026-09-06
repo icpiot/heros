@@ -48,7 +48,7 @@ export class HemPolicyPage extends LitElement {
       <section class="page-head">
         <p class="eyebrow">Policy</p>
         <h2>Policy workspace</h2>
-        <p>Mock HEM operating policy cards for standalone layout design.</p>
+        <p>Mock HEROS operating policy cards for standalone layout design.</p>
       </section>
 
       <section class=${this.editingLayout ? "layout-toolbar editing" : "layout-toolbar"}>

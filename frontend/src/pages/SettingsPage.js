@@ -81,7 +81,7 @@ export class HemSettingsPage extends LitElement {
     return html`
       <hem-card>
         <p class="card-label">Connection</p>
-        <h3>Home Energy Manager</h3>
+        <h3>HEROS</h3>
         <section class="rule-list">
           <article><strong>Status</strong><span>Connected</span></article>
           <article><strong>Source</strong><span>Mock provider</span></article>

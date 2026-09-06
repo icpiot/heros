@@ -1,6 +1,6 @@
-# Home Energy Manager standalone frontend
+# HEROS standalone frontend
 
-This is the Vite/Lit development frontend for Home Energy Manager (HEM). It runs outside Home Assistant so UI layout and styling work can happen quickly with hot reload.
+This is the Vite/Lit development frontend for HEROS (Home Energy Reporting & Optimisation System). It runs outside Home Assistant so UI layout and styling work can happen quickly with hot reload.
 
 The Home Assistant integration under `custom_components/` is not required to run this frontend, and this frontend does not modify it.
 
@@ -107,7 +107,7 @@ Invalid or outdated saved layout data is ignored safely and the source-defined d
 
 The data boundary and layout persistence are deliberately separated:
 
-- `src/services/hemDataProvider.js` currently returns mocked HEM state, and can later be replaced with Home Assistant entity/API data.
+- `src/services/hemDataProvider.js` currently returns mocked HEROS state, and can later be replaced with Home Assistant entity/API data.
 - `src/layout/LocalStorageLayoutRepository.js` currently stores layouts in `localStorage`.
 - `src/layout/LayoutController.js` manages edit/save/cancel/reset state.
 - `src/components/EditableGrid.js` owns the GridStack integration.

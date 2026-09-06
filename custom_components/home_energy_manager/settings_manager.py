@@ -530,7 +530,7 @@ class SettingsManager:
                 "ok": True,
                 "message": (
                     f"{result.get('message') or 'Force charge command accepted.'} "
-                    "Live charging has not appeared yet; HEM will keep polling for the inverter state."
+                    "Live charging has not appeared yet; HEROS will keep polling for the inverter state."
                 ),
                 "pending_live_status": True,
                 "verified_active": verified_active,
@@ -541,7 +541,7 @@ class SettingsManager:
                 "ok": True,
                 "message": (
                     f"{result.get('message') or 'Force charge command accepted.'} "
-                    "Live charging could not be confirmed yet; HEM will keep polling for the inverter state."
+                    "Live charging could not be confirmed yet; HEROS will keep polling for the inverter state."
                 ),
                 "pending_live_status": True,
                 "verified_active": verified_active,
@@ -612,7 +612,7 @@ class SettingsManager:
                 "ok": True,
                 "message": (
                     f"{result.get('message') or 'Stop command accepted.'} "
-                    "Live charging has not cleared yet; HEM will keep polling for the inverter state."
+                    "Live charging has not cleared yet; HEROS will keep polling for the inverter state."
                 ),
                 "pending_live_status": True,
                 "verified_active": verified_active,
@@ -623,7 +623,7 @@ class SettingsManager:
                 "ok": True,
                 "message": (
                     f"{result.get('message') or 'Stop command accepted.'} "
-                    "Live stop could not be confirmed yet; HEM will keep polling for the inverter state."
+                    "Live stop could not be confirmed yet; HEROS will keep polling for the inverter state."
                 ),
                 "pending_live_status": True,
                 "verified_active": verified_active,

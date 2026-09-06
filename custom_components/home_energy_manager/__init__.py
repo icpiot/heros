@@ -1,4 +1,4 @@
-"""Home Energy Manager integration."""
+"""HEROS integration."""
 from __future__ import annotations
 
 import asyncio
@@ -195,9 +195,9 @@ PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
 PANEL_COMPONENT_NAME = "home-energy-manager-panel"
 PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=482"
+PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=483"
 PANEL_CONFIG = {
-    "title": "Home Energy Manager (HEM)",
+    "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
     "theme": "cyberpunk",
     "entity_prefix": "home_energy_manager",
@@ -256,7 +256,7 @@ PANEL_CUSTOM_CONFIG = {
     }
 }
 PANEL_PROVIDER_LABELS = {
-    PROVIDER_BYTEWATT: "Home Energy Manager",
+    PROVIDER_BYTEWATT: "HEROS",
 }
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
@@ -290,7 +290,7 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     async_register_built_in_panel(
         hass,
         component_name="custom",
-        sidebar_title="HEM",
+        sidebar_title="HEROS",
         sidebar_icon="mdi:solar-power-variant",
         frontend_url_path=PANEL_FRONTEND_URL_PATH,
         config={
@@ -411,7 +411,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "options": dict(entry.options or {}),
     }
 
-    # Register the panel before network refreshes so HEM remains available even
+    # Register the panel before network refreshes so HEROS remains available even
     # while backend data is still catching up during Home Assistant startup.
     _register_frontend_panel(hass, entry)
 
@@ -502,7 +502,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 continue
             seen_scopes.add(scope_key)
             _LOGGER.info(
-                "Scheduling initial Home Energy Manager history backfill for %s (%s): %s -> %s",
+                "Scheduling initial HEROS history backfill for %s (%s): %s -> %s",
                 entry.entry_id,
                 scope_label,
                 start_date,
@@ -576,7 +576,7 @@ async def _ensure_report_history_range(
     entry_data = hass.data[DOMAIN].get(entry_id, {})
     client = entry_data.get("client")
     if client is None:
-        raise HomeAssistantError("Home Energy Manager entry is not ready")
+        raise HomeAssistantError("HEROS entry is not ready")
 
     if not station_id and scope_key != "all":
         for inverter in entry_data.get("inverters") or []:
@@ -599,7 +599,7 @@ async def _ensure_report_history_range(
     notify_create(
         hass,
         status_text,
-        title="Home Energy Manager History",
+        title="HEROS History",
         notification_id=f"home_energy_manager_history_{entry_id}",
     )
 
@@ -640,7 +640,7 @@ async def _ensure_report_history_range(
         notify_create(
             hass,
             progress,
-            title="Home Energy Manager History",
+            title="HEROS History",
             notification_id=f"home_energy_manager_history_{entry_id}",
         )
 
@@ -649,7 +649,7 @@ async def _ensure_report_history_range(
     notify_create(
         hass,
         done_text,
-        title="Home Energy Manager History",
+        title="HEROS History",
         notification_id=f"home_energy_manager_history_{entry_id}",
     )
 
@@ -959,7 +959,7 @@ def _configured_entry_ids(hass: HomeAssistant) -> list[str]:
 
 
 def _registered_entry_ids(hass: HomeAssistant) -> list[str]:
-    """Return configured Home Energy Manager config-entry IDs, even before runtime data is ready."""
+    """Return configured HEROS config-entry IDs, even before runtime data is ready."""
     return [entry.entry_id for entry in hass.config_entries.async_entries(DOMAIN)]
 
 
@@ -984,21 +984,21 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall) -> str | None:
 
 
 def _resolve_registered_entry_id(hass: HomeAssistant, call: ServiceCall) -> str:
-    """Resolve against configured HEM entries even when runtime stores have not populated yet."""
+    """Resolve against configured HEROS entries even when runtime stores have not populated yet."""
     requested = str(call.data.get(ATTR_ENTRY_ID) or "").strip()
     entries = _registered_entry_ids(hass)
     if requested:
         if requested not in entries:
             raise HomeAssistantError(
-                f"Unknown Home Energy Manager entry_id {requested!r}. Registered entries: {entries}"
+                f"Unknown HEROS entry_id {requested!r}. Registered entries: {entries}"
             )
         return requested
     if len(entries) == 1:
         return entries[0]
     if not entries:
-        raise HomeAssistantError("No Home Energy Manager integration is configured")
+        raise HomeAssistantError("No HEROS integration is configured")
     raise HomeAssistantError(
-        f"Multiple Home Energy Manager integrations are configured — pass entry_id to "
+        f"Multiple HEROS integrations are configured — pass entry_id to "
         f"disambiguate. Available: {entries}"
     )
 
@@ -1258,7 +1258,7 @@ async def _handle_test_forecast_history_source(hass: HomeAssistant, call: Servic
             f"Samples: watts={counts.get('watts', 0)}, watt_hours={counts.get('watt_hours', 0)}, "
             f"watt_hours_day={counts.get('watt_hours_day', 0)}"
         ),
-        title="HEM Forecast History Test",
+        title="HEROS Forecast History Test",
         notification_id="home_energy_manager_forecast_history_test",
     )
 
@@ -1617,7 +1617,7 @@ def _register_services(hass: HomeAssistant) -> None:
             notify_create(
                 hass,
                 "\n".join(summary_lines),
-                title="Home Energy Manager Health Check Results",
+                title="HEROS Health Check Results",
                 notification_id="bytewatt_health_check",
             )
         except (AttributeError, TypeError) as ex:
@@ -1639,7 +1639,7 @@ def _register_services(hass: HomeAssistant) -> None:
                 notify_create(
                     hass,
                     f"Diagnostics mode: {'enabled' if enabled_now else 'disabled'}",
-                    title="Home Energy Manager Diagnostics",
+                    title="HEROS Diagnostics",
                     notification_id="bytewatt_diagnostics",
                 )
             except (AttributeError, TypeError) as ex:
@@ -1679,7 +1679,7 @@ def _register_services(hass: HomeAssistant) -> None:
             and (not target_entry or entry_id == target_entry)
         ]
         if not target_entry_ids:
-            raise HomeAssistantError("No Home Energy Manager entries are loaded")
+            raise HomeAssistantError("No HEROS entries are loaded")
 
         for entry_id in target_entry_ids:
             await _ensure_report_history_range(
@@ -1866,10 +1866,10 @@ def _register_services(hass: HomeAssistant) -> None:
                     action="save_start_force_charge",
                     ok=started,
                     message=(
-                        f"HEM policy applied and started charging: {active_row.label} "
+                        f"HEROS policy applied and started charging: {active_row.label} "
                         f"({active_row.start_time}-{active_row.end_time}, SOC {active_row.cutoff_soc}%)."
                         if started
-                        else str(result.get("message") or "HEM policy saved but charge start failed")
+                        else str(result.get("message") or "HEROS policy saved but charge start failed")
                     ),
                     charging_now=started,
                 )

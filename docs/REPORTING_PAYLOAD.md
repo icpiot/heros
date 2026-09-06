@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Home Energy Manager Report page and embedded report card both rely on the
+The HEROS Report page and embedded report card both rely on the
 shared reporting payload exposed on the settings-target select entity.
 
 Primary source:
@@ -53,7 +53,7 @@ Current values:
 - `storage: local_archive`
 - `power_diagram_source: provider_power_diagram` or `synthesized_from_backend_snapshot`
 
-For aggregate `All Batteries` reporting, HEM should prefer a real
+For aggregate `All Batteries` reporting, HEROS should prefer a real
 `provider_power_diagram` and only fall back to
 `synthesized_from_backend_snapshot` when the provider day chart endpoint
 returns no usable series for that scope/date.
@@ -114,7 +114,7 @@ Keys:
 - `raw_provider`
 - `provider_payload`
 
-`raw_provider` is the compact subset HEM reads most often for report logic.
+`raw_provider` is the compact subset HEROS reads most often for report logic.
 
 `provider_payload` is the full dated provider chart payload saved with the
 archive row so future report features can reuse the original downloaded source
@@ -144,19 +144,19 @@ Expected keys:
 
 The `entities` map records the configured source entity IDs. The `values` map
 records the state, unit, and source `last_updated` timestamp for each mapped
-forecast sensor. This is HEM-owned forecast snapshot history going forward; it
+forecast sensor. This is HEROS-owned forecast snapshot history going forward; it
 is not a provider historic-average curve.
 
 Forecast.Solar historic-average data, when configured later, should remain a
 separate benchmark source so reports can distinguish:
 
 - actual measured generation
-- forecast snapshots captured by HEM at the time
+- forecast snapshots captured by HEROS at the time
 - provider historic averages for the same site/plane/date
 
 ## History attribute
 
-`attributes.history` describes the HEM local archive status.
+`attributes.history` describes the HEROS local archive status.
 
 Expected keys:
 
@@ -172,7 +172,7 @@ This is the metadata used by the Report page archive-status section.
 
 ## Local archive
 
-The current HEM local reporting archive lives under:
+The current HEROS local reporting archive lives under:
 
 - `www/home-energy-manager-history/<entry_id>/history.json`
 - `www/home-energy-manager-history/<entry_id>/<scope>.csv`
@@ -192,9 +192,9 @@ It should hold:
 
 - detailed time-series sensor history
 - higher-resolution analysis data
-- longer retention than the compact HEM report archive
+- longer retention than the compact HEROS report archive
 
-It should not replace the compact HEM report payload used directly by the panel.
+It should not replace the compact HEROS report payload used directly by the panel.
 
 ## Current display rules
 
@@ -214,7 +214,7 @@ consistent while the archive work continues:
 
 ## Web chart behavior notes
 
-The Bytewatt web chart shows a few presentation details that HEM should keep in
+The Bytewatt web chart shows a few presentation details that HEROS should keep in
 mind when matching the report experience:
 
 - the chart series are color-shaded areas rather than thick solid strokes

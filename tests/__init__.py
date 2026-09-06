@@ -1,1 +1,1 @@
-"""Tests package for Home Energy Manager integration."""
+"""Tests package for HEROS integration."""

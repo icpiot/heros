@@ -52,7 +52,7 @@ export const mockHemState = {
       {
         id: "solcast",
         label: "Solcast",
-        description: "Common solar forecast integration that can feed the same mapped HEM fields.",
+        description: "Common solar forecast integration that can feed the same mapped HEROS fields.",
         strength: "Good for PV-specific forecasts across multiple array plans",
         fields: ["today", "tomorrow", "thisHour", "nextHour", "now", "peakToday", "peakTomorrow"],
       },

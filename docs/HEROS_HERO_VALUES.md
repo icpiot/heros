@@ -1,10 +1,10 @@
-# HEM Hero Values
+# HEROS Hero Values
 
-This file defines the HEM hero values currently used by the panel and mirrored on the setup page under `HEM Hero Sensors`.
+This file defines the HEROS hero values currently used by the panel and mirrored on the setup page under `HEROS Hero Sensors`.
 
 ## What "hero values" means
 
-In HEM, "hero values" are the live values rendered in the hero or tile sections on panel pages. They are a frontend presentation concept, not a dedicated Home Assistant entity class.
+In HEROS, "hero values" are the live values rendered in the hero or tile sections on panel pages. They are a frontend presentation concept, not a dedicated Home Assistant entity class.
 
 The current source of truth is:
 
@@ -131,7 +131,7 @@ The setup page mirror is currently rendered in:
 
 and displayed in:
 
-- `HEM Hero Sensors`
+- `HEROS Hero Sensors`
 
 Current intent:
 
@@ -145,7 +145,7 @@ The setup page now also includes adjacent mapping/debug sections:
 - `Bytewatt Sensors`
 
 These sections are intended to show the direct Bytewatt source values alongside
-the active HEM hero values so mapping issues can be diagnosed without leaving
+the active HEROS hero values so mapping issues can be diagnosed without leaving
 the setup page.
 
 ## Persistence rule
@@ -157,13 +157,13 @@ That means:
 
 - do not rely on `localStorage` as the final persistence layer for hero mappings
 - do not make browser-specific overrides the long-term source of truth
-- save hero mapping overrides through Home Energy Manager backend config or
+- save hero mapping overrides through HEROS backend config or
   another shared Home Assistant-backed store
 
 Reason:
 
 - mappings must survive browser changes, cache clears, and different devices
-- setup behavior must be consistent for every user viewing the same HEM config
+- setup behavior must be consistent for every user viewing the same HEROS config
 
 ## Current limitation
 
@@ -235,7 +235,7 @@ as:
 
 ### `selected_scope`
 
-This is the direct API view for the current HEM battery selector target.
+This is the direct API view for the current HEROS battery selector target.
 
 It should change when the user switches between:
 
@@ -244,7 +244,7 @@ It should change when the user switches between:
 
 ### `live_batteries`
 
-This is the per-battery list returned from HEM's live provider polling.
+This is the per-battery list returned from HEROS's live provider polling.
 
 Each row is dynamic and may contain:
 

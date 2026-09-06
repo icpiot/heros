@@ -1,4 +1,4 @@
-# Home Energy Manager Integration for Home Assistant
+# HEROS Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 
@@ -12,6 +12,21 @@ Requires Home Assistant **2024.11.0** or later.
 Current live development validation is against Home Assistant OS with Core
 **2026.9.0**, Supervisor **2026.08.0**, Operating System **18.2**, and Frontend
 **20260826.4**.
+
+## Naming
+
+This project is now called **HEROS**: **Home Energy Reporting & Optimisation
+System**.
+
+Use **HA HEM** when referring to Home Assistant's built-in Home Energy
+Management / Energy Dashboard functionality. Use **HEROS** for this custom
+system and its reporting, tariff analysis, battery/solar optimisation, and
+automated energy-control features.
+
+The Home Assistant integration domain, services, entity IDs, storage folders,
+custom element tags, and served asset paths intentionally remain
+`home_energy_manager` / `home-energy-manager` for compatibility with existing
+installations, dashboards, automations, helpers, and browser caches.
 
 ## Features
 
@@ -28,7 +43,7 @@ Current live development validation is against Home Assistant OS with Core
   it later via Configure (no need to delete and re-add).
 - **Automatic recovery** — heartbeat monitoring, circuit breaker, auto-reconnect.
 - **Forecast history support** — mapped solar forecast entities are captured in
-  HEM report snapshots going forward, with optional Forecast.Solar
+  HEROS report snapshots going forward, with optional Forecast.Solar
   historic-average source settings for future benchmark/backfill reports.
 
 ## Installation
@@ -37,8 +52,8 @@ Current live development validation is against Home Assistant OS with Core
 
 1. Install [HACS](https://hacs.xyz/) if you haven't already.
 2. HACS → Integrations → ⋮ → Custom repositories → add this repo URL → Category: Integration.
-3. Install **Home Energy Manager** and restart Home Assistant.
-4. Settings → Devices & Services → Add Integration → search for **Home Energy Manager**.
+3. Install **HEROS** and restart Home Assistant.
+4. Settings → Devices & Services → Add Integration → search for **HEROS**.
 5. Enter your credentials and complete the provider/setup flow. The sidebar panel is added automatically after the integration loads.
 
 ### Sidebar panel
@@ -48,7 +63,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/home-energy-manager/home-energy-manager-panel.js?v=482`
+`/local/community/home-energy-manager/home-energy-manager-panel.js?v=483`
 
 The panel ships with built-in theme presets:
 
@@ -89,7 +104,7 @@ If the account has more than one inverter, a second step asks you to pick the
 **Host inverter**. Single-inverter accounts skip that step automatically.
 
 To change which inverter is the Host later: Settings → Devices & Services →
-Home Energy Manager → ⋮ → Reconfigure.
+HEROS → ⋮ → Reconfigure.
 
 ### Setup persistence
 
@@ -98,17 +113,17 @@ Manager configuration, not browser-local preferences.
 
 That means forecast setup mappings, battery setup mappings, and hero mapping
 overrides should be loaded from Home Assistant-backed config and saved through
-Home Energy Manager services rather than browser-only storage.
+HEROS services rather than browser-only storage.
 
 ### Setup page mapping model
 
-The Setup page now treats Bytewatt provider data and HEM hero values as two
+The Setup page now treats Bytewatt provider data and HEROS hero values as two
 separate layers:
 
-- `Bytewatt Sensors` shows the direct provider payload HEM is currently reading
-- `Battery Hero Mapping Summary` maps battery-facing HEM hero values to Bytewatt fields
-- `Solar Hero Mapping Summary` maps solar and MPPT-facing HEM hero values to Bytewatt fields
-- `HEM Hero Sensors` mirrors the active HEM hero outputs so they can be compared against the direct provider values
+- `Bytewatt Sensors` shows the direct provider payload HEROS is currently reading
+- `Battery Hero Mapping Summary` maps battery-facing HEROS hero values to Bytewatt fields
+- `Solar Hero Mapping Summary` maps solar and MPPT-facing HEROS hero values to Bytewatt fields
+- `HEROS Hero Sensors` mirrors the active HEROS hero outputs so they can be compared against the direct provider values
 
 The direct provider payload is scope-aware and can include:
 
@@ -129,13 +144,13 @@ When Bytewatt exposes MPPT power fields, the Setup page can also surface:
 - `ppv3`
 - `ppv4`
 
-Per-battery rows are dynamic. HEM does not assume there are only two batteries.
+Per-battery rows are dynamic. HEROS does not assume there are only two batteries.
 If Bytewatt returns more live battery rows, the setup summaries expand to match.
 
 ### Forecast history
 
-HEM now records mapped solar forecast values inside each reporting snapshot so
-future predicted-vs-actual reports have HEM-owned forecast history rather than
+HEROS now records mapped solar forecast values inside each reporting snapshot so
+future predicted-vs-actual reports have HEROS-owned forecast history rather than
 depending only on Home Assistant Recorder.
 
 The optional Forecast.Solar historic-average source is configured separately
@@ -223,30 +238,30 @@ The panel still uses browser storage for a few UI-only preferences:
 - remembered `entry_id` hint used to reconnect the same HA config entry
 
 Those values are intentionally local to the current browser. They are not part
-of the shared Home Energy Manager configuration model.
+of the shared HEROS configuration model.
 
 ## Reporting storage
 
-HEM reporting currently uses a compact local archive for provider-aware daily
+HEROS reporting currently uses a compact local archive for provider-aware daily
 snapshots and CSV exports, while InfluxDB is the planned long-term store for
 detailed sensor history.
 
-InfluxDB is not wired up by HEM yet. The current live reporting/history flow
-still reads and writes only through the local HEM archive.
+InfluxDB is not wired up by HEROS yet. The current live reporting/history flow
+still reads and writes only through the local HEROS archive.
 
 Each stored report row now keeps both:
 
-- the normalized HEM power-diagram/report payload used by the panel
+- the normalized HEROS power-diagram/report payload used by the panel
 - the original dated provider chart payload for that scope/day
 
-That lets HEM reuse previously downloaded web-history days without fetching the
+That lets HEROS reuse previously downloaded web-history days without fetching the
 same provider chart data again.
 
 Report and archive diagnostics should read that HA-served archive directly.
 They must not depend on browser `localStorage` copies of report history.
 
 See [docs/REPORTING_STORAGE.md](C:/Dev/repos/home-energy-manager/docs/REPORTING_STORAGE.md)
-for the current archive layout and the intended split between HEM report
+for the current archive layout and the intended split between HEROS report
 storage and InfluxDB time-series retention.
 
 See [docs/REPORTING_PAYLOAD.md](C:/Dev/repos/home-energy-manager/docs/REPORTING_PAYLOAD.md)
@@ -292,7 +307,7 @@ automation:
 
 ## Configuration options
 
-After install, Settings → Devices & Services → Home Energy Manager → Configure:
+After install, Settings → Devices & Services → HEROS → Configure:
 
 - **Scan interval** (seconds) — minimum 30, default 60. Changes apply
   immediately (the integration reloads on options changes).
@@ -301,7 +316,7 @@ After install, Settings → Devices & Services → Home Energy Manager → Confi
 
 - **A repair issue says "Host inverter not configured"** — you have more than
   one inverter on the account and no Host has been selected. Reconfigure
-  (Settings → Devices & Services → Home Energy Manager → ⋮ → Reconfigure) and pick one.
+  (Settings → Devices & Services → HEROS → ⋮ → Reconfigure) and pick one.
 - **Submit button shows partial failure** — the notification names which
   batch failed (battery or grid feed-in) and the error reason. Your unsaved
   changes are kept; fix and Submit again.

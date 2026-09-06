@@ -491,10 +491,10 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 started = bool(result.get("ok"))
                 feedback_message = (
-                    f"HEM schedule started charging: {active_row.label} "
+                    f"HEROS schedule started charging: {active_row.label} "
                     f"({active_row.start_time}-{active_row.end_time}, SOC {active_row.cutoff_soc}%)."
                     if started
-                    else str(result.get("message") or "HEM schedule charge start failed")
+                    else str(result.get("message") or "HEROS schedule charge start failed")
                 )
                 await policy_store.async_record_feedback(
                     scope_key=schedule.scope_key,
@@ -507,7 +507,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     async_create(
                         self.hass,
                         feedback_message,
-                        title="HEM Charge Schedule",
+                        title="HEROS Charge Schedule",
                         notification_id=NOTIFICATION_POLICY_CHARGE,
                     )
                 async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
@@ -516,7 +516,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     scope_key=schedule.scope_key,
                     action="scheduler_manual_stop_hold",
                     ok=True,
-                    message="HEM schedule is active, but manual stop is holding charge off until the next schedule window.",
+                    message="HEROS schedule is active, but manual stop is holding charge off until the next schedule window.",
                     charging_now=False,
                 )
                 async_dispatcher_send(self.hass, signal_policy_charge_changed(self.entry_id))
@@ -526,7 +526,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     action="scheduler_force_charge_already_active",
                     ok=True,
                     message=(
-                        f"HEM schedule is active for {active_row.label}, and force charge is already active "
+                        f"HEROS schedule is active for {active_row.label}, and force charge is already active "
                         f"(SOC {soc if soc is not None else 'unknown'} / cutoff {active_row.cutoff_soc}%)."
                     ),
                     charging_now=True,
@@ -548,7 +548,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     action="scheduler_no_active_charge_row",
                     ok=True,
                     message=(
-                        f"HEM Charge Policy evaluated: no active row matched now "
+                        f"HEROS Charge Policy evaluated: no active row matched now "
                         f"(SOC {soc if soc is not None else 'unknown'})."
                     ),
                     charging_now=False,
@@ -559,7 +559,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
             manager._client.host_sys_sn = original_sys_sn  # noqa: SLF001
 
     def _policy_charge_manual_stop_holds_window(self, schedule, now_local: datetime, holiday_set: set[str]) -> bool:
-        """Avoid immediately restarting a HEM scheduled charge after a manual stop."""
+        """Avoid immediately restarting a HEROS scheduled charge after a manual stop."""
         if schedule.last_command_action != "stop_force_charge" or schedule.last_command_ok is not True:
             return False
         try:
@@ -579,7 +579,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def _ensure_bytewatt_schedule_disabled(self, system_id: str, manager) -> None:
-        """Turn off provider-side charge/discharge cycles when HEM owns the schedule."""
+        """Turn off provider-side charge/discharge cycles when HEROS owns the schedule."""
         api = BatterySettingsAPI(manager._client)  # noqa: SLF001
         current = await api.fetch_current_settings(max_retries=1, retry_delay=0)
         if current is None:

@@ -35,6 +35,12 @@ _LOGGER = logging.getLogger(__name__)
 HISTORY_DIR_NAME = "home-energy-manager-history"
 HISTORY_FILE_NAME = "history.json"
 
+
+def _local_date_iso() -> str:
+    """Return today's local date without depending on HA's optional dt helper."""
+    default_zone = getattr(dt_util, "DEFAULT_TIME_ZONE", None)
+    return datetime.now(default_zone).date().isoformat()
+
 FORECAST_SNAPSHOT_FIELDS: tuple[tuple[str, str], ...] = (
     ("generation_today", CONF_FORECAST_GENERATION_TODAY_ENTITY),
     ("generation_tomorrow", CONF_FORECAST_GENERATION_TOMORROW_ENTITY),
@@ -110,7 +116,7 @@ def _synthesized_power_diagram(
         "date": reporting_date,
         "meta": {
             "source": "synthesized",
-            "label": "Home Energy Manager",
+            "label": "HEROS",
             "date": reporting_date,
         },
         "summary": {
@@ -144,7 +150,7 @@ def build_reporting_payload(
     reporting_date = str(
         battery_data.get("reporting_date")
         or battery_data.get("Power_Diagram", {}).get("date")
-        or dt_util.now().date().isoformat()
+        or _local_date_iso()
     )
     power_diagram = battery_data.get("Power_Diagram") or {}
     power_diagram_source = "provider_power_diagram"
@@ -358,7 +364,7 @@ class ByteWattReportHistory:
         label = label or payload.get("label") or scope_key
         record_date = record_date or str(
             payload.get("power_diagram", {}).get("date")
-            or dt_util.now().date().isoformat()
+            or _local_date_iso()
         )
         payload["reporting_date"] = record_date
         meta = payload.setdefault("meta", {})

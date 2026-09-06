@@ -53,7 +53,7 @@ export class HemOverviewPage extends LitElement {
         <div>
           <p class="eyebrow">Overview</p>
           <h2>Energy snapshot</h2>
-          <p>Mocked HEM data is intentionally behind a provider boundary so the same cards can later use Home Assistant entities.</p>
+          <p>Mocked HEROS data is intentionally behind a provider boundary so the same cards can later use Home Assistant entities.</p>
         </div>
       </section>
 

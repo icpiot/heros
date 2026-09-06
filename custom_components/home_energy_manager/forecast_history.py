@@ -1,4 +1,4 @@
-"""Forecast.Solar historic-average support for Home Energy Manager."""
+"""Forecast.Solar historic-average support for HEROS."""
 from __future__ import annotations
 
 from dataclasses import dataclass

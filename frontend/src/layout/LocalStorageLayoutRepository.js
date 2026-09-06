@@ -26,7 +26,7 @@ export class LocalStorageLayoutRepository {
 
       return this._mergeWithDefaults(parsed.items);
     } catch (error) {
-      console.warn("HEM layout restore failed; using defaults.", error);
+      console.warn("HEROS layout restore failed; using defaults.", error);
       return this.getDefaultLayout();
     }
   }

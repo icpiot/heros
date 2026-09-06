@@ -1,6 +1,6 @@
 {
   "domain": "home_energy_manager",
-  "name": "Home Energy Manager",
+  "name": "HEROS",
   "codeowners": ["@icpiot"],
   "config_flow": true,
   "dependencies": [],

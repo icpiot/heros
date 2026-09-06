@@ -6,7 +6,7 @@ class ByteWattDebugCard extends HTMLElement {
     this._config = {
       entity_prefix: prefix,
       settings_target: config?.settings_target || `select.house_${prefix}_settings_target`,
-      title: config?.title || "Home Energy Manager Debug",
+      title: config?.title || "HEROS Debug",
       ...config,
     };
     this._status = "";
@@ -1316,7 +1316,7 @@ class ByteWattDebugCard extends HTMLElement {
         <div class="shell">
           <div class="header">
             <div class="title">
-              <span>HEM</span>
+              <span>HEROS</span>
               <span>${this._escape(this._config.title)}</span>
           <span class="badge">v${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}</span>
             </div>
@@ -1517,6 +1517,6 @@ if (typeof customElements !== "undefined" && !customElements.get("home-energy-ma
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "home-energy-manager-debug-card",
-  name: "Home Energy Manager Debug Card",
-  description: `Home Energy Manager debug card build ${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}.`,
+  name: "HEROS Debug Card",
+  description: `HEROS debug card build ${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}.`,
 });

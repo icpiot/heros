@@ -1,4 +1,4 @@
-"""API client for Home Energy Manager provider connections."""
+"""API client for HEROS provider connections."""
 import base64
 import json
 import logging
@@ -148,7 +148,7 @@ def _provider_power_diagram(
     summary: dict[str, Any],
     scope_label: str,
 ) -> dict[str, Any]:
-    """Normalize the provider's dated chart payload to the HEM report shape."""
+    """Normalize the provider's dated chart payload to the HEROS report shape."""
     provider_snapshot = dict(stats_data) if isinstance(stats_data, dict) else {}
     time_points = stats_data.get("time") if isinstance(stats_data.get("time"), list) else []
     solar_curve = stats_data.get("ppvinverterPv") if isinstance(stats_data.get("ppvinverterPv"), list) else stats_data.get("ppv")

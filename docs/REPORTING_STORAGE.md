@@ -1,8 +1,8 @@
 # Reporting Storage
 
-## Current HEM report storage
+## Current HEROS report storage
 
-Home Energy Manager already maintains a compact local report archive for the
+HEROS already maintains a compact local report archive for the
 panel and export flows.
 
 Current local storage:
@@ -59,7 +59,7 @@ Background behavior:
 - a fresh install schedules initial report-history backfill
 - each scope is downloaded independently
 - valid power-diagram rows are persisted to `history.json`
-- each stored row keeps both the normalized HEM chart series and the original
+- each stored row keeps both the normalized HEROS chart series and the original
   provider day payload so later report work does not need to re-download the
   same web chart day
 - the aggregate `all` scope should store the provider day chart as well, using
@@ -91,7 +91,7 @@ Background behavior:
   energy totals should be derived from the cached poll intervals instead of
   inheriting stale full-day backend totals from an older base report
 - that live cache is held only in the active report-card session and resets when
-  the local browser day changes; it is a rendering cache rather than shared HEM
+  the local browser day changes; it is a rendering cache rather than shared HEROS
   configuration
 - live chart refresh cadence is period-aware: `1H` can refresh every minute,
   while `6H`, `12H`, and `24H` should refresh at most every five minutes
@@ -119,23 +119,23 @@ InfluxDB is the intended long-term store for detailed sensor history.
 Current status:
 
 - planned target only
-- no HEM-managed Influx write path is implemented yet
-- current report/history features still rely on the HEM local archive described above
+- no HEROS-managed Influx write path is implemented yet
+- current report/history features still rely on the HEROS local archive described above
 
 Planned role for InfluxDB:
 
 - retain detailed time-series sensor data for long-range analysis
-- support higher-resolution historical queries than the compact HEM archive
-- complement the HEM report archive rather than replace it
+- support higher-resolution historical queries than the compact HEROS archive
+- complement the HEROS report archive rather than replace it
 
-HEM local archive remains responsible for:
+HEROS local archive remains responsible for:
 
 - provider-aware report snapshots
 - report-card rendering inputs
 - daily report exports
 - lightweight local history inspection inside Home Assistant
 
-InfluxDB should be treated as the long-term detailed sensor backend, while HEM
+InfluxDB should be treated as the long-term detailed sensor backend, while HEROS
 keeps the compact provider/report-oriented layer used directly by the panel.
 
 ## Current open issues
@@ -181,7 +181,7 @@ These are the reporting items that still need attention:
 
 ## Web chart presentation notes
 
-The provider web chart currently shows these interaction details that HEM should
+The provider web chart currently shows these interaction details that HEROS should
 preserve or mirror when the report work resumes:
 
 - the plotted series use shaded fills instead of only line outlines
@@ -204,7 +204,7 @@ preserve or mirror when the report work resumes:
 ## UI requirements to carry across report pages
 
 These layout rules are intended to apply to the report catalog, power diagram,
-statistical diagram, solar, pricing, and future report pages so the whole HEM
+statistical diagram, solar, pricing, and future report pages so the whole HEROS
 report area stays compact and consistent:
 
 - keep report controls in the smallest practical number of rows
@@ -320,7 +320,7 @@ view with these behaviors:
 - the exact source-mapping rules for that stacked report should be decided when
   the report is built, not locked in yet
 - Forecast.Solar historic-average backfill should be treated as an optional
-  benchmark source and cached by HEM after a successful provider test, rather
+  benchmark source and cached by HEROS after a successful provider test, rather
   than being fetched repeatedly for the same date/site/plane
 - the `Trend` report should be the long-range direction view, while the
   `Statistical diagram` remains the calendar-style history breakdown

@@ -48,7 +48,7 @@ export class HemReportPage extends LitElement {
       <section class="page-head">
         <p class="eyebrow">Report</p>
         <h2>Report workspace</h2>
-        <p>Mock reporting cards for visually composing the HEM summary report.</p>
+        <p>Mock reporting cards for visually composing the HEROS summary report.</p>
       </section>
 
       <section class=${this.editingLayout ? "layout-toolbar editing" : "layout-toolbar"}>

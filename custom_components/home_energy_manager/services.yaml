@@ -1,13 +1,13 @@
 force_reconnect:
   name: Force Reconnect
   description: >-
-    Force the Home Energy Manager integration to reconnect to the API when it appears
+    Force the HEROS integration to reconnect to the API when it appears
     to be stuck. Resets the client, re-authenticates, and refreshes data.
   fields:
     entry_id:
       name: Integration ID
       description: >-
-        Specific Home Energy Manager integration to act on. Required only if multiple
+        Specific HEROS integration to act on. Required only if multiple
         accounts are configured.
       example: "abcdef1234"
       required: false
@@ -17,13 +17,13 @@ force_reconnect:
 health_check:
   name: Health Check
   description: >-
-    Run a comprehensive health check on the Home Energy Manager integration. Results
+    Run a comprehensive health check on the HEROS integration. Results
     are shown in a persistent notification.
   fields:
     entry_id:
       name: Integration ID
       description: >-
-        Specific Home Energy Manager integration to act on. Required only if multiple
+        Specific HEROS integration to act on. Required only if multiple
         accounts are configured.
       example: "abcdef1234"
       required: false
@@ -950,11 +950,11 @@ pricing_set_holidays:
 
 policy_charge_save:
   name: Save Policy Charge
-  description: Save the shared HEM battery charge schedule for the currently selected settings target.
+  description: Save the shared HEROS battery charge schedule for the currently selected settings target.
   fields:
     policy_enabled:
       name: Policy Enabled
-      description: Turn the HEM charge policy on or off for the current target.
+      description: Turn the HEROS charge policy on or off for the current target.
       required: false
       selector:
         boolean:
@@ -1121,7 +1121,7 @@ set_forecast_mapping:
 
 set_forecast_history_source:
   name: Set Forecast History Source
-  description: Persist the optional Forecast.Solar historic-average source used for future HEM forecast benchmark/backfill work.
+  description: Persist the optional Forecast.Solar historic-average source used for future HEROS forecast benchmark/backfill work.
   fields:
     forecast_history_provider:
       name: Forecast History Provider

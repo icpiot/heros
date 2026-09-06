@@ -61,7 +61,7 @@ class BatterySettingsAPI:
                 "Battery settings requests are using an empty host_system_id. "
                 "This is safe for single-inverter accounts but ambiguous for "
                 "multi-inverter accounts — open Settings → Devices & Services "
-                "→ Home Energy Manager → Reconfigure to pick the Host inverter explicitly."
+                "→ HEROS → Reconfigure to pick the Host inverter explicitly."
             )
             self._client._warned_empty_host_id = True
         return host_id

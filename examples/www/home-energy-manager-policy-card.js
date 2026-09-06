@@ -3141,8 +3141,8 @@ if (typeof customElements !== "undefined" && !customElements.get("home-energy-ma
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "home-energy-manager-policy-card",
-  name: "Home Energy Manager Policy Card",
-  description: `Home Energy Manager policy card build ${HOME_ENERGY_MANAGER_POLICY_CARD_BUILD}.`,
+  name: "HEROS Policy Card",
+  description: `HEROS policy card build ${HOME_ENERGY_MANAGER_POLICY_CARD_BUILD}.`,
 });
 
 window.homeEnergyManagerPolicyCardBuild = HOME_ENERGY_MANAGER_POLICY_CARD_BUILD;

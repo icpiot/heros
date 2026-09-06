@@ -1,4 +1,4 @@
-"""Config flow for Home Energy Manager integration."""
+"""Config flow for HEROS integration."""
 from __future__ import annotations
 
 import logging
@@ -227,7 +227,7 @@ def _forecast_autofill_for_provider(hass, provider: str) -> dict[str, str]:
 
 
 class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Home Energy Manager."""
+    """Handle a config flow for HEROS."""
 
     VERSION = CURRENT_ENTRY_VERSION
 
@@ -282,7 +282,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             # Prevent the same account being configured twice — the
-            # username uniquely identifies a Home Energy Manager account.
+            # username uniquely identifies a HEROS account.
             await self.async_set_unique_id(user_input[CONF_USERNAME].lower())
             self._abort_if_unique_id_configured()
 
@@ -446,7 +446,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _create_entry(self):
         return self.async_create_entry(
-            title=f"Home Energy Manager ({self._user_input[CONF_USERNAME]})",
+            title=f"HEROS ({self._user_input[CONF_USERNAME]})",
             data=self._user_input,
         )
 

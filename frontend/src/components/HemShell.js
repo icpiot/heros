@@ -24,10 +24,10 @@ export class HemShell extends LitElement {
         <header>
           <div>
             <p class="eyebrow">Standalone frontend</p>
-            <h1>Home Energy Manager</h1>
-            <p class="lede">Develop and visually tune HEM outside Home Assistant.</p>
+            <h1>HEROS</h1>
+            <p class="lede">Develop and visually tune HEROS outside Home Assistant.</p>
           </div>
-          <nav aria-label="HEM pages">
+          <nav aria-label="HEROS pages">
             ${pages.map(([page, icon, label]) => html`
               <button
                 class=${this.activePage === page ? "active" : ""}

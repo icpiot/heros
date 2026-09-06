@@ -1,11 +1,11 @@
-"""Constants for the Home Energy Manager integration."""
+"""Constants for the HEROS integration."""
 
 DOMAIN = "home_energy_manager"
 CONF_PROVIDER = "provider"
 PROVIDER_BYTEWATT = "bytewatt"
 PROVIDER_OTHER = "other"
-DEVICE_NAME = "Home Energy Manager"
-DEVICE_MANUFACTURER = "Home Energy Manager"
+DEVICE_NAME = "HEROS"
+DEVICE_MANUFACTURER = "HEROS"
 DEVICE_MODEL = "Battery Management System"
 
 # Configuration

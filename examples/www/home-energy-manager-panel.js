@@ -1,8 +1,8 @@
 import "./home-energy-manager-policy-card.js?v=008";
 import "./home-energy-manager-debug-card.js?v=035";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "482";
-const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=395";
+const HOME_ENERGY_MANAGER_PANEL_BUILD = "483";
+const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=396";
 const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
 const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
@@ -2011,7 +2011,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!mapping || !this._hass) {
       this._forecastSaveStatus = {
         type: "error",
-        message: "Cannot save yet because Home Assistant is still loading HEM.",
+        message: "Cannot save yet because Home Assistant is still loading HEROS.",
       };
       this._render();
       return;
@@ -2375,7 +2375,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!this._hass) {
       this._batterySaveStatus = {
         type: "error",
-        message: "Cannot save hero mappings yet because Home Assistant is still loading HEM.",
+        message: "Cannot save hero mappings yet because Home Assistant is still loading HEROS.",
       };
       this._render();
       return;
@@ -2557,7 +2557,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!mapping || !this._hass) {
       this._batterySaveStatus = {
         type: "error",
-        message: "Cannot save yet because Home Assistant is still loading HEM.",
+        message: "Cannot save yet because Home Assistant is still loading HEROS.",
       };
       this._render();
       return;
@@ -2795,15 +2795,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._config?.provider ||
       this._config?.connection_name ||
       this._config?.connection_label ||
-      "Home Energy Manager";
+      "HEROS";
     const normalized = String(rawName || "").trim();
 
     if (!normalized) {
-      return "Home Energy Manager";
+      return "HEROS";
     }
 
     if (/^home energy manager$/i.test(normalized)) {
-      return "Home Energy Manager";
+      return "HEROS";
     }
 
     if (/^[a-z0-9_-]+$/i.test(normalized)) {
@@ -3967,7 +3967,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     model.charging_now = false;
     model.last_command_ok = null;
     model.last_command_at = Date.now();
-    model.last_command_message = "Stopping charge and disabling HEM Charge Policy...";
+    model.last_command_message = "Stopping charge and disabling HEROS Charge Policy...";
     model.updated_at = new Date().toISOString();
     this._savePolicyChargeUi(model);
     this._render();
@@ -3995,7 +3995,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         charging_now: false,
         last_command_ok: true,
         last_command_at: Date.now(),
-        last_command_message: "Stop command sent successfully. HEM Charge Policy is now disabled.",
+        last_command_message: "Stop command sent successfully. HEROS Charge Policy is now disabled.",
         updated_at: new Date().toISOString(),
       });
       this._policyChargeUiDirty = false;
@@ -4143,7 +4143,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         last_command_ok: true,
         last_command_at: Date.now(),
         last_command_message: policyEnabled
-          ? "Charge policy saved and applied. HEM is checking the schedule now."
+          ? "Charge policy saved and applied. HEROS is checking the schedule now."
           : "Charge policy saved as disabled.",
         charging_now: policyEnabled ? Boolean(model.charging_now) : false,
         policy_enabled: policyEnabled,
@@ -5206,7 +5206,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       });
     });
 
-    pushSection(items, "Live HEM Highlights");
+    pushSection(items, "Live HEROS Highlights");
     items.push(
       { label: "Overview Battery", value: this._formattedState("battery_percentage") },
       { label: "Overview Solar", value: this._formattedState("pv_power") },
@@ -5293,7 +5293,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         key: "managed",
         label: "Managed",
         value: String(counts.managed),
-        note: "Entities provided by Home Energy Manager (HEM).",
+        note: "Entities provided by HEROS (Home Energy Reporting & Optimisation System).",
         description: "These are the entities the integration is explicitly exposing for the panel.",
         items: [
           { label: "Managed entities", value: String(counts.managed) },
@@ -5353,7 +5353,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
             <p>
             This is the daily control surface for battery, solar, grid, and future pricing
-            workflows in HEM. The panel stays focused on the most useful actions first.
+            workflows in HEROS. The panel stays focused on the most useful actions first.
           </p>
         </article>
 
@@ -5409,7 +5409,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Live stats</span>
             </div>
             <p>
-              Current grid usage and the related daily totals from the live HEM entities.
+              Current grid usage and the related daily totals from the live HEROS entities.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList(gridConsumptionStats)}
@@ -5536,22 +5536,22 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
     const batteryPolicyTiles = [
       { label: "Active Control State", value: activeControlState, note: providerChargingState === null ? "Waiting for provider status" : "Live provider force-charge state" },
-      { label: "Selected Target", value: this._selectedSettingsTargetLabel(), note: "Current HEM control scope" },
+      { label: "Selected Target", value: this._selectedSettingsTargetLabel(), note: "Current HEROS control scope" },
       { label: "Battery SOC", value: this._selectedBatterySoc(policyState), note: "Selected target live SOC" },
       { label: "Battery Total Charge Rate", value: batteryTotalChargeRate, note: liveBatteryRows.length ? "Sum of live battery pbat" : "Derived from live battery power" },
       ...batteryChargeRateTiles,
       { label: "Grid to Battery", value: this._formatPowerValue(chargeSource.gridToBatteryW, "0 W"), note: chargeSource.gridToBatteryW > 25 ? "Live grid import feeding charge" : "No live grid charge detected" },
       { label: "Solar to Battery", value: this._formatPowerValue(chargeSource.solarToBatteryW, "0 W"), note: chargeSource.solarToBatteryW > 25 ? "Live solar surplus feeding charge" : "No live solar charge detected" },
       { label: "Charging Source", value: chargeSource.source, note: chargeSource.note },
-      { label: "Charge Policy", value: chargeModel.policy_enabled ? "Enabled" : "Disabled", note: "HEM scheduled charge control" },
+      { label: "Charge Policy", value: chargeModel.policy_enabled ? "Enabled" : "Disabled", note: "HEROS scheduled charge control" },
     ];
     const chargePolicyEnabled = Boolean(chargeModel.policy_enabled);
     const chargeWarningMessage = this._batteryProviderKey(this._config?.battery_provider) === "bytewatt_web"
       ? "Existing Charge Schedules set in Web will be DISABLED."
       : "";
     const chargeStatusMessage = liveChargingState
-      ? "Charging is active from live force charge or HEM schedule state."
-      : "Charging is not active from live force charge or HEM schedule state.";
+      ? "Charging is active from live force charge or HEROS schedule state."
+      : "Charging is not active from live force charge or HEROS schedule state.";
     const chargeImmediateAction = liveChargingState
       ? `<button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-stop-now>Stop Charging</button>`
       : `<button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-policy-charge-toggle-now>Charge Now</button>`;
@@ -5649,7 +5649,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <div class="pricing-rule-list pricing-rule-list--attached policy-charge-row-list">
           <div class="pricing-record-list-section">
             <div class="pricing-record-section__heading">
-              <strong>Charge rows saved in HEM</strong>
+              <strong>Charge rows saved in HEROS</strong>
               <span>${chargeRows.length} item(s)</span>
             </div>
             ${chargeRowCards}
@@ -5712,7 +5712,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>ByteWatt-style charge, discharge, feed-in, and reserve settings</span>
           </div>
           <p>
-            This page shows the live ByteWatt policy settings inside the HEM panel so charge,
+            This page shows the live ByteWatt policy settings inside the HEROS panel so charge,
             discharge, feed-in, and off-grid rules stay in one place.
           </p>
         </article>
@@ -5863,7 +5863,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </div>
             <p>
               These links open the policy build files directly from the Home Assistant local
-              directory so you can inspect the generated contents without leaving HEM.
+              directory so you can inspect the generated contents without leaving HEROS.
             </p>
             <ul class="key-list key-list--compact">
               ${this._valueList(policyArtifacts)}
@@ -6106,8 +6106,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       { label: "Local scope CSVs", value: "One CSV per scope for exported daily report rows" },
       { label: "Current purpose", value: "Power diagram snapshots, daily report rows, and archive backfill state" },
       { label: "Long-term detailed data", value: "InfluxDB will hold detailed sensor history for long-range analysis" },
-      { label: "Influx role", value: "Detailed time-series retention beyond the compact HEM archive" },
-      { label: "HEM archive role", value: "Provider-aware report snapshots kept lightweight for the panel and exports" },
+      { label: "Influx role", value: "Detailed time-series retention beyond the compact HEROS archive" },
+      { label: "HEROS archive role", value: "Provider-aware report snapshots kept lightweight for the panel and exports" },
     ];
     return `
       <section class="report">
@@ -6169,7 +6169,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <h2>Archive Status</h2>
               <span>Background storage</span>
             </div>
-            <p>Payload source rows show whether the current report came from backend reporting, which storage layer it belongs to, and whether the chart itself came from a provider power diagram or HEM synthesis.</p>
+            <p>Payload source rows show whether the current report came from backend reporting, which storage layer it belongs to, and whether the chart itself came from a provider power diagram or HEROS synthesis.</p>
             ${archiveActionLinks ? `
               <div class="pricing-rule__actions--inline report-actions">
                 ${archiveActionLinks}
@@ -6187,7 +6187,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <h2>Storage Strategy</h2>
               <span>Local archive + Influx</span>
             </div>
-            <p>HEM keeps compact provider-aware daily report snapshots for panel rendering and exports, while InfluxDB is the long-term detailed sensor store for deeper time-series analysis.</p>
+            <p>HEROS keeps compact provider-aware daily report snapshots for panel rendering and exports, while InfluxDB is the long-term detailed sensor store for deeper time-series analysis.</p>
             <ul class="key-list key-list--compact">
               ${this._valueList(storageItems)}
             </ul>
@@ -6397,7 +6397,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             Choose the forecast provider you already have installed, then map the sensor
             entities that represent the broader forecast.solar outputs such as today,
             tomorrow, hourly production, remaining production, power estimates, and peak
-            times. HEM treats the provider as a source of entities, not a hard dependency.
+            times. HEROS treats the provider as a source of entities, not a hard dependency.
           </p>
         </article>
 
@@ -6522,7 +6522,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Live provider values</span>
           </div>
           <p>
-            This lists the ByteWatt values HEM is currently reading from the provider API for the
+            This lists the ByteWatt values HEROS is currently reading from the provider API for the
             setup flow, including the live power fields and the merged daily and lifetime statistics.
           </p>
           <ul class="panel-list">
@@ -6538,15 +6538,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
         <article class="panel-card panel-card--wide forecast__mapping-card">
           <div class="panel-card__header">
-            <h2>HEM Hero Sensors.</h2>
-            <span>Live HEM values</span>
+            <h2>HEROS Hero Sensors.</h2>
+            <span>Live HEROS values</span>
           </div>
           <p>
             This now starts with the active mapped battery and solar hero summaries, followed by
-            the key live HEM highlights used across the panel for comparison against ByteWatt.
+            the key live HEROS highlights used across the panel for comparison against ByteWatt.
           </p>
           <ul class="panel-list">
-            ${this._valueList(hemHeroItems, "No HEM hero sensor values available yet")}
+            ${this._valueList(hemHeroItems, "No HEROS hero sensor values available yet")}
           </ul>
         </article>
       </section>
@@ -7077,7 +7077,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         <article class="panel-card">
           <div class="panel-card__header">
             <h2>Forecast Wiring</h2>
-            <span>HEM</span>
+            <span>HEROS</span>
           </div>
           <ul class="key-list key-list--compact">
             ${this._valueList([
@@ -7096,7 +7096,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
           <p>
             Forecast.Solar history is a long-term average benchmark, not an archived
-            past forecast. Configure and test it through Home Assistant actions; HEM
+            past forecast. Configure and test it through Home Assistant actions; HEROS
             stores successful forecast snapshots going forward and can cache historic
             averages after the source is enabled.
           </p>
@@ -7106,7 +7106,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         </article>
         <article class="panel-card">
           <div class="panel-card__header">
-            <h2>HEM Settings</h2>
+            <h2>HEROS Settings</h2>
             <span>Local</span>
           </div>
           <div class="settings-toggle">
@@ -7118,7 +7118,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               </span>
             </label>
             <p>
-              HEM settings keep the panel device-agnostic while still exposing the debug page
+              HEROS settings keep the panel device-agnostic while still exposing the debug page
               for deeper inspection, history checks, and provider-specific details.
             </p>
             <button
@@ -7148,7 +7148,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               </span>
             </label>
             <p>
-              This setting controls which battery connection mode HEM uses for policy warnings and live value labels.
+              This setting controls which battery connection mode HEROS uses for policy warnings and live value labels.
             </p>
             <button type="button" class="panel-nav__item" data-connection-type-save>Save Connection Type</button>
           </div>
@@ -7177,7 +7177,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span data-sync-log-meta>Latest pull output</span>
             </div>
             <p>
-              This shows the latest result from the Home Energy Manager pull script. If a pull
+              This shows the latest result from the HEROS pull script. If a pull
               fails, the reason appears here without opening the log file directly.
             </p>
             <div class="sync-status__actions">
@@ -7240,7 +7240,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Generic</span>
           </div>
           <p>
-            This page is reserved for deeper inspection of the Home Energy Manager (HEM) data model
+            This page is reserved for deeper inspection of the HEROS (Home Energy Reporting & Optimisation System) data model
             and the embedded diagnostics card. The controls stay device-agnostic.
           </p>
         </article>
@@ -7252,7 +7252,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               <span>Internal</span>
             </div>
             <p>
-              The values below should help confirm the panel is using the Home Energy Manager
+              The values below should help confirm the panel is using the HEROS
               entities and that the provider data is flowing through correctly.
             </p>
             <ul class="key-list key-list--compact">
@@ -7709,8 +7709,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     const connectionName = this._connectionName();
     const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
-    const title = this._config.title || "Home Energy Manager (HEM)";
-    const subtitle = this._config.subtitle || "Daily control surface for Home Energy Manager (HEM).";
+    const title = this._config.title || "HEROS (Home Energy Reporting & Optimisation System)";
+    const subtitle = this._config.subtitle || "Daily control surface for HEROS (Home Energy Reporting & Optimisation System).";
     const statusMeta = this._page === "settings"
       ? `
           <div class="status__meta">
@@ -7731,7 +7731,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           </div>
         </header>
 
-        <nav class="panel-nav" aria-label="Home Energy Manager (HEM) sections">
+        <nav class="panel-nav" aria-label="HEROS (Home Energy Reporting & Optimisation System) sections">
           ${availablePages.map((page) => `
               <a
                 class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"

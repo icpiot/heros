@@ -1,7 +1,7 @@
 # Modbus and Web Telemetry Register Map
 
 This document is the working master list for AlphaESS/Bytewatt telemetry fields
-used by Home Energy Manager.
+used by HEROS.
 
 It separates two related but different data surfaces:
 

@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "084";
+const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "085";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HOME_ENERGY_MANAGER_REPORT_CARD_TAG = `home-energy-manager-report-card-${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}`;
 const HOME_ENERGY_MANAGER_REPORT_PERIODS = [
@@ -1649,7 +1649,7 @@ class ByteWattReportCard extends HTMLElement {
     if (selection.aggregate) {
       return "All Batteries";
     }
-    return selection.remark || selection.sys_sn || selection.system_id || this._config.entity_prefix || "Home Energy Manager";
+    return selection.remark || selection.sys_sn || selection.system_id || this._config.entity_prefix || "HEROS";
   }
 
   _synthesizedReporting() {
@@ -2109,7 +2109,7 @@ class ByteWattReportCard extends HTMLElement {
     const times = powerDiagram.time || [];
 
     const rows = [
-      ["Label", reporting?.label || "Home Energy Manager"],
+      ["Label", reporting?.label || "HEROS"],
       ["Date", powerDiagram.date || ""],
       ["Live SOC", live.soc ?? ""],
       ["Live Battery Power", live.battery_power ?? ""],
@@ -2293,7 +2293,7 @@ class ByteWattReportCard extends HTMLElement {
         ? isRefreshingLive
           ? "Showing the last live snapshot while the selected scope refreshes."
           : "This view is using the current live ByteWatt API values for the selected scope."
-      : "This view is using the backend reporting payload stored through the HEM report archive flow.";
+      : "This view is using the backend reporting payload stored through the HEROS report archive flow.";
     return `
       <section class="data-source-banner ${toneClass}">
         <div class="data-source-title">${isLoading ? "Report Loading" : isRefreshingChart ? "Refreshing Today's Report Data" : isRefreshingLive ? "Refreshing Live Data" : isLive ? "Live Reporting Active" : "Backend Reporting Active"}</div>
@@ -2703,11 +2703,11 @@ class ByteWattReportCard extends HTMLElement {
         ? this._isTodaySelection(selectedDate)
           ? `<div class="chart-history-note">Today's time-series report loaded through ${this._escape(this._displayTimeLabel(powerDiagram.meta?.loaded_through || this._formatTimeLabel(new Date())))}.</div>`
           : historyNeedsRefresh
-            ? `<div class="chart-history-note chart-history-note--warn">Archived report for ${this._escape(selectedDate)} is incomplete after ${this._escape(historyLoadedThrough || "the last valid point")}; HEM has requested a forced refresh.</div>`
+            ? `<div class="chart-history-note chart-history-note--warn">Archived report for ${this._escape(selectedDate)} is incomplete after ${this._escape(historyLoadedThrough || "the last valid point")}; HEROS has requested a forced refresh.</div>`
             : `<div class="chart-history-note">Archived report loaded for ${this._escape(selectedDate)}.</div>`
         : this._historyLoading
           ? `<div class="chart-history-note">Loading report history for ${this._escape(selectedDate)}...</div>`
-          : `<div class="chart-history-note chart-history-note--warn">No stored report history found yet for ${this._escape(selectedDate)}. HEM has requested it.</div>`
+          : `<div class="chart-history-note chart-history-note--warn">No stored report history found yet for ${this._escape(selectedDate)}. HEROS has requested it.</div>`
       : "";
 
     return `
@@ -2756,7 +2756,7 @@ class ByteWattReportCard extends HTMLElement {
             ${this._summaryCards(reporting).join("")}
           </div>
           <div class="chart-stage" data-chart-stage>
-            <svg class="chart${animateClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Home Energy Manager power diagram chart">
+            <svg class="chart${animateClass}" viewBox="0 0 ${width} ${height}" role="img" aria-label="HEROS power diagram chart">
               <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis"></line>
               <line x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" class="axis"></line>
               <line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis axis-soc"></line>
@@ -3835,7 +3835,7 @@ class ByteWattReportCard extends HTMLElement {
         <div class="shell">
           <div class="title-row">
             <div class="title-icon">&#9889;</div>
-            <div class="title">Home Energy Manager Report</div>
+            <div class="title">HEROS Report</div>
                 <div class="version-badge">v${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}</div>
           </div>
           <div data-report-body>
@@ -4007,8 +4007,8 @@ if (typeof customElements !== "undefined") {
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "home-energy-manager-report-card",
-  name: "Home Energy Manager Report Card",
-  description: `Home Energy Manager reporting card build ${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}.`,
+  name: "HEROS Report Card",
+  description: `HEROS reporting card build ${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}.`,
 });
 
 window.homeEnergyManagerReportCardBuild = HOME_ENERGY_MANAGER_REPORT_CARD_BUILD;

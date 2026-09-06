@@ -131,7 +131,7 @@ export class HemHistoryPage extends LitElement {
     return html`
       <hem-card>
         <p class="card-label">Events</p>
-        <h3>Recent HEM activity</h3>
+        <h3>Recent HEROS activity</h3>
         <section class="events">
           <article><strong>09:14</strong><span>Solar exceeded home load</span></article>
           <article><strong>12:22</strong><span>Battery charge limit reached</span></article>

@@ -1,4 +1,4 @@
-"""Contract checks for the bundled Home Energy Manager panel."""
+"""Contract checks for the bundled HEROS panel."""
 from __future__ import annotations
 
 import json
@@ -440,7 +440,7 @@ def test_forecast_setup_page_keeps_mapping_status_and_live_summary_sections():
         "<h2>Battery Hero Mapping Summary.</h2>",
         "<h2>Solar Hero Mapping Summary.</h2>",
         "<h2>Bytewatt Sensors.</h2>",
-        "<h2>HEM Hero Sensors.</h2>",
+        "<h2>HEROS Hero Sensors.</h2>",
     ):
         assert heading in body
 

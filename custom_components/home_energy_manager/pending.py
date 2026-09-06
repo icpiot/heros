@@ -119,8 +119,8 @@ class ByteWattSubmitButton(_PendingButtonBase):
 
         any_success = result.battery_ok or result.feedin_ok
         title = (
-            "Home Energy Manager: settings partially saved" if any_success
-            else "Home Energy Manager: settings save failed"
+            "HEROS: settings partially saved" if any_success
+            else "HEROS: settings save failed"
         )
         notify_create(
             self.hass,
@@ -152,7 +152,7 @@ class ByteWattDiscardButton(_PendingButtonBase):
             self.hass,
             f"Discarded {count} unsaved setting change(s). Entities now reflect "
             f"the inverter's current state.",
-            title="Home Energy Manager: pending discarded",
+            title="HEROS: pending discarded",
             notification_id=f"bytewatt_discard_{entry_id}",
         )
         await self.coordinator.async_request_refresh()
