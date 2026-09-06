@@ -31,7 +31,10 @@ entity registries, history, dashboards, automations, helpers, and stored reports
 Changing names alone does not migrate that data.
 
 HEROS is provider-independent in scope. ByteWatt is the currently implemented
-provider; additional providers require adapters and validation before use.
+provider. A read-only [FoxESS Cloud V2 transport](docs/FOXESS_V2.md) now supports
+web-credential authentication and captured REST reads without an OpenAPI key.
+Its live connection and entity/reporting integration remain separate validation
+steps; it is not yet offered by the HEROS setup UI.
 
 ## Features
 

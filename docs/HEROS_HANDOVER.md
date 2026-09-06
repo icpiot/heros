@@ -36,7 +36,14 @@ ByteWatt remains the implemented provider. Config flow and runtime setup directl
 instantiate its client; the coordinator, settings manager, and reporting depend
 on ByteWatt behavior. A provider selector alone is not a complete abstraction.
 Additional providers need separate adapters and capability-aware shared code.
-No FoxESS implementation was added during this naming change.
+The naming change did not add FoxESS. Subsequent local work added an isolated
+read-only V2 client and Python WASM signer; see `docs/FOXESS_V2.md` for the scope,
+acceptance tests, operator-provided signer asset, and live validation status.
+The subsequent V2 local regression suite passed 200 tests (31 V2 tests), with
+the required real-WASM vector and two additional Node-reference vectors. This
+V2 work is not pushed or synced; live credentials are still needed for the
+read-only connection check. No setup UI, entity/reporting mapping, WebSocket,
+or control implementation was added.
 
 ## Validation and publication
 
