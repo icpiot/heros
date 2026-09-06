@@ -1,5 +1,5 @@
 export const OVERVIEW_LAYOUT_VERSION = 1;
-export const OVERVIEW_LAYOUT_STORAGE_KEY = "hem.frontend.layout.overview.v1";
+export const OVERVIEW_LAYOUT_STORAGE_KEY = "heros.frontend.layout.overview.v1";
 
 export const overviewDefaultLayout = [
   { id: "battery-state", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
@@ -11,8 +11,8 @@ export const overviewDefaultLayout = [
   { id: "pricing-summary", x: 8, y: 2, w: 4, h: 2, minW: 2, minH: 2 },
 ];
 
-export function createOverviewCards(hemState) {
-  const { battery, inverter, solar, pricing, home } = hemState;
+export function createOverviewCards(herosState) {
+  const { battery, inverter, solar, pricing, home } = herosState;
 
   return [
     {

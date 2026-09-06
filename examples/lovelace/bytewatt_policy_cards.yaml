@@ -1,5 +1,5 @@
 title: HEROS Policy
-path: home-energy-manager-policy
+path: heros-policy
 icon: mdi:battery-cog
 cards:
   - type: vertical-stack

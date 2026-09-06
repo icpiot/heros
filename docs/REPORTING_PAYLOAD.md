@@ -174,8 +174,8 @@ This is the metadata used by the Report page archive-status section.
 
 The current HEROS local reporting archive lives under:
 
-- `www/home-energy-manager-history/<entry_id>/history.json`
-- `www/home-energy-manager-history/<entry_id>/<scope>.csv`
+- `www/heros-history/<entry_id>/history.json`
+- `www/heros-history/<entry_id>/<scope>.csv`
 
 This archive is used for:
 

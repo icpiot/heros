@@ -8,7 +8,7 @@ In HEROS, "hero values" are the live values rendered in the hero or tile section
 
 The current source of truth is:
 
-- `examples/www/home-energy-manager-panel.js`
+- `examples/www/heros-panel.js`
 
 ## Current page definitions
 
@@ -127,7 +127,7 @@ Hero/tile values:
 
 The setup page mirror is currently rendered in:
 
-- `_hemHeroSetupItems()`
+- `_herosHeroSetupItems()`
 
 and displayed in:
 
@@ -295,11 +295,11 @@ summary, even though the values can appear in the same direct API payload.
 
 ## Related code locations
 
-- `examples/www/home-energy-manager-panel.js`
+- `examples/www/heros-panel.js`
 - `_overviewPage()`
 - `_batteryPage()`
 - `_policyPage()`
 - `_reportPage()`
 - `_solarPage()`
 - `_historyPage()`
-- `_hemHeroSetupItems()`
+- `_herosHeroSetupItems()`

@@ -14,5 +14,5 @@ from __future__ import annotations
 import os
 import sys
 
-# Make ``custom_components.home_energy_manager`` importable from the repo root.
+# Make ``custom_components.heros`` importable from the repo root.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

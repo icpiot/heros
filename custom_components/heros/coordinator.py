@@ -55,7 +55,7 @@ _LOGGER = logging.getLogger(__name__)
 # Notification IDs
 NOTIFICATION_RECOVERY = "bytewatt_recovery"
 NOTIFICATION_ERROR = "bytewatt_error"
-NOTIFICATION_POLICY_CHARGE = "home_energy_manager_policy_charge"
+NOTIFICATION_POLICY_CHARGE = "heros_policy_charge"
 INVERTER_REDISCOVERY_INTERVAL = timedelta(minutes=15)
 
 

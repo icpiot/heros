@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 
-export class HemActionButtonCard extends LitElement {
+export class HerosActionButtonCard extends LitElement {
   static properties = {
     label: { type: String },
     variant: { type: String },
@@ -29,15 +29,15 @@ export class HemActionButtonCard extends LitElement {
     article {
       align-items: center;
       background: linear-gradient(145deg, rgba(10, 20, 34, 0.96), rgba(12, 21, 40, 0.9));
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 20px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       box-sizing: border-box;
       display: flex;
       height: 100%;
       justify-content: center;
       min-height: 100%;
-      padding: var(--hem-action-padding, 10px);
+      padding: var(--heros-action-padding, 10px);
     }
 
     button {
@@ -80,4 +80,4 @@ export class HemActionButtonCard extends LitElement {
   `;
 }
 
-customElements.define("hem-action-button-card", HemActionButtonCard);
+customElements.define("heros-action-button-card", HerosActionButtonCard);

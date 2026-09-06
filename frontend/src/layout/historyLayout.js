@@ -1,5 +1,5 @@
 export const HISTORY_LAYOUT_VERSION = 1;
-export const HISTORY_LAYOUT_STORAGE_KEY = "hem.frontend.layout.history.v1";
+export const HISTORY_LAYOUT_STORAGE_KEY = "heros.frontend.layout.history.v1";
 
 export const historyDefaultLayout = [
   { id: "history-summary", x: 0, y: 0, w: 4, h: 3, minW: 3, minH: 2 },

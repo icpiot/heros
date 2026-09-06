@@ -4,19 +4,19 @@
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   line-height: 1.5;
-  --hem-bg: #07111d;
-  --hem-panel: #0a1422;
-  --hem-panel-2: #0e1b2e;
-  --hem-border: rgba(0, 218, 255, 0.38);
-  --hem-accent: #00e5ff;
-  --hem-accent-strong: #42a5ff;
-  --hem-accent-2: #25ffd2;
-  --hem-hot: #f054e8;
-  --hem-text: #f4f8ff;
-  --hem-muted: #b7c6d6;
-  --hem-shadow: 0 20px 70px rgba(0, 229, 255, 0.08);
-  background: var(--hem-bg);
-  color: var(--hem-text);
+  --heros-bg: #07111d;
+  --heros-panel: #0a1422;
+  --heros-panel-2: #0e1b2e;
+  --heros-border: rgba(0, 218, 255, 0.38);
+  --heros-accent: #00e5ff;
+  --heros-accent-strong: #42a5ff;
+  --heros-accent-2: #25ffd2;
+  --heros-hot: #f054e8;
+  --heros-text: #f4f8ff;
+  --heros-muted: #b7c6d6;
+  --heros-shadow: 0 20px 70px rgba(0, 229, 255, 0.08);
+  background: var(--heros-bg);
+  color: var(--heros-text);
 }
 
 * {
@@ -44,7 +44,7 @@ button {
   cursor: pointer;
 }
 
-.hem-button {
+.heros-button {
   align-items: center;
   border: 1px solid rgba(0, 229, 255, 0.55);
   border-radius: 999px;
@@ -60,21 +60,21 @@ button {
   text-decoration: none;
 }
 
-.hem-button.secondary {
+.heros-button.secondary {
   background: rgba(11, 25, 42, 0.86);
-  color: var(--hem-text);
+  color: var(--heros-text);
 }
 
-hem-editable-grid {
+heros-editable-grid {
   display: block;
 }
 
-hem-editable-grid .grid-shell {
+heros-editable-grid .grid-shell {
   border-radius: 24px;
   transition: box-shadow 160ms ease, background 160ms ease;
 }
 
-hem-editable-grid .grid-shell.editing {
+heros-editable-grid .grid-shell.editing {
   background:
     linear-gradient(rgba(0, 229, 255, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 229, 255, 0.06) 1px, transparent 1px);
@@ -83,22 +83,22 @@ hem-editable-grid .grid-shell.editing {
   padding: 2px;
 }
 
-hem-editable-grid .grid-stack {
+heros-editable-grid .grid-stack {
   min-height: 360px;
 }
 
-hem-editable-grid .grid-stack-item-content {
+heros-editable-grid .grid-stack-item-content {
   border-radius: 20px;
   overflow: visible;
   position: relative;
 }
 
-hem-editable-grid .card-content {
+heros-editable-grid .card-content {
   height: 100%;
   pointer-events: auto;
 }
 
-hem-editable-grid .drag-handle {
+heros-editable-grid .drag-handle {
   align-items: center;
   background: linear-gradient(135deg, #25d8ff, #f054e8);
   border-radius: 999px;
@@ -119,33 +119,33 @@ hem-editable-grid .drag-handle {
   z-index: 5;
 }
 
-hem-editable-grid .is-editing .grid-stack-item-content {
+heros-editable-grid .is-editing .grid-stack-item-content {
   box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.45);
   cursor: grab;
 }
 
-hem-editable-grid .is-editing .grid-stack-item-content:active {
+heros-editable-grid .is-editing .grid-stack-item-content:active {
   cursor: grabbing;
 }
 
-hem-editable-grid .is-editing .drag-handle {
+heros-editable-grid .is-editing .drag-handle {
   display: inline-flex;
   pointer-events: auto;
 }
 
-hem-editable-grid .is-editing .card-content {
+heros-editable-grid .is-editing .card-content {
   pointer-events: none;
   user-select: none;
 }
 
-hem-editable-grid .grid-stack-placeholder > .placeholder-content {
+heros-editable-grid .grid-stack-placeholder > .placeholder-content {
   background: rgba(37, 255, 210, 0.14);
   border: 1px dashed rgba(37, 255, 210, 0.85);
   border-radius: 20px;
 }
 
-hem-editable-grid .is-editing .ui-resizable-handle {
-  background: var(--hem-accent);
+heros-editable-grid .is-editing .ui-resizable-handle {
+  background: var(--heros-accent);
   border: 2px solid #03101a;
   border-radius: 999px;
   box-shadow: 0 0 14px rgba(0, 229, 255, 0.55);
@@ -153,22 +153,22 @@ hem-editable-grid .is-editing .ui-resizable-handle {
   opacity: 1 !important;
 }
 
-hem-editable-grid .is-editing .ui-resizable-se {
+heros-editable-grid .is-editing .ui-resizable-se {
   bottom: -7px;
   height: 16px;
   right: -7px;
   width: 16px;
 }
 
-hem-editable-grid .is-editing .ui-resizable-e,
-hem-editable-grid .is-editing .ui-resizable-w {
+heros-editable-grid .is-editing .ui-resizable-e,
+heros-editable-grid .is-editing .ui-resizable-w {
   height: 28px;
   margin-top: -14px;
   top: 50%;
   width: 10px;
 }
 
-hem-editable-grid .is-editing .ui-resizable-s {
+heros-editable-grid .is-editing .ui-resizable-s {
   bottom: -6px;
   height: 10px;
   left: 50%;
@@ -177,11 +177,11 @@ hem-editable-grid .is-editing .ui-resizable-s {
 }
 
 @media (max-width: 720px) {
-  hem-editable-grid .grid-shell.editing {
+  heros-editable-grid .grid-shell.editing {
     background-size: 100% 86px;
   }
 
-  hem-editable-grid .grid-stack {
+  heros-editable-grid .grid-stack {
     min-height: 720px;
   }
 }

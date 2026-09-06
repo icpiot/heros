@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   historyDefaultLayout,
 } from "../layout/historyLayout.js";
 
-export class HemHistoryPage extends LitElement {
+export class HerosHistoryPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -67,30 +67,30 @@ export class HemHistoryPage extends LitElement {
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderSummaryCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Today total</p>
         <h3>Net energy</h3>
         <strong class="hero-value">-5.5 kWh</strong>
         <p>Export positive for the day</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderImportExportCard() {
-    const home = this.hemState.home;
+    const home = this.herosState.home;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Import / export</p>
         <h3>Grid activity</h3>
         <section class="mini-grid">
@@ -98,14 +98,14 @@ export class HemHistoryPage extends LitElement {
           <article><span>Export</span><strong>${home.todayExportedKwh} kWh</strong></article>
           <article><span>Now</span><strong>${home.gridKw} kW</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderBatteryCard() {
-    const battery = this.hemState.battery;
+    const battery = this.herosState.battery;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery history</p>
         <h3>${battery.selectedBattery}</h3>
         <section class="mini-grid">
@@ -113,23 +113,23 @@ export class HemHistoryPage extends LitElement {
           <article><span>Peak</span><strong>91%</strong></article>
           <article><span>Now</span><strong>${battery.soc}%</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderSolarChartCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Solar production</p>
         <h3>Last 7 days</h3>
         ${this._bars([45, 72, 58, 88, 64, 92, 76])}
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderEventsCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Events</p>
         <h3>Recent HEROS activity</h3>
         <section class="events">
@@ -137,7 +137,7 @@ export class HemHistoryPage extends LitElement {
           <article><strong>12:22</strong><span>Battery charge limit reached</span></article>
           <article><strong>18:03</strong><span>Evening load started</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -189,9 +189,9 @@ export class HemHistoryPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -207,13 +207,13 @@ export class HemHistoryPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label,
     .mini-grid span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -238,7 +238,7 @@ export class HemHistoryPage extends LitElement {
     p,
     .layout-toolbar span,
     .events span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -256,7 +256,7 @@ export class HemHistoryPage extends LitElement {
     }
 
     button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -268,7 +268,7 @@ export class HemHistoryPage extends LitElement {
 
     button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .mini-grid {
@@ -295,7 +295,7 @@ export class HemHistoryPage extends LitElement {
     }
 
     .spark-bars span {
-      background: linear-gradient(180deg, var(--hem-accent-2), var(--hem-accent));
+      background: linear-gradient(180deg, var(--heros-accent-2), var(--heros-accent));
       border-radius: 999px 999px 4px 4px;
       flex: 1;
       min-width: 16px;
@@ -329,4 +329,4 @@ export class HemHistoryPage extends LitElement {
   `;
 }
 
-customElements.define("hem-history-page", HemHistoryPage);
+customElements.define("heros-history-page", HerosHistoryPage);

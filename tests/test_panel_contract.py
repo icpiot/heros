@@ -7,18 +7,18 @@ import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PANEL_PATH = ROOT / "examples" / "www" / "home-energy-manager-panel.js"
-INIT_PATH = ROOT / "custom_components" / "home_energy_manager" / "__init__.py"
-MANIFEST_PATH = ROOT / "custom_components" / "home_energy_manager" / "manifest.json"
-PANEL_EXAMPLE_PATH = ROOT / "examples" / "panel" / "home-energy-manager-panel_custom.yaml"
-CONFIG_FLOW_PATH = ROOT / "custom_components" / "home_energy_manager" / "config_flow.py"
-CONST_PATH = ROOT / "custom_components" / "home_energy_manager" / "const.py"
-SERVICES_PATH = ROOT / "custom_components" / "home_energy_manager" / "services.yaml"
+PANEL_PATH = ROOT / "examples" / "www" / "heros-panel.js"
+INIT_PATH = ROOT / "custom_components" / "heros" / "__init__.py"
+MANIFEST_PATH = ROOT / "custom_components" / "heros" / "manifest.json"
+PANEL_EXAMPLE_PATH = ROOT / "examples" / "panel" / "heros-panel_custom.yaml"
+CONFIG_FLOW_PATH = ROOT / "custom_components" / "heros" / "config_flow.py"
+CONST_PATH = ROOT / "custom_components" / "heros" / "const.py"
+SERVICES_PATH = ROOT / "custom_components" / "heros" / "services.yaml"
 LATEST_DEBUG_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_DEBUG_BUILD.txt"
 LATEST_REPORT_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_REPORT_BUILD.txt"
 README_PATH = ROOT / "README.md"
 EXAMPLES_README_PATH = ROOT / "examples" / "README.md"
-REPORT_CARD_WRAPPER_PATH = ROOT / "examples" / "www" / "home-energy-manager-report-card.js"
+REPORT_CARD_WRAPPER_PATH = ROOT / "examples" / "www" / "heros-report-card.js"
 
 
 def test_panel_build_matches_registered_cache_version():
@@ -35,8 +35,8 @@ def test_panel_build_matches_registered_cache_version():
 
 def test_panel_uses_provider_neutral_entity_namespace():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    assert "home_energy_manager(?:_|$)" in panel_source
-    assert "home_energy_manager_${key}" in panel_source
+    assert "heros(?:_|$)" in panel_source
+    assert "heros_${key}" in panel_source
     assert "|bytewatt" not in panel_source.lower()
 
 
@@ -74,10 +74,10 @@ def test_panel_routes_forecast_setup_and_configured_entity_lookup():
 
 def test_panel_section_navigation_uses_page_fragment_links():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    assert 'HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page"' in panel_source
-    assert 'HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery"' in panel_source
+    assert 'HEROS_PANEL_PAGE_FRAGMENT_KEY = "heros_page"' in panel_source
+    assert 'HEROS_PANEL_BATTERY_KEY = "heros.panel.battery"' in panel_source
     assert "_pageHref(page)" in panel_source
-    assert 'url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=' in panel_source
+    assert 'url.hash = `${HEROS_PANEL_PAGE_FRAGMENT_KEY}=' in panel_source
     assert 'data-page="${page.value}"' in panel_source
     assert 'class="panel-nav__item ${page.value === this._page ? "is-active" : ""}"' in panel_source
     assert "overview__actions" not in panel_source
@@ -130,7 +130,7 @@ def test_legacy_panel_example_keeps_module_url_at_panel_level():
 def test_readme_panel_url_matches_registered_build():
     readme = README_PATH.read_text(encoding="utf-8")
     integration_source = INIT_PATH.read_text(encoding="utf-8")
-    readme_build = re.search(r'home-energy-manager-panel\.js\?v=(\d+)', readme)
+    readme_build = re.search(r'heros-panel\.js\?v=(\d+)', readme)
     registered_build = re.search(r'panel\.js\?v=(\d+)', integration_source)
 
     assert readme_build is not None
@@ -163,7 +163,7 @@ def test_latest_report_build_marker_matches_report_card_import():
 def test_examples_readme_report_url_matches_report_build_marker():
     examples_readme = EXAMPLES_README_PATH.read_text(encoding="utf-8")
     latest_report_build = LATEST_REPORT_BUILD_PATH.read_text(encoding="utf-8")
-    readme_builds = re.findall(r'home-energy-manager-report-card\.js\?v=(\d+)', examples_readme)
+    readme_builds = re.findall(r'heros-report-card\.js\?v=(\d+)', examples_readme)
     marker_build = re.search(r'report-card\.js\?v=(\d+)', latest_report_build)
 
     assert readme_builds
@@ -185,7 +185,7 @@ def test_report_card_wrapper_import_matches_latest_report_build_chain():
 def test_examples_readme_debug_url_matches_debug_build_marker():
     examples_readme = EXAMPLES_README_PATH.read_text(encoding="utf-8")
     latest_debug_build = LATEST_DEBUG_BUILD_PATH.read_text(encoding="utf-8")
-    readme_builds = re.findall(r'home-energy-manager-debug-card\.js\?v=(\d+)', examples_readme)
+    readme_builds = re.findall(r'heros-debug-card\.js\?v=(\d+)', examples_readme)
     marker_build = re.search(r'debug-card\.js\?v=(\d+)', latest_debug_build)
 
     assert readme_builds
@@ -196,7 +196,7 @@ def test_examples_readme_debug_url_matches_debug_build_marker():
 def test_examples_readme_policy_url_matches_panel_policy_import():
     examples_readme = EXAMPLES_README_PATH.read_text(encoding="utf-8")
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    readme_builds = re.findall(r'home-energy-manager-policy-card\.js\?v=(\d+)', examples_readme)
+    readme_builds = re.findall(r'heros-policy-card\.js\?v=(\d+)', examples_readme)
     panel_import_build = re.search(r'policy-card\.js\?v=(\d+)', panel_source)
 
     assert readme_builds
@@ -300,16 +300,16 @@ def test_browser_storage_is_limited_to_ui_preferences_only():
     local_storage_keys = set(re.findall(r'localStorage\.(?:getItem|setItem|removeItem)\(([^)]+)\)', panel_source))
 
     assert {
-        "HOME_ENERGY_MANAGER_PANEL_PAGE_KEY",
-        "HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY",
-        "HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY",
-        "HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY",
-        '"home-energy-manager.panel.settings.focus"',
+        "HEROS_PANEL_PAGE_KEY",
+        "HEROS_PANEL_BATTERY_KEY",
+        "HEROS_PANEL_DEBUG_KEY",
+        "HEROS_PANEL_ENTRY_ID_KEY",
+        '"heros.panel.settings.focus"',
     }.issubset(local_storage_keys)
 
-    assert "home-energy-manager.panel.pricing.ui" not in panel_source
-    assert "home-energy-manager.panel.pricing.draft" not in panel_source
-    assert "home-energy-manager.panel.policy.charge.ui" not in panel_source
+    assert "heros.panel.pricing.ui" not in panel_source
+    assert "heros.panel.pricing.draft" not in panel_source
+    assert "heros.panel.policy.charge.ui" not in panel_source
 
 
 def test_pricing_group_services_are_registered_and_documented():
@@ -413,9 +413,9 @@ def test_setup_mapping_persistence_stays_in_backend_config_and_services():
     assert 'this._config?.battery_hero_mapping' in load_hero.group("body")
     assert 'this._config?.solar_hero_mapping' in load_hero.group("body")
 
-    assert 'callService("home_energy_manager", "set_forecast_mapping"' in save_forecast.group("body")
-    assert 'callService("home_energy_manager", "set_battery_mapping"' in save_battery.group("body")
-    assert 'callService("home_energy_manager", "set_hero_mapping"' in save_hero.group("body")
+    assert 'callService("heros", "set_forecast_mapping"' in save_forecast.group("body")
+    assert 'callService("heros", "set_battery_mapping"' in save_battery.group("body")
+    assert 'callService("heros", "set_hero_mapping"' in save_hero.group("body")
 
 
 def test_forecast_setup_page_keeps_mapping_status_and_live_summary_sections():
@@ -500,11 +500,11 @@ def test_report_page_uses_embedded_report_card_and_documents_storage_layers():
     assert "History JSON" in body
     assert "History JSON URL" in body
     assert "InfluxDB will hold detailed sensor history for long-range analysis" in body
-    assert "www/home-energy-manager-history/<entry_id>/history.json" in body
+    assert "www/heros-history/<entry_id>/history.json" in body
 
 
 def test_report_card_exposes_backend_vs_fallback_source_banner():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "synthesized_live_entities" in report_card_source
     assert "ephemeral_live_state" in report_card_source
@@ -519,7 +519,7 @@ def test_report_card_exposes_backend_vs_fallback_source_banner():
 
 
 def test_report_card_keeps_render_frozen_while_selector_only_opens():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "_shouldFreezeWhileSelectorOpen()" in report_card_source
     assert "this._renderDeferredWhileSelectorOpen = true;" in report_card_source
@@ -547,7 +547,7 @@ def test_panel_selector_hold_and_theme_service_avoid_stale_entry_flash_paths():
 
 
 def test_report_card_selection_meta_prefers_current_selector_state():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
 
     assert "_selectionMetaFromOption(option, attrs = this._selectorState()?.attributes || {})" in report_card_source
@@ -556,7 +556,7 @@ def test_report_card_selection_meta_prefers_current_selector_state():
 
 
 def test_report_card_seeds_live_timeseries_cache_and_normalizes_axis_to_kw():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "_seedLiveTimeSeriesReport(selection, reportDate, reporting, liveSource)" in report_card_source
     assert "this._recordLiveTimeSeriesPoint({" in report_card_source
@@ -573,7 +573,7 @@ def test_report_card_seeds_live_timeseries_cache_and_normalizes_axis_to_kw():
 
 
 def test_report_card_prefers_provider_chart_for_today_when_backend_series_exists():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "_recordHasRichPowerDiagramData(record)" in report_card_source
     assert "const richArchiveReport = richSelectedRecord ? this._overlayLiveSummaryOnReport({" in report_card_source
@@ -588,7 +588,7 @@ def test_report_card_prefers_provider_chart_for_today_when_backend_series_exists
 
 
 def test_report_card_tooltip_uses_svg_coordinate_conversion_and_limits_refresh_animation():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "_reportingChartAnimationSignature(reporting)" in report_card_source
     assert "period: this._periodPreset || \"24h\"" in report_card_source
@@ -651,7 +651,7 @@ def test_report_card_tooltip_uses_svg_coordinate_conversion_and_limits_refresh_a
 
 
 def test_report_card_treats_sparse_synthesized_archive_rows_as_missing_history():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "const powerDiagramSource = String(" in report_card_source
     assert 'powerDiagramSource === "synthesized_from_backend_snapshot"' in report_card_source
@@ -660,7 +660,7 @@ def test_report_card_treats_sparse_synthesized_archive_rows_as_missing_history()
 
 
 def test_report_card_supports_archived_date_selection_from_history():
-    report_card_source = (ROOT / "examples" / "www" / "home-energy-manager-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
 
     assert "data-report-date" in report_card_source
     assert "data-shift-date" in report_card_source
@@ -671,9 +671,9 @@ def test_report_card_supports_archived_date_selection_from_history():
 
 
 def test_debug_card_reads_archive_from_ha_without_browser_history_cache():
-    debug_card_source = (ROOT / "examples" / "www" / "home-energy-manager-debug-card.js").read_text(encoding="utf-8")
+    debug_card_source = (ROOT / "examples" / "www" / "heros-debug-card.js").read_text(encoding="utf-8")
 
     assert "history.json" in debug_card_source
-    assert "home-energy-manager-debug-history" not in debug_card_source
+    assert "heros-debug-history" not in debug_card_source
     assert "_writeLocalHistory" not in debug_card_source
     assert "_readLocalHistory" not in debug_card_source

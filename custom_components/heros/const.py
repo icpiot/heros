@@ -1,6 +1,6 @@
 """Constants for the HEROS integration."""
 
-DOMAIN = "home_energy_manager"
+DOMAIN = "heros"
 CONF_PROVIDER = "provider"
 PROVIDER_BYTEWATT = "bytewatt"
 PROVIDER_OTHER = "other"

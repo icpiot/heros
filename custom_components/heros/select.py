@@ -306,7 +306,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
 
         history_hint = {
             "enabled": True,
-            "base_url": f"/local/home-energy-manager-history/{self._config_entry.entry_id}/",
+            "base_url": f"/local/heros-history/{self._config_entry.entry_id}/",
             "status": str(
                 self._hass.data.get(DOMAIN, {})
                 .get(self._config_entry.entry_id, {})

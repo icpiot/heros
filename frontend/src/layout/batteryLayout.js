@@ -1,5 +1,5 @@
 export const BATTERY_LAYOUT_VERSION = 2;
-export const BATTERY_LAYOUT_STORAGE_KEY = "hem.frontend.layout.battery.v2";
+export const BATTERY_LAYOUT_STORAGE_KEY = "heros.frontend.layout.battery.v2";
 
 export const batteryDefaultLayout = [
   { id: "battery-summary", x: 0, y: 0, w: 4, h: 3, minW: 3, minH: 2 },

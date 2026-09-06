@@ -34,10 +34,10 @@ Optional settings:
 
 ## Services
 
-`home_energy_manager.set_forecast_history_source` persists the optional source
+`heros.set_forecast_history_source` persists the optional source
 configuration.
 
-`home_energy_manager.test_forecast_history_source` calls the provider once and
+`heros.test_forecast_history_source` calls the provider once and
 creates a Home Assistant notification with non-secret test metadata, including
 HTTP status and sample counts. It does not expose the API key.
 

@@ -2,18 +2,18 @@
 
 This folder contains two UI artifacts linked to the current branch work:
 
-- `lovelace/home_energy_manager_policy_cards.yaml`
+- `lovelace/heros_policy_cards.yaml`
   Immediate-use Lovelace YAML using built-in cards.
-- `lovelace/home_energy_manager_report_card.yaml`
+- `lovelace/heros_report_card.yaml`
   Minimal view config for the custom reporting card.
-- `www/home-energy-manager-policy-card.js`
+- `www/heros-policy-card.js`
   A custom card scaffold that mirrors the HEROS app layout more
   closely while keeping unsupported controls visibly marked as not enabled.
-- `www/home-energy-manager-report-card.js`
+- `www/heros-report-card.js`
   A thin loader that imports the current reporting build.
-- `www/home-energy-manager-report-card.008.js`
+- `www/heros-report-card.008.js`
   The current reporting card build for power-flow, daily summaries, and chart data.
-- `www/home-energy-manager-debug-card.js`
+- `www/heros-debug-card.js`
   A focused inspector card for raw entity state, archive metadata, and probe actions.
 
 ## Why Both Exist
@@ -137,29 +137,29 @@ Notes:
 
 Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 
-- `/config/www/community/home-energy-manager/home-energy-manager-policy-card.js`
-- `/config/www/community/home-energy-manager/home-energy-manager-report-card.js`
-- `/config/www/community/home-energy-manager/home-energy-manager-report-card.008.js`
-- `/config/www/ha-git/home_energy_manager_git_log.html`
+- `/config/www/community/heros/heros-policy-card.js`
+- `/config/www/community/heros/heros-report-card.js`
+- `/config/www/community/heros/heros-report-card.008.js`
+- `/config/www/ha-git/heros_git_log.html`
 
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=008
+url: /local/community/heros/heros-policy-card.js?v=009
 type: module
 ```
 
 Reporting card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=396
+url: /local/community/heros/heros-report-card.js?v=397
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=035
+url: /local/community/heros/heros-debug-card.js?v=036
 type: module
 ```
 
@@ -167,19 +167,19 @@ Log viewer:
 
 ```yaml
 type: iframe
-url: /local/ha-git/home_energy_manager_git_log.html?v=001
+url: /local/ha-git/heros_git_log.html?v=001
 aspect_ratio: 180%
 ```
 
 If you are using the repo-managed HA pull script from `scripts/ha_git_pull.sh`,
-it should also deploy `custom_components/home_energy_manager` at the same time
+it should also deploy `custom_components/heros` at the same time
 so the card and backend stay aligned.
 
 ## Resource Counter
 
 To force Home Assistant and the browser to load a fresh custom-card build:
 
-1. Keep the resource filename fixed as `home-energy-manager-policy-card.js`
+1. Keep the resource filename fixed as `heros-policy-card.js`
 2. Increment the internal build number in the JS file
 3. Increment only the Lovelace `?v=` value to the same number
 4. Keep numbered archive copies in `examples/www/` for rollback/reference
@@ -187,39 +187,41 @@ To force Home Assistant and the browser to load a fresh custom-card build:
 Example next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-policy-card.js?v=008
+url: /local/community/heros/heros-policy-card.js?v=009
 type: module
 ```
 
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-report-card.js?v=396
+url: /local/community/heros/heros-report-card.js?v=397
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/home-energy-manager/home-energy-manager-debug-card.js?v=035
+url: /local/community/heros/heros-debug-card.js?v=036
 type: module
 ```
 
 Current build stamp in this repo:
 
-- Policy card: `008`
-- Reporting loader URL: `374`
-- Reporting loader import cache-buster: `374`
+- Panel: `484`
+- Policy card: `009`
+- Reporting loader URL: `397`
+- Reporting loader import cache-buster: `397`
 - Reporting archive file: `008`
-- Debug card: `035`
+- Reporting component: `086`
+- Debug card: `036`
 
 ## Defaults
 
 The examples now default to the current entity set used in this branch:
 
-- prefix: `house_home_energy_manager_battery_system`
-- submit button: `button.house_home_energy_manager_battery_system_submit_settings`
-- discard button: `button.house_home_energy_manager_battery_system_discard_pending_settings`
+- prefix: `house_heros_battery_system`
+- submit button: `button.house_heros_battery_system_submit_settings`
+- discard button: `button.house_heros_battery_system_discard_pending_settings`
 
 The custom card will use those entities automatically if you do not override
 them.

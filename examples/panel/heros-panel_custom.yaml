@@ -1,16 +1,16 @@
 # Legacy manual panel example. The integration now registers the sidebar panel
 # automatically, so this file is for reference only.
-- name: home-energy-manager-panel
+- name: heros-panel
   sidebar_title: HEROS
   sidebar_icon: mdi:solar-power-variant
-  url_path: home-energy-manager
-  module_url: /local/community/home-energy-manager/home-energy-manager-panel.js?v=483
+  url_path: heros
+  module_url: /local/community/heros/heros-panel.js?v=484
   config:
     title: HEROS (Home Energy Reporting & Optimisation System)
     subtitle: Live energy control, custom theming, and provider-aware dashboards.
     theme: cyberpunk
-    entity_prefix: home_energy_manager
-    settings_target: select.house_home_energy_manager_settings_target
+    entity_prefix: heros
+    settings_target: select.house_heros_settings_target
     theme_art_url: ""
     theme_art_size: cover
     theme_art_position: center center

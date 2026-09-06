@@ -1,6 +1,6 @@
 title: HEROS Report
-path: home-energy-manager-report
+path: heros-report
 icon: mdi:chart-timeline-variant
 cards:
-  - type: custom:home-energy-manager-report-card
+  - type: custom:heros-report-card
     entity_prefix: house_bytewatt_battery_system

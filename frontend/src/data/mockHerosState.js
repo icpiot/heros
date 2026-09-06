@@ -1,4 +1,4 @@
-export const mockHemState = {
+export const mockHerosState = {
   battery: {
     soc: 73,
     powerKw: -1.8,

@@ -93,7 +93,7 @@ export class PricingGroupEditor extends LitElement {
     }
 
     span {
-      color: var(--hem-text);
+      color: var(--heros-text);
       font-size: 0.86rem;
       font-weight: 800;
     }
@@ -102,10 +102,10 @@ export class PricingGroupEditor extends LitElement {
     select,
     textarea {
       background: rgba(7, 14, 26, 0.72);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 12px;
       box-sizing: border-box;
-      color: var(--hem-text);
+      color: var(--heros-text);
       font: inherit;
       min-height: 40px;
       padding: 8px 12px;

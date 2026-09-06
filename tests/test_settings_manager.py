@@ -15,11 +15,11 @@ pytest.importorskip("Crypto.Cipher")
 pytest.importorskip("voluptuous")
 pytest.importorskip("homeassistant")
 
-from custom_components.home_energy_manager.models import (  # noqa: E402
+from custom_components.heros.models import (  # noqa: E402
     CycleStrategy,
     GridFeedInSettings,
 )
-from custom_components.home_energy_manager.settings_manager import (  # noqa: E402
+from custom_components.heros.settings_manager import (  # noqa: E402
     BATTERY_VALIDATORS,
     FEEDIN_SLOT_VALIDATORS,
     FEEDIN_VALIDATORS,
@@ -27,7 +27,7 @@ from custom_components.home_energy_manager.settings_manager import (  # noqa: E4
     SettingsManager,
     SubmitResult,
 )
-from custom_components.home_energy_manager.topology import ByteWattScope  # noqa: E402
+from custom_components.heros.topology import ByteWattScope  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +48,7 @@ def stub_hass(monkeypatch):
     def fake_send(hass, signal, *args):
         sent.append(signal)
     monkeypatch.setattr(
-        "custom_components.home_energy_manager.settings_manager.async_dispatcher_send",
+        "custom_components.heros.settings_manager.async_dispatcher_send",
         fake_send,
     )
     hass = _StubHass()
@@ -379,7 +379,7 @@ def patch_battery_api(monkeypatch, populated_cache):
     _FakeBatteryAPI.cache = populated_cache
     _FakeBatteryAPI.put_results = []
     monkeypatch.setattr(
-        "custom_components.home_energy_manager.settings_manager.BatterySettingsAPI",
+        "custom_components.heros.settings_manager.BatterySettingsAPI",
         _FakeBatteryAPI,
     )
     return _FakeBatteryAPI

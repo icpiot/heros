@@ -32,7 +32,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-HISTORY_DIR_NAME = "home-energy-manager-history"
+HISTORY_DIR_NAME = "heros-history"
 HISTORY_FILE_NAME = "history.json"
 
 

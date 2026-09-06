@@ -1,5 +1,5 @@
 import { LitElement, css, html } from "lit";
-import "./HemCard.js";
+import "./HerosCard.js";
 
 export class OverviewMetricCard extends LitElement {
   static properties = {
@@ -11,11 +11,11 @@ export class OverviewMetricCard extends LitElement {
 
   render() {
     return html`
-      <hem-card>
+      <heros-card>
         <span class="label">${this.label}</span>
         <strong>${this.value}</strong>
         <small>${this.note}</small>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -26,7 +26,7 @@ export class OverviewMetricCard extends LitElement {
     }
 
     .label {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       display: block;
       font-size: 0.78rem;
       font-weight: 900;
@@ -41,11 +41,11 @@ export class OverviewMetricCard extends LitElement {
     }
 
     small {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       display: block;
       margin-top: 8px;
     }
   `;
 }
 
-customElements.define("hem-overview-metric-card", OverviewMetricCard);
+customElements.define("heros-overview-metric-card", OverviewMetricCard);

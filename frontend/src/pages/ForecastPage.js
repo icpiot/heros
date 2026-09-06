@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   forecastDefaultLayout,
 } from "../layout/forecastLayout.js";
 
-export class HemForecastPage extends LitElement {
+export class HerosForecastPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -36,7 +36,7 @@ export class HemForecastPage extends LitElement {
   }
 
   render() {
-    const forecast = this.hemState?.forecast ?? {};
+    const forecast = this.herosState?.forecast ?? {};
     const cards = [
       { id: "forecast-summary", template: this._renderSummaryCard(forecast) },
       { id: "forecast-solar", template: this._renderSolarCard(forecast) },
@@ -68,42 +68,42 @@ export class HemForecastPage extends LitElement {
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderSummaryCard(forecast) {
     const capture = forecast.capture ?? {};
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Today outlook</p>
         <h3>${forecast.providerLabel || "No provider mapped"}</h3>
         <strong class="hero-value">${capture.todayKwh ?? "—"} kWh</strong>
         <p>${forecast.nextAction || "Map forecast entities in setup to unlock planning."}</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderSolarCard(forecast) {
     const capture = forecast.capture ?? {};
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Solar forecast</p>
         <h3>Peak ${capture.nowKw ?? "—"} kW now</h3>
         ${this._bars([36, 61, 90, 82, 50, 18])}
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderBatteryCard(forecast) {
     const capture = forecast.capture ?? {};
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery forecast</p>
         <h3>Reserve at sunset</h3>
         <section class="mini-grid">
@@ -111,14 +111,14 @@ export class HemForecastPage extends LitElement {
           <article><span>Tomorrow</span><strong>${capture.tomorrowKwh ?? "—"} kWh</strong></article>
           <article><span>Confidence</span><strong>${forecast.confidence || "Unknown"}</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderLoadCard(forecast) {
     const capture = forecast.capture ?? {};
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Load forecast</p>
         <h3>Planning against demand</h3>
         <section class="mini-grid">
@@ -126,17 +126,17 @@ export class HemForecastPage extends LitElement {
           <article><span>Next hour</span><strong>${capture.nextHourKwh ?? "—"} kWh</strong></article>
           <article><span>Snapshot</span><strong>${forecast.snapshotAt || "—"}</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderPricingCard(forecast) {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Price window</p>
         <h3>${forecast.mapping?.today ? "Use mapped forecast with pricing" : "Waiting for forecast mapping"}</h3>
         <p>Charge when the cheapest window lines up with a predicted solar shortfall.</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -188,9 +188,9 @@ export class HemForecastPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -206,13 +206,13 @@ export class HemForecastPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label,
     .mini-grid span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -236,7 +236,7 @@ export class HemForecastPage extends LitElement {
 
     p,
     .layout-toolbar span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -254,7 +254,7 @@ export class HemForecastPage extends LitElement {
     }
 
     button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -266,7 +266,7 @@ export class HemForecastPage extends LitElement {
 
     button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .mini-grid {
@@ -292,7 +292,7 @@ export class HemForecastPage extends LitElement {
     }
 
     .spark-bars span {
-      background: linear-gradient(180deg, var(--hem-accent-2), var(--hem-accent));
+      background: linear-gradient(180deg, var(--heros-accent-2), var(--heros-accent));
       border-radius: 999px 999px 4px 4px;
       flex: 1;
       min-width: 16px;
@@ -315,4 +315,4 @@ export class HemForecastPage extends LitElement {
   `;
 }
 
-customElements.define("hem-forecast-page", HemForecastPage);
+customElements.define("heros-forecast-page", HerosForecastPage);

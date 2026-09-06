@@ -15,5 +15,5 @@ cards:
           action: call-service
           service: shell_command.git_push_config
   - type: iframe
-    url: /local/ha-git/home_energy_manager_git_log.html?v=001
+    url: /local/ha-git/heros_git_log.html?v=001
     aspect_ratio: 180%

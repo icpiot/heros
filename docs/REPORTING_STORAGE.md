@@ -7,8 +7,8 @@ panel and export flows.
 
 Current local storage:
 
-- `www/home-energy-manager-history/<entry_id>/history.json`
-- `www/home-energy-manager-history/<entry_id>/<scope>.csv`
+- `www/heros-history/<entry_id>/history.json`
+- `www/heros-history/<entry_id>/<scope>.csv`
 
 What this archive stores:
 

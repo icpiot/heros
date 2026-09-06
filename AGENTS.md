@@ -2,15 +2,15 @@
 
 ## Repository Scope
 
-- Source of truth: `C:\Dev\repos\home-energy-manager`
+- Source of truth: `C:\Dev\repos\heros`
 - Do not use the deleted `neovoltBattery_HomeAssistantPlugin` repo unless the user explicitly asks for it.
 - Treat this repo as the only active codebase for all work in this session.
-- Prefer the direct Home Assistant config share `\\10.0.0.102\config\` for Codex sync work.
-- `H:\` may exist as a mapped mirror of the live HA config tree, but do not depend on it being available in the current agent session.
+- The existing ByteWatt installation at `10.0.0.102` must remain untouched unless explicitly authorized.
+- The new test instance is `10.0.0.111`, with config share `\\10.0.0.111\config`. Sync only when requested, after tests pass.
 
 ## Repository Layout
 
-- `custom_components/home_energy_manager/` - Home Assistant integration code
+- `custom_components/heros/` - Home Assistant integration code
 - `examples/www/` - panel and card assets served into Home Assistant
 - `examples/panel/` - panel registration examples
 - `scripts/` - repo/HA sync helpers
@@ -19,12 +19,12 @@
 ## Working Rules
 
 - Keep changes inside this repo unless the user explicitly requests otherwise.
-- Prefer `home_energy_manager` naming in code, docs, UI labels, and service names.
+- Use `heros` for technical identifiers and HEROS for user-facing labels. Keep the system generic across energy providers.
 - Do not reintroduce references to the deleted repo.
 - If a file or script still contains stale legacy naming, update it to the current repo conventions.
 - For longer Codex implementation runs, create a git checkpoint after roughly every 5 meaningful updates when the staged scope can be kept clean.
 - When a change materially affects UI behavior, reporting/storage behavior, mappings, or workflow, update the relevant repo docs in the same run.
-- For live HA sync work, prefer copying to `\\10.0.0.102\config\...` directly. Use `H:\` only when it is confirmed available and there is a reason to prefer it.
+- Verify the explicitly authorized HA target before any sync. Do not infer a destination from a mapped drive.
 
 ## Panel Interaction Rules
 

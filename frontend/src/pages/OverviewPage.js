@@ -10,9 +10,9 @@ import {
   overviewDefaultLayout,
 } from "../layout/overviewLayout.js";
 
-export class HemOverviewPage extends LitElement {
+export class HerosOverviewPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editing: { type: Boolean },
     layout: { type: Array },
   };
@@ -37,14 +37,14 @@ export class HemOverviewPage extends LitElement {
   }
 
   render() {
-    const cards = createOverviewCards(this.hemState).map((card) => ({
+    const cards = createOverviewCards(this.herosState).map((card) => ({
       id: card.id,
       template: html`
-        <hem-overview-metric-card
+        <heros-overview-metric-card
           .label=${card.label}
           .value=${card.value}
           .note=${card.note}
-        ></hem-overview-metric-card>
+        ></heros-overview-metric-card>
       `,
     }));
 
@@ -69,22 +69,22 @@ export class HemOverviewPage extends LitElement {
         <nav aria-label="Layout editor controls">
           ${this.editing
             ? html`
-                <button class="hem-button" data-layout-action="save" type="button" aria-label="Save Layout">Save Layout</button>
-                <button class="hem-button secondary" data-layout-action="cancel" type="button" aria-label="Cancel Changes">Cancel Changes</button>
-                <button class="hem-button secondary" data-layout-action="reset" type="button" aria-label="Reset Layout">Reset Layout</button>
+                <button class="heros-button" data-layout-action="save" type="button" aria-label="Save Layout">Save Layout</button>
+                <button class="heros-button secondary" data-layout-action="cancel" type="button" aria-label="Cancel Changes">Cancel Changes</button>
+                <button class="heros-button secondary" data-layout-action="reset" type="button" aria-label="Reset Layout">Reset Layout</button>
               `
             : html`
-                <button class="hem-button" data-layout-action="edit" type="button" aria-label="Edit Layout">Edit Layout</button>
+                <button class="heros-button" data-layout-action="edit" type="button" aria-label="Edit Layout">Edit Layout</button>
               `}
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editing}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
@@ -135,9 +135,9 @@ export class HemOverviewPage extends LitElement {
   static styles = css`
     .page-head {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -148,13 +148,13 @@ export class HemOverviewPage extends LitElement {
     }
 
     p {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       margin: 8px 0 0;
       max-width: 760px;
     }
 
     .eyebrow {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.16em;
@@ -165,7 +165,7 @@ export class HemOverviewPage extends LitElement {
     .layout-toolbar {
       align-items: center;
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 20px;
       display: flex;
       gap: 16px;
@@ -176,7 +176,7 @@ export class HemOverviewPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .layout-toolbar strong,
@@ -185,7 +185,7 @@ export class HemOverviewPage extends LitElement {
     }
 
     .layout-toolbar span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       font-size: 0.92rem;
       margin-top: 2px;
     }
@@ -197,7 +197,7 @@ export class HemOverviewPage extends LitElement {
       justify-content: flex-end;
     }
 
-    .hem-button {
+    .heros-button {
       align-items: center;
       border: 1px solid rgba(0, 229, 255, 0.55);
       border-radius: 999px;
@@ -212,9 +212,9 @@ export class HemOverviewPage extends LitElement {
       padding: 0 18px;
     }
 
-    .hem-button.secondary {
+    .heros-button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     @media (max-width: 780px) {
@@ -230,4 +230,4 @@ export class HemOverviewPage extends LitElement {
   `;
 }
 
-customElements.define("hem-overview-page", HemOverviewPage);
+customElements.define("heros-overview-page", HerosOverviewPage);

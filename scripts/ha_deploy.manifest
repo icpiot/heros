@@ -1,9 +1,9 @@
 # source|destination|mode
-examples/www/home-energy-manager-policy-card.js|/config/www/community/home-energy-manager/home-energy-manager-policy-card.js|file
-examples/www/home-energy-manager-report-card.js|/config/www/community/home-energy-manager/home-energy-manager-report-card.js|file
-examples/www/home-energy-manager-report-card.008.js|/config/www/community/home-energy-manager/home-energy-manager-report-card.008.js|file
-examples/www/home-energy-manager-debug-card.js|/config/www/community/home-energy-manager/home-energy-manager-debug-card.js|file
-examples/www/home-energy-manager-panel.js|/config/www/community/home-energy-manager/home-energy-manager-panel.js|file
-examples/www/home-energy-manager-panel.css|/config/www/community/home-energy-manager/home-energy-manager-panel.css|file
-examples/www/home-energy-manager-git-log.html|/config/www/ha-git/home_energy_manager_git_log.html|file
-custom_components/home_energy_manager|/config/custom_components/home_energy_manager|tree
+examples/www/heros-policy-card.js|/config/www/community/heros/heros-policy-card.js|file
+examples/www/heros-report-card.js|/config/www/community/heros/heros-report-card.js|file
+examples/www/heros-report-card.008.js|/config/www/community/heros/heros-report-card.008.js|file
+examples/www/heros-debug-card.js|/config/www/community/heros/heros-debug-card.js|file
+examples/www/heros-panel.js|/config/www/community/heros/heros-panel.js|file
+examples/www/heros-panel.css|/config/www/community/heros/heros-panel.css|file
+examples/www/heros-git-log.html|/config/www/ha-git/heros_git_log.html|file
+custom_components/heros|/config/custom_components/heros|tree

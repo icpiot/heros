@@ -1,4 +1,4 @@
-type: custom:home-energy-manager-debug-card
+type: custom:heros-debug-card
 title: HEROS Debug
 entity_prefix: house_bytewatt_battery_system
 settings_target: select.house_bytewatt_battery_system_settings_target

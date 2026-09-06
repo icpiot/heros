@@ -1,4 +1,4 @@
-const HOME_ENERGY_MANAGER_POLICY_CARD_BUILD = "008";
+const HEROS_POLICY_CARD_BUILD = "048";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -33,11 +33,11 @@ class ByteWattPolicyCard extends HTMLElement {
   }
 
   _withDefaults(config) {
-    const prefix = config.entity_prefix || "home_energy_manager";
+    const prefix = config.entity_prefix || "house_bytewatt_battery_system";
     return {
       ...config,
       entity_prefix: prefix,
-      settings_target: config.settings_target || `select.house_${prefix}_settings_target`,
+      settings_target: config.settings_target || `select.${prefix}_settings_target`,
       execution_cycle: config.execution_cycle || `select.${prefix}_execution_cycle`,
       charge_cap: config.charge_cap || `number.${prefix}_battery_charge_cap`,
       charge_power: config.charge_power || `number.${prefix}_battery_charge_power`,
@@ -161,22 +161,6 @@ class ByteWattPolicyCard extends HTMLElement {
           border: 1px solid rgba(108, 180, 255, 0.34);
           box-shadow: 0 6px 14px rgba(26, 70, 136, 0.2);
         }
-        .cache-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          padding: 4px 10px;
-          border-radius: 999px;
-          font-size: 0.76rem;
-          font-weight: 800;
-          color: #e9f5ff;
-          background: linear-gradient(180deg, rgba(68, 134, 230, 0.3), rgba(50, 102, 184, 0.18));
-          border: 1px solid rgba(108, 180, 255, 0.34);
-          box-shadow: 0 6px 14px rgba(26, 70, 136, 0.2);
-          cursor: pointer;
-        }
-        .cache-button:hover { filter: brightness(1.03); }
-        .cache-button:active { transform: translateY(1px); }
         .selector-row {
           display: grid;
           grid-template-columns: 140px minmax(0, 1fr);
@@ -190,29 +174,6 @@ class ByteWattPolicyCard extends HTMLElement {
         .label {
           font-size: 0.95rem;
           font-weight: 700;
-        }
-        .field-title-row {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          min-width: 0;
-        }
-        .field-help {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          border: 1px solid rgba(146, 193, 255, 0.45);
-          color: rgba(200, 228, 255, 0.98);
-          font-size: 11px;
-          font-weight: 800;
-          line-height: 1;
-          cursor: help;
-          flex: 0 0 auto;
-          background: rgba(33, 57, 88, 0.95);
-          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14) inset;
         }
         .body {
           display: grid;
@@ -1027,10 +988,10 @@ class ByteWattPolicyCard extends HTMLElement {
               <div class="title-icon">${cardIcon}</div>
               <div class="title-wrap">
                 <div class="title">${cardTitle}</div>
-                <div class="version-badge">v${HOME_ENERGY_MANAGER_POLICY_CARD_BUILD}</div>
-                <button class="cache-button" type="button" data-clear-cache>Clear Cache</button>
+                <div class="version-badge">v${HEROS_POLICY_CARD_BUILD}</div>
               </div>
             </div>
+            ${this._renderSelector()}
           </div>
           ${this._renderStatus()}
           ${this._renderSummary(attrs)}
@@ -1041,6 +1002,27 @@ class ByteWattPolicyCard extends HTMLElement {
 
     this._bindEvents();
     this._restoreScrollPosition(scrollRoot, preservedScrollTop);
+  }
+
+  _renderSelector() {
+    const stateObj = this._stateObj(this._config.settings_target);
+    const options = stateObj?.attributes?.options || [];
+    const current = stateObj?.state || "";
+    return `
+      <div class="selector-row">
+        <div class="label">Battery Selection</div>
+        <select data-select="${this._config.settings_target}">
+          ${options
+            .map(
+              (option) =>
+                `<option value="${this._escapeHtml(option)}" ${
+                  option === current ? "selected" : ""
+                }>${this._escapeHtml(option)}</option>`
+            )
+            .join("")}
+        </select>
+      </div>
+    `;
   }
 
   _renderMainPolicy(batteryPolicy) {
@@ -1191,13 +1173,13 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Immediate</div>
         <div class="stack">
-          ${this._titleWithHelp("Charging Cutoff SOC", "Set the charge cap SOC. The battery will prioritize charging up to this level while charging is active.")}
+          <div class="field-title">SOC (%)</div>
           ${this._numberInput("force-charge-limit", this._immediateDraftValue("force-charge-limit", this._entityNumberValue(this._config.charge_cap, 100)), "%")}
         </div>
         ${this._renderImmediateAction(
           "charge",
-          "Charge Now",
-          "Stop",
+          "Start Charging Now",
+          "Stop Charging",
           "start_force_charge",
           "stop_force_charge",
           "primary",
@@ -1207,31 +1189,14 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Policy</div>
         ${pending ? `<div class="pending-banner">Pending changes not committed</div>` : ""}
-        ${this._toggleCell(
-          "Charge policy",
-          this._config.charge_switch,
-          "charge",
-          "When enabled, the battery is forced to charge inside the configured window and will not discharge. Solar is used first, and grid power supplements charging only when solar is insufficient."
-        )}
+        ${this._toggleCell("Charge policy", this._config.charge_switch, "charge")}
         ${
           enabled
             ? `
               <div class="policy-grid charge-policy-grid">
                 ${this._selectCell("Execution Cycle", this._config.execution_cycle, "charge", cycle.options)}
-                ${this._numberCell(
-                  "Charging Cutoff SOC",
-                  this._config.charge_cap,
-                  "charge",
-                  "%",
-                  "Set the charge cap SOC. The battery will prioritize charging up to this level while charging is active."
-                )}
-                ${this._numberCell(
-                  "Battery Charged from Grid Power",
-                  this._config.charge_power,
-                  "charge",
-                  "W",
-                  "Set the maximum grid power used while charging is active."
-                )}
+                ${this._numberCell("SOC (%)", this._config.charge_cap, "charge", "%")}
+                ${this._numberCell("POWER (W)", this._config.charge_power, "charge", "W")}
               </div>
             `
             : `<div class="muted">Charge policy is off. Enable it to show schedule settings.</div>`
@@ -1299,8 +1264,8 @@ class ByteWattPolicyCard extends HTMLElement {
         </div>
         ${this._renderImmediateAction(
           "discharge",
-          "Discharge Now",
-          "Stop",
+          "Start Discharge Now",
+          "Stop Discharge",
           "start_discharge_now",
           "stop_discharge_now",
           "purple"
@@ -1309,31 +1274,14 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Policy</div>
         ${pending ? `<div class="pending-banner">Pending changes not committed</div>` : ""}
-        ${this._toggleCell(
-          "Discharge policy",
-          this._config.discharge_switch,
-          "discharge",
-          "When enabled, the battery can discharge only inside the configured window. Outside that period, discharge is blocked and charging is allowed."
-        )}
+        ${this._toggleCell("Discharge policy", this._config.discharge_switch, "discharge")}
         ${
           enabled
             ? `
               <div class="policy-grid discharge-policy-grid">
                 ${this._selectCell("Execution Cycle", this._config.execution_cycle, "discharge", cycle.options)}
-                ${this._numberCell(
-                  "Discharging Cutoff SOC",
-                  this._config.discharge_cutoff,
-                  "discharge",
-                  "%",
-                  "Set the battery discharge cutoff state of charge. The battery stops discharging when it reaches this SOC."
-                )}
-                ${this._numberCell(
-                  "Battery Discharge Power",
-                  this._config.discharge_power,
-                  "discharge",
-                  "W",
-                  "Set the maximum battery discharge power while discharge is active."
-                )}
+                ${this._numberCell("SOC (%)", this._config.discharge_cutoff, "discharge", "%")}
+                ${this._numberCell("POWER (W)", this._config.discharge_power, "discharge", "W")}
               </div>
             `
             : `<div class="muted">Discharge policy is off. Enable it to show schedule settings.</div>`
@@ -1404,8 +1352,8 @@ class ByteWattPolicyCard extends HTMLElement {
         </div>
         ${this._renderImmediateAction(
           "feedin",
-          "Feed-in Now",
-          "Stop",
+          "Start Feed-in Now",
+          "Stop Feed-in",
           "start_feedin_now",
           "stop_feedin_now",
           "green"
@@ -1460,30 +1408,13 @@ class ByteWattPolicyCard extends HTMLElement {
       `
         <div class="eyebrow">Policy</div>
         ${pending ? `<div class="pending-banner">Pending changes not committed</div>` : ""}
-        ${this._toggleCell(
-          "Off-grid SOC Control",
-          this._config.offgrid_switch,
-          "offgrid",
-          "When enabled, the battery maintains the off-grid reserve behavior and prioritizes charging back to the cutoff SOC after returning to grid-connected operation."
-        )}
+        ${this._toggleCell("Off-grid SOC Control", this._config.offgrid_switch, "offgrid")}
         ${
           enabled
             ? `
               <div class="policy-grid offgrid-policy-grid">
-                ${this._numberCell(
-                  "Wake-up SOC (%)",
-                  this._config.offgrid_wakeup_soc,
-                  "offgrid",
-                  "%",
-                  "Battery SOC level that allows the system to resume normal operation after off-grid use."
-                )}
-                ${this._numberCell(
-                  "Cut-off SOC (%)",
-                  this._config.offgrid_cutoff_soc,
-                  "offgrid",
-                  "%",
-                  "Battery discharge cutoff SOC used to protect reserve capacity."
-                )}
+                ${this._numberCell("Wake-up SOC (%)", this._config.offgrid_wakeup_soc, "offgrid", "%")}
+                ${this._numberCell("Cut-off SOC (%)", this._config.offgrid_cutoff_soc, "offgrid", "%")}
               </div>
             `
             : `<div class="muted">Off-grid SOC Control is off.</div>`
@@ -1710,7 +1641,7 @@ class ByteWattPolicyCard extends HTMLElement {
     `;
   }
 
-  _toggleCell(label, entityId, section, helpText = "") {
+  _toggleCell(label, entityId, section) {
     const checked = this._draftValue(
       section,
       entityId,
@@ -1718,18 +1649,18 @@ class ByteWattPolicyCard extends HTMLElement {
     );
     return `
       <div class="policy-cell switch">
-        ${this._titleWithHelp(label, helpText)}
+        <div class="field-title">${label}</div>
         <input type="checkbox" data-policy-toggle="${entityId}" data-section="${section}" ${checked ? "checked" : ""} />
       </div>
     `;
   }
 
-  _selectCell(label, entityId, section, options, helpText = "") {
+  _selectCell(label, entityId, section, options) {
     const state = this._stateObj(entityId);
     const current = this._draftValue(section, entityId, state?.state || "");
     return `
       <div class="policy-cell select-cell">
-        ${this._titleWithHelp(label, helpText)}
+        <div class="field-title">${label}</div>
         <select data-policy-select="${entityId}" data-section="${section}">
           ${(options || [])
             .map(
@@ -1744,7 +1675,7 @@ class ByteWattPolicyCard extends HTMLElement {
     `;
   }
 
-  _numberCell(label, entityId, section, unit, helpText = "") {
+  _numberCell(label, entityId, section, unit) {
     const state = this._stateObj(entityId);
     const value = this._draftValue(
       section,
@@ -1756,7 +1687,7 @@ class ByteWattPolicyCard extends HTMLElement {
     const valueClass = note ? "policy-value inline-note" : "policy-value";
     return `
       <div class="policy-cell number-cell ${unitClass}">
-        ${this._titleWithHelp(label, helpText)}
+        <div class="field-title">${label}</div>
         <div class="${valueClass}">
           <input type="number" data-policy-number="${entityId}" data-section="${section}" value="${this._escapeHtml(value ?? "")}" />
           ${note}
@@ -1793,7 +1724,7 @@ class ByteWattPolicyCard extends HTMLElement {
                 : this._numberInput(field.key, field.value, field.unit, Boolean(field.disabled));
               return `
               <div class="slot-field ${this._escapeHtml(field.unit === "W" ? "power" : "soc")}">
-                ${this._titleWithHelp(field.label, field.helpText, true)}
+                <div class="field-title compact">${this._escapeHtml(field.label)}</div>
                 ${inputBlock}
               </div>
             `;
@@ -1804,7 +1735,7 @@ class ByteWattPolicyCard extends HTMLElement {
     `;
   }
 
-  _slotField(label, key, value, type, helpText = "") {
+  _slotField(label, key, value, type) {
     const inputValue =
       type === "time" ? this._normalizeTimeValue(value) : this._normalizeNumberState(value);
     const fieldClass =
@@ -1818,30 +1749,17 @@ class ByteWattPolicyCard extends HTMLElement {
       : `<input type="${type}" data-slot-field="${key}" value="${this._escapeHtml(inputValue)}" />`;
     return `
       <div class="slot-field ${fieldClass}">
-        ${this._titleWithHelp(label, helpText, true)}
+        <div class="field-title compact">${label}</div>
         ${inputBlock}
       </div>
     `;
   }
 
-  _slotReadonlyField(label, value, fieldClass = "generic", helpText = "") {
+  _slotReadonlyField(label, value, fieldClass = "generic") {
     return `
       <div class="slot-field ${fieldClass}">
-        ${this._titleWithHelp(label, helpText, true)}
+        <div class="field-title compact">${label}</div>
         <input type="text" value="${this._escapeHtml(value)}" readonly disabled />
-      </div>
-    `;
-  }
-
-  _titleWithHelp(label, helpText = "", compact = false) {
-    const safeLabel = this._escapeHtml(label);
-    if (!helpText) {
-      return `<div class="field-title ${compact ? "compact" : ""}">${safeLabel}</div>`;
-    }
-    return `
-      <div class="field-title ${compact ? "compact" : ""} field-title-row">
-        <span>${safeLabel}</span>
-        <span class="field-help" title="${this._escapeHtml(helpText)}" aria-label="${this._escapeHtml(helpText)}">i</span>
       </div>
     `;
   }
@@ -2569,12 +2487,8 @@ class ByteWattPolicyCard extends HTMLElement {
     return fields;
   }
 
-  async _callIntegration(service, data = {}) {
-    await this._hass.callService("home_energy_manager", service, data);
-  }
-
   async _callByteWatt(service, data = {}) {
-    return this._callIntegration(service, data);
+    await this._hass.callService("heros", service, data);
   }
 
   _setStatus(type, message) {
@@ -3009,6 +2923,23 @@ class ByteWattPolicyCard extends HTMLElement {
       });
     });
 
+    this.shadowRoot.querySelectorAll("[data-select]").forEach((node) => {
+      node.addEventListener("change", (event) => {
+        this._run(
+          async () => {
+            this._clearAllDrafts();
+            await this._hass.callService("select", "select_option", {
+              entity_id: node.dataset.select,
+              option: event.target.value,
+            });
+            this._resetImmediateState();
+          },
+          "Selection updated",
+          "Selection failed"
+        );
+      });
+    });
+
     this.shadowRoot.querySelectorAll("[data-policy-toggle]").forEach((node) => {
       node.addEventListener("change", () => {
         this._setDraftValue(node.dataset.section, node.dataset.policyToggle, node.checked);
@@ -3033,17 +2964,6 @@ class ByteWattPolicyCard extends HTMLElement {
 
     this.shadowRoot.querySelectorAll("[data-service]").forEach((node) => {
       node.addEventListener("click", () => this._runNow(node.dataset.service));
-    });
-    this.shadowRoot.querySelector("[data-clear-cache]")?.addEventListener("click", async () => {
-      try {
-        if ("caches" in window && window.caches?.keys) {
-          const keys = await window.caches.keys();
-          await Promise.all(keys.map((key) => window.caches.delete(key)));
-        }
-      } catch (error) {
-        console.warn("ByteWatt policy cache clear failed:", error);
-      }
-      window.location.reload();
     });
 
     this.shadowRoot.querySelectorAll("[data-immediate-kind]").forEach((node) => {
@@ -3134,16 +3054,16 @@ class ByteWattPolicyCard extends HTMLElement {
   }
 }
 
-if (typeof customElements !== "undefined" && !customElements.get("home-energy-manager-policy-card")) {
-  customElements.define("home-energy-manager-policy-card", ByteWattPolicyCard);
+if (!customElements.get("heros-policy-card")) {
+  customElements.define("heros-policy-card", ByteWattPolicyCard);
 }
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "home-energy-manager-policy-card",
+  type: "heros-policy-card",
   name: "HEROS Policy Card",
-  description: `HEROS policy card build ${HOME_ENERGY_MANAGER_POLICY_CARD_BUILD}.`,
+  description: `HEROS policy card build ${HEROS_POLICY_CARD_BUILD}.`,
 });
 
-window.homeEnergyManagerPolicyCardBuild = HOME_ENERGY_MANAGER_POLICY_CARD_BUILD;
+window.herosPolicyCardBuild = HEROS_POLICY_CARD_BUILD;
 
