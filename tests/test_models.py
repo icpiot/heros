@@ -3,7 +3,7 @@ between getCycleStrategy / setCycleStrategy field names.
 
 These tests only need ``models.py`` itself (stdlib-only at the module
 level), so they load it directly via importlib instead of going through
-``custom_components.home_energy_manager`` — the package's ``__init__.py`` would
+``custom_components.heros`` — the package's ``__init__.py`` would
 otherwise pull in homeassistant/voluptuous, which we don't want for
 pure-model tests.
 """
@@ -19,9 +19,9 @@ def _load_models_module():
     """Load models.py directly without triggering the package's __init__."""
     here = os.path.dirname(__file__)
     path = os.path.abspath(os.path.join(
-        here, "..", "custom_components", "home_energy_manager", "models.py",
+        here, "..", "custom_components", "heros", "models.py",
     ))
-    spec = importlib.util.spec_from_file_location("home_energy_manager_models", path)
+    spec = importlib.util.spec_from_file_location("heros_models", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

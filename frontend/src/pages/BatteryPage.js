@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   batteryDefaultLayout,
 } from "../layout/batteryLayout.js";
 
-export class HemBatteryPage extends LitElement {
+export class HerosBatteryPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -66,62 +66,62 @@ export class HemBatteryPage extends LitElement {
         <nav aria-label="Battery layout editor controls">
           ${this.editingLayout
             ? html`
-                <button class="hem-button" data-layout-action="save" type="button">Save Layout</button>
-                <button class="hem-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
-                <button class="hem-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
+                <button class="heros-button" data-layout-action="save" type="button">Save Layout</button>
+                <button class="heros-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
+                <button class="heros-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
               `
             : html`
-                <button class="hem-button" data-layout-action="edit" type="button">Edit Layout</button>
+                <button class="heros-button" data-layout-action="edit" type="button">Edit Layout</button>
               `}
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderSummaryCard() {
-    const battery = this.hemState.battery;
+    const battery = this.herosState.battery;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Selected battery</p>
         <h3>${battery.selectedBattery}</h3>
         <strong class="hero-value">${battery.soc}%</strong>
         <p>${battery.mode}</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderFlowCard() {
-    const battery = this.hemState.battery;
+    const battery = this.herosState.battery;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery flow</p>
         <h3>${battery.powerKw} kW</h3>
         <p>${battery.status}</p>
         <div class="bar"><span style="width: 73%"></span></div>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderControlsCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Mode controls</p>
         <h3>Operating mode</h3>
         <p>Use the movable action card to place mode buttons anywhere in the layout.</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderModeActionsCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Mode action buttons</p>
         <h3>Battery actions</h3>
         <div class="control-stack">
@@ -129,13 +129,13 @@ export class HemBatteryPage extends LitElement {
           <button type="button">Charge reserve</button>
           <button type="button">Export priority</button>
         </div>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderForecastCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery forecast</p>
         <h3>Evening reserve looks healthy</h3>
         <section class="mini-grid">
@@ -143,13 +143,13 @@ export class HemBatteryPage extends LitElement {
           <article><span>21:00</span><strong>51%</strong></article>
           <article><span>00:00</span><strong>39%</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderHealthCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery health</p>
         <h3>Nominal</h3>
         <section class="mini-grid">
@@ -157,7 +157,7 @@ export class HemBatteryPage extends LitElement {
           <article><span>Cycles</span><strong>842</strong></article>
           <article><span>Reserve</span><strong>20%</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -205,9 +205,9 @@ export class HemBatteryPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -223,13 +223,13 @@ export class HemBatteryPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label,
     .mini-grid span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -252,7 +252,7 @@ export class HemBatteryPage extends LitElement {
     }
 
     p {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -278,8 +278,8 @@ export class HemBatteryPage extends LitElement {
     }
 
     button,
-    .hem-button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+    .heros-button {
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -289,9 +289,9 @@ export class HemBatteryPage extends LitElement {
       padding: 12px 16px;
     }
 
-    .hem-button.secondary {
+    .heros-button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .bar {
@@ -303,7 +303,7 @@ export class HemBatteryPage extends LitElement {
     }
 
     .bar span {
-      background: linear-gradient(90deg, var(--hem-accent), var(--hem-accent-2));
+      background: linear-gradient(90deg, var(--heros-accent), var(--heros-accent-2));
       display: block;
       height: 100%;
     }
@@ -344,4 +344,4 @@ export class HemBatteryPage extends LitElement {
   `;
 }
 
-customElements.define("hem-battery-page", HemBatteryPage);
+customElements.define("heros-battery-page", HerosBatteryPage);

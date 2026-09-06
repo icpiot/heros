@@ -1,5 +1,5 @@
 export const PRICING_LAYOUT_VERSION = 19;
-export const PRICING_LAYOUT_STORAGE_KEY = "hem.frontend.layout.pricing.v19";
+export const PRICING_LAYOUT_STORAGE_KEY = "heros.frontend.layout.pricing.v19";
 
 export const pricingDefaultLayout = [
   { id: "pricing-summary", x: 0, y: 0, w: 12, h: 3, minW: 4, minH: 2 },

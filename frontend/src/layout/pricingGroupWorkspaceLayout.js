@@ -1,5 +1,5 @@
 export const PRICING_GROUP_WORKSPACE_LAYOUT_VERSION = 8;
-export const PRICING_GROUP_WORKSPACE_LAYOUT_STORAGE_KEY = "hem.frontend.layout.pricing.group-workspace.v8";
+export const PRICING_GROUP_WORKSPACE_LAYOUT_STORAGE_KEY = "heros.frontend.layout.pricing.group-workspace.v8";
 
 export const pricingGroupWorkspaceDefaultLayout = [
   { id: "group-selector", x: 0, y: 0, w: 5, h: 2, minW: 4, minH: 2 },

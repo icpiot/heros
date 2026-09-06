@@ -10,9 +10,9 @@ from pathlib import Path
 
 def _load_pricing_modules():
     root = Path(__file__).resolve().parents[1]
-    package = types.ModuleType("custom_components.home_energy_manager")
-    package.__path__ = [str(root / "custom_components" / "home_energy_manager")]
-    sys.modules.setdefault("custom_components.home_energy_manager", package)
+    package = types.ModuleType("custom_components.heros")
+    package.__path__ = [str(root / "custom_components" / "heros")]
+    sys.modules.setdefault("custom_components.heros", package)
 
     homeassistant = types.ModuleType("homeassistant")
     homeassistant_core = types.ModuleType("homeassistant.core")
@@ -26,18 +26,18 @@ def _load_pricing_modules():
     sys.modules.setdefault("homeassistant.util", homeassistant_util)
     sys.modules.setdefault("homeassistant.util.dt", homeassistant_dt)
 
-    pricing_path = root / "custom_components" / "home_energy_manager" / "pricing.py"
+    pricing_path = root / "custom_components" / "heros" / "pricing.py"
     pricing_spec = importlib.util.spec_from_file_location(
-        "custom_components.home_energy_manager.pricing",
+        "custom_components.heros.pricing",
         pricing_path,
     )
     pricing = importlib.util.module_from_spec(pricing_spec)
     sys.modules[pricing_spec.name] = pricing
     pricing_spec.loader.exec_module(pricing)
 
-    store_path = root / "custom_components" / "home_energy_manager" / "pricing_store.py"
+    store_path = root / "custom_components" / "heros" / "pricing_store.py"
     store_spec = importlib.util.spec_from_file_location(
-        "custom_components.home_energy_manager.pricing_store",
+        "custom_components.heros.pricing_store",
         store_path,
     )
     pricing_store = importlib.util.module_from_spec(store_spec)
@@ -96,7 +96,7 @@ def test_pricing_store_persists_and_loads_records(tmp_path):
     assert len(history.entries) == 1
     assert history.entries[0] == record
 
-    payload = (tmp_path / "www" / "home-energy-manager" / "entry-1" / "pricing.json").read_text(encoding="utf-8")
+    payload = (tmp_path / "www" / "heros" / "entry-1" / "pricing.json").read_text(encoding="utf-8")
     assert '"scope_key"' not in payload
     assert '"NSW"' in payload
 
@@ -109,7 +109,7 @@ def test_pricing_store_uses_safe_scope_names(tmp_path):
 
     asyncio.run(store.async_store_record(scope_key="../evil scope", label="All systems", record=record))
 
-    assert (tmp_path / "www" / "home-energy-manager" / "entry-1" / "pricing.json").exists()
+    assert (tmp_path / "www" / "heros" / "entry-1" / "pricing.json").exists()
 
 
 def test_pricing_history_file_helpers_round_trip(tmp_path):
@@ -207,7 +207,7 @@ def test_pricing_schedule_store_persists_groups_and_records(tmp_path):
     assert schedule.groups[0].records[0] == record
 
     payload = load_pricing_history_file(
-        tmp_path / "www" / "home-energy-manager" / "entry-1" / "pricing_schedule.json"
+        tmp_path / "www" / "heros" / "entry-1" / "pricing_schedule.json"
     )
     assert payload["version"] == 2
     assert payload["groups"][0]["records"][0]["import_rate"] == 0.42
@@ -222,7 +222,7 @@ def test_pricing_schedule_store_persists_groups_and_records(tmp_path):
 
 
 def test_pricing_schedule_store_reads_legacy_path_when_new_path_is_empty(tmp_path):
-    legacy_path = tmp_path / "www" / "home-energy-manager-pricing" / "entry-1" / "pricing_schedule.json"
+    legacy_path = tmp_path / "www" / "heros-pricing" / "entry-1" / "pricing_schedule.json"
     legacy_payload = {
         "version": 1,
         "updated": "2026-07-14T00:00:00+00:00",

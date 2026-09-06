@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   reportDefaultLayout,
 } from "../layout/reportLayout.js";
 
-export class HemReportPage extends LitElement {
+export class HerosReportPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -67,32 +67,32 @@ export class HemReportPage extends LitElement {
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderSummaryCard() {
-    return html`<hem-card><p class="card-label">Monthly report</p><h3>July snapshot</h3><strong class="hero-value">74%</strong><p>Self-powered energy share</p></hem-card>`;
+    return html`<heros-card><p class="card-label">Monthly report</p><h3>July snapshot</h3><strong class="hero-value">74%</strong><p>Self-powered energy share</p></heros-card>`;
   }
 
   _renderCostCard() {
-    return html`<hem-card><p class="card-label">Cost estimate</p><h3>Net bill forecast</h3><strong class="hero-value">$42</strong><p>Mock projection based on current pricing data.</p></hem-card>`;
+    return html`<heros-card><p class="card-label">Cost estimate</p><h3>Net bill forecast</h3><strong class="hero-value">$42</strong><p>Mock projection based on current pricing data.</p></heros-card>`;
   }
 
   _renderSolarCard() {
-    const solar = this.hemState.solar;
-    return html`<hem-card><p class="card-label">Solar contribution</p><h3>${solar.todayKwh} kWh today</h3>${this._bars([48, 62, 82, 74, 91, 68, 77])}</hem-card>`;
+    const solar = this.herosState.solar;
+    return html`<heros-card><p class="card-label">Solar contribution</p><h3>${solar.todayKwh} kWh today</h3>${this._bars([48, 62, 82, 74, 91, 68, 77])}</heros-card>`;
   }
 
   _renderBatteryCard() {
-    const battery = this.hemState.battery;
+    const battery = this.herosState.battery;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery impact</p>
         <h3>${battery.selectedBattery}</h3>
         <section class="mini-grid">
@@ -100,13 +100,13 @@ export class HemReportPage extends LitElement {
           <article><span>Discharge</span><strong>86 kWh</strong></article>
           <article><span>Current</span><strong>${battery.soc}%</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderBreakdownCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Energy breakdown</p>
         <h3>Usage sources</h3>
         <section class="rule-list">
@@ -114,7 +114,7 @@ export class HemReportPage extends LitElement {
           <article><strong>Battery</strong><span>32%</span></article>
           <article><strong>Grid import</strong><span>26%</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -166,9 +166,9 @@ export class HemReportPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -184,13 +184,13 @@ export class HemReportPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label,
     .mini-grid span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -215,7 +215,7 @@ export class HemReportPage extends LitElement {
     p,
     .layout-toolbar span,
     .rule-list span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -233,7 +233,7 @@ export class HemReportPage extends LitElement {
     }
 
     button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -245,7 +245,7 @@ export class HemReportPage extends LitElement {
 
     button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .mini-grid {
@@ -284,7 +284,7 @@ export class HemReportPage extends LitElement {
     }
 
     .spark-bars span {
-      background: linear-gradient(180deg, var(--hem-accent-2), var(--hem-accent));
+      background: linear-gradient(180deg, var(--heros-accent-2), var(--heros-accent));
       border-radius: 999px 999px 4px 4px;
       flex: 1;
       min-width: 16px;
@@ -307,4 +307,4 @@ export class HemReportPage extends LitElement {
   `;
 }
 
-customElements.define("hem-report-page", HemReportPage);
+customElements.define("heros-report-page", HerosReportPage);

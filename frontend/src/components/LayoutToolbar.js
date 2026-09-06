@@ -28,7 +28,7 @@ export class LayoutToolbar extends LitElement {
     .toolbar {
       align-items: center;
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 20px;
       display: flex;
       gap: 16px;
@@ -39,7 +39,7 @@ export class LayoutToolbar extends LitElement {
 
     .toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     strong,
@@ -48,7 +48,7 @@ export class LayoutToolbar extends LitElement {
     }
 
     span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       font-size: 0.92rem;
       margin-top: 2px;
     }
@@ -60,7 +60,7 @@ export class LayoutToolbar extends LitElement {
       justify-content: flex-end;
     }
 
-    ::slotted(.hem-button) {
+    ::slotted(.heros-button) {
       align-items: center;
       border: 1px solid rgba(0, 229, 255, 0.55);
       border-radius: 999px;
@@ -75,9 +75,9 @@ export class LayoutToolbar extends LitElement {
       padding: 0 18px;
     }
 
-    ::slotted(.hem-button.secondary) {
+    ::slotted(.heros-button.secondary) {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     @media (max-width: 780px) {
@@ -93,4 +93,4 @@ export class LayoutToolbar extends LitElement {
   `;
 }
 
-customElements.define("hem-layout-toolbar", LayoutToolbar);
+customElements.define("heros-layout-toolbar", LayoutToolbar);

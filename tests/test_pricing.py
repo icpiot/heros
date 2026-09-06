@@ -12,9 +12,9 @@ import pytest
 def _load_pricing_module():
     here = os.path.dirname(__file__)
     path = os.path.abspath(os.path.join(
-        here, "..", "custom_components", "home_energy_manager", "pricing.py",
+        here, "..", "custom_components", "heros", "pricing.py",
     ))
-    spec = importlib.util.spec_from_file_location("home_energy_manager_pricing", path)
+    spec = importlib.util.spec_from_file_location("heros_pricing", path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)

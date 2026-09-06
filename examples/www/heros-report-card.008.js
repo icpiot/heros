@@ -1,7 +1,7 @@
-const HOME_ENERGY_MANAGER_REPORT_CARD_BUILD = "085";
+const HEROS_REPORT_CARD_BUILD = "086";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
-const HOME_ENERGY_MANAGER_REPORT_CARD_TAG = `home-energy-manager-report-card-${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}`;
-const HOME_ENERGY_MANAGER_REPORT_PERIODS = [
+const HEROS_REPORT_CARD_TAG = `heros-report-card-${HEROS_REPORT_CARD_BUILD}`;
+const HEROS_REPORT_PERIODS = [
   { value: "1h", label: "1H", minutes: 60 },
   { value: "6h", label: "6H", minutes: 360 },
   { value: "12h", label: "12H", minutes: 720 },
@@ -10,7 +10,7 @@ const HOME_ENERGY_MANAGER_REPORT_PERIODS = [
 
 class ByteWattReportCard extends HTMLElement {
   setConfig(config) {
-    const prefix = config?.entity_prefix || "home_energy_manager";
+    const prefix = config?.entity_prefix || "heros";
     this._config = {
       entity_prefix: prefix,
       settings_target: config?.settings_target || `select.house_${prefix}_settings_target`,
@@ -141,7 +141,7 @@ class ByteWattReportCard extends HTMLElement {
   }
 
   _entityByKey(key, domain = "sensor") {
-    const keySuffix = `home_energy_manager_${key}`;
+    const keySuffix = `heros_${key}`;
     const baseEntityId = `${domain}.${keySuffix}`;
     return this._hass?.states?.[baseEntityId]
       || this._allEntities().find((entity) => {
@@ -413,7 +413,7 @@ class ByteWattReportCard extends HTMLElement {
     const base = explicitBase
       ? explicitBase.replace(/\/+$/, "")
       : entryId
-        ? `/local/home-energy-manager-history/${entryId}`
+        ? `/local/heros-history/${entryId}`
         : "";
     if (!base) return "";
     return `${base}/history.json`;
@@ -638,7 +638,7 @@ class ByteWattReportCard extends HTMLElement {
     };
     if (history?.entry_id) payload.entry_id = history.entry_id;
     try {
-      await this._hass.callService("home_energy_manager", "ensure_report_history", payload);
+      await this._hass.callService("heros", "ensure_report_history", payload);
       await this._reloadHistory();
     } catch (error) {
       this._historyLoadError = String(error?.message || error || "History download failed");
@@ -2177,9 +2177,9 @@ class ByteWattReportCard extends HTMLElement {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const stamp = (reporting?.power_diagram?.date || "today").replaceAll("/", "-");
-    const label = (reporting?.label || "home-energy-manager").replaceAll(/[^a-zA-Z0-9_-]+/g, "_");
+    const label = (reporting?.label || "heros").replaceAll(/[^a-zA-Z0-9_-]+/g, "_");
     link.href = url;
-    link.download = `home-energy-manager-report-${label}-${stamp}.csv`;
+    link.download = `heros-report-${label}-${stamp}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2393,7 +2393,7 @@ class ByteWattReportCard extends HTMLElement {
   }
 
   _chartPeriodMinutes() {
-    return HOME_ENERGY_MANAGER_REPORT_PERIODS.find((item) => item.value === this._periodPreset)?.minutes || 1440;
+    return HEROS_REPORT_PERIODS.find((item) => item.value === this._periodPreset)?.minutes || 1440;
   }
 
   _chartWindowConfig(times, reporting) {
@@ -2721,7 +2721,7 @@ class ByteWattReportCard extends HTMLElement {
                 </div>
                 ${this._view === "power" ? `
                   <div class="period-tabs">
-                    ${HOME_ENERGY_MANAGER_REPORT_PERIODS.map((period) => `
+                    ${HEROS_REPORT_PERIODS.map((period) => `
                       <button type="button" class="${this._periodPreset === period.value ? "active" : ""}" data-period="${period.value}">${period.label}</button>
                     `).join("")}
                   </div>
@@ -3587,7 +3587,7 @@ class ByteWattReportCard extends HTMLElement {
         }
         .chart--refresh {
           clip-path: inset(0 100% 0 0);
-          animation: hem-chart-reveal 720ms ease-out forwards;
+          animation: heros-chart-reveal 720ms ease-out forwards;
         }
         .axis,
         .grid {
@@ -3713,7 +3713,7 @@ class ByteWattReportCard extends HTMLElement {
           font-size:0.78rem;
           font-weight:700;
         }
-        @keyframes hem-chart-reveal {
+        @keyframes heros-chart-reveal {
           from { clip-path: inset(0 100% 0 0); }
           to { clip-path: inset(0 0 0 0); }
         }
@@ -3836,7 +3836,7 @@ class ByteWattReportCard extends HTMLElement {
           <div class="title-row">
             <div class="title-icon">&#9889;</div>
             <div class="title">HEROS Report</div>
-                <div class="version-badge">v${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}</div>
+                <div class="version-badge">v${HEROS_REPORT_CARD_BUILD}</div>
           </div>
           <div data-report-body>
             ${this._renderReportBody(reporting)}
@@ -3993,12 +3993,12 @@ class ByteWattReportCard extends HTMLElement {
 }
 
 if (typeof customElements !== "undefined") {
-  if (!customElements.get("home-energy-manager-report-card")) {
-    customElements.define("home-energy-manager-report-card", ByteWattReportCard);
+  if (!customElements.get("heros-report-card")) {
+    customElements.define("heros-report-card", ByteWattReportCard);
   }
-  if (!customElements.get(HOME_ENERGY_MANAGER_REPORT_CARD_TAG)) {
+  if (!customElements.get(HEROS_REPORT_CARD_TAG)) {
     customElements.define(
-      HOME_ENERGY_MANAGER_REPORT_CARD_TAG,
+      HEROS_REPORT_CARD_TAG,
       class extends ByteWattReportCard {},
     );
   }
@@ -4006,10 +4006,10 @@ if (typeof customElements !== "undefined") {
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "home-energy-manager-report-card",
+  type: "heros-report-card",
   name: "HEROS Report Card",
-  description: `HEROS reporting card build ${HOME_ENERGY_MANAGER_REPORT_CARD_BUILD}.`,
+  description: `HEROS reporting card build ${HEROS_REPORT_CARD_BUILD}.`,
 });
 
-window.homeEnergyManagerReportCardBuild = HOME_ENERGY_MANAGER_REPORT_CARD_BUILD;
-window.homeEnergyManagerReportCardTag = HOME_ENERGY_MANAGER_REPORT_CARD_TAG;
+window.herosReportCardBuild = HEROS_REPORT_CARD_BUILD;
+window.herosReportCardTag = HEROS_REPORT_CARD_TAG;

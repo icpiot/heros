@@ -1,5 +1,5 @@
 export const FORECAST_LAYOUT_VERSION = 1;
-export const FORECAST_LAYOUT_STORAGE_KEY = "hem.frontend.layout.forecast.v1";
+export const FORECAST_LAYOUT_STORAGE_KEY = "heros.frontend.layout.forecast.v1";
 
 export const forecastDefaultLayout = [
   { id: "forecast-summary", x: 0, y: 0, w: 4, h: 3, minW: 3, minH: 2 },

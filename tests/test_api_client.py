@@ -20,10 +20,10 @@ pytest.importorskip("aiohttp")
 # skip cleanly when HA isn't installed (bare sandbox).
 try:
     api_auth = importlib.import_module(
-        "custom_components.home_energy_manager.api.neovolt_auth"
+        "custom_components.heros.api.neovolt_auth"
     )
     api_client = importlib.import_module(
-        "custom_components.home_energy_manager.api.neovolt_client"
+        "custom_components.heros.api.neovolt_client"
     )
 except ModuleNotFoundError as exc:
     pytest.skip(f"Module not installed in this environment: {exc.name}", allow_module_level=True)

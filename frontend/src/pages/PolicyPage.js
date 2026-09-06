@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   policyDefaultLayout,
 } from "../layout/policyLayout.js";
 
-export class HemPolicyPage extends LitElement {
+export class HerosPolicyPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -67,55 +67,55 @@ export class HemPolicyPage extends LitElement {
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderSummaryCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Active policy</p>
         <h3>Balanced self-use</h3>
         <strong class="hero-value">Auto</strong>
         <p>Prioritise home load, preserve evening battery reserve, export solar surplus.</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderImportPolicyCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Import policy</p>
         <h3>Avoid peak import</h3>
         <section class="rule-list">
           <article><strong>Peak window</strong><span>16:00 → 21:00</span></article>
           <article><strong>Max grid import</strong><span>2.5 kW</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderExportPolicyCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Export policy</p>
         <h3>Export surplus solar</h3>
         <section class="rule-list">
           <article><strong>Export limit</strong><span>5.0 kW</span></article>
           <article><strong>Min feed-in rate</strong><span>$0.08/kWh</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderBatteryPolicyCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Battery policy</p>
         <h3>Evening reserve</h3>
         <section class="mini-grid">
@@ -123,13 +123,13 @@ export class HemPolicyPage extends LitElement {
           <article><span>Target</span><strong>55%</strong></article>
           <article><span>Max</span><strong>95%</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderAutomationCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Automation rules</p>
         <h3>3 active rules</h3>
         <section class="rule-list">
@@ -137,7 +137,7 @@ export class HemPolicyPage extends LitElement {
           <article><strong>Price spike</strong><span>Hold reserve</span></article>
           <article><strong>Public holiday</strong><span>Use holiday pricing</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -185,9 +185,9 @@ export class HemPolicyPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -203,13 +203,13 @@ export class HemPolicyPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label,
     .mini-grid span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -234,7 +234,7 @@ export class HemPolicyPage extends LitElement {
     p,
     .layout-toolbar span,
     .rule-list span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -252,7 +252,7 @@ export class HemPolicyPage extends LitElement {
     }
 
     button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -264,7 +264,7 @@ export class HemPolicyPage extends LitElement {
 
     button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .mini-grid {
@@ -311,4 +311,4 @@ export class HemPolicyPage extends LitElement {
   `;
 }
 
-customElements.define("hem-policy-page", HemPolicyPage);
+customElements.define("heros-policy-page", HerosPolicyPage);

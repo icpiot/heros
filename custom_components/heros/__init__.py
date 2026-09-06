@@ -193,15 +193,15 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 
-PANEL_COMPONENT_NAME = "home-energy-manager-panel"
-PANEL_FRONTEND_URL_PATH = "home-energy-manager"
-PANEL_MODULE_URL = "/local/community/home-energy-manager/home-energy-manager-panel.js?v=483"
+PANEL_COMPONENT_NAME = "heros-panel"
+PANEL_FRONTEND_URL_PATH = "heros"
+PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=484"
 PANEL_CONFIG = {
     "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
     "theme": "cyberpunk",
-    "entity_prefix": "home_energy_manager",
-    "settings_target": "select.house_home_energy_manager_settings_target",
+    "entity_prefix": "heros",
+    "settings_target": "select.house_heros_settings_target",
     "theme_art_url": "",
     "theme_art_size": "cover",
     "theme_art_position": "center center",
@@ -600,7 +600,7 @@ async def _ensure_report_history_range(
         hass,
         status_text,
         title="HEROS History",
-        notification_id=f"home_energy_manager_history_{entry_id}",
+        notification_id=f"heros_history_{entry_id}",
     )
 
     today_date = dt_util.now().date().isoformat()
@@ -641,7 +641,7 @@ async def _ensure_report_history_range(
             hass,
             progress,
             title="HEROS History",
-            notification_id=f"home_energy_manager_history_{entry_id}",
+            notification_id=f"heros_history_{entry_id}",
         )
 
     done_text = f"History ready for {history_label} ({len(dates)} day(s))"
@@ -650,7 +650,7 @@ async def _ensure_report_history_range(
         hass,
         done_text,
         title="HEROS History",
-        notification_id=f"home_energy_manager_history_{entry_id}",
+        notification_id=f"heros_history_{entry_id}",
     )
 
 
@@ -1259,7 +1259,7 @@ async def _handle_test_forecast_history_source(hass: HomeAssistant, call: Servic
             f"watt_hours_day={counts.get('watt_hours_day', 0)}"
         ),
         title="HEROS Forecast History Test",
-        notification_id="home_energy_manager_forecast_history_test",
+        notification_id="heros_forecast_history_test",
     )
 
 

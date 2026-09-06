@@ -1,7 +1,7 @@
 import { LitElement, css, html } from "lit";
 import "./EditableGrid.js";
-import "./HemActionButtonCard.js";
-import "./HemCard.js";
+import "./HerosActionButtonCard.js";
+import "./HerosCard.js";
 import "./PricingGroupEditor.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
@@ -51,7 +51,7 @@ export class PricingGroupWorkspace extends LitElement {
         id: "group-selector",
         compactEditor: true,
         template: html`
-          <hem-card class="inner-card">
+          <heros-card class="inner-card">
             <label class="group-selector">
               <span>Effective Date / Description</span>
               <select @change=${this._selectGroup}>
@@ -62,22 +62,22 @@ export class PricingGroupWorkspace extends LitElement {
                 `)}
               </select>
             </label>
-          </hem-card>
+          </heros-card>
         `,
       },
       {
         id: "group-modify-action",
         compactEditor: true,
         template: html`
-          <hem-card class="inner-card">
+          <heros-card class="inner-card">
             <div class="group-action-frame">
-              <hem-action-button-card
+              <heros-action-button-card
                 class="inline-action-button"
                 label="Modify Group"
                 @click=${() => this._setMode("modify")}
-              ></hem-action-button-card>
+              ></heros-action-button-card>
             </div>
-          </hem-card>
+          </heros-card>
         `,
       },
       ...(this.addNewLevel === "group" ? [{
@@ -85,47 +85,47 @@ export class PricingGroupWorkspace extends LitElement {
         compactEditor: true,
         levelTarget: { label: "Move to page", target: "page" },
         template: html`
-          <hem-card class="inner-card">
+          <heros-card class="inner-card">
             <div class="group-action-frame">
-              <hem-action-button-card
+              <heros-action-button-card
                 class="inline-action-button wide"
                 label="Add as new rate group"
                 @click=${() => this._setMode("new")}
-              ></hem-action-button-card>
+              ></heros-action-button-card>
             </div>
-          </hem-card>
+          </heros-card>
         `,
       }] : []),
       {
         id: "group-fields",
         compactEditor: true,
         template: html`
-          <hem-card class="inner-card">
+          <heros-card class="inner-card">
             <pricing-group-editor
               hide-actions
               .mode=${this.mode === "view" ? "modify" : this.mode}
               .group=${this.mode === "new" ? undefined : this.group}
             ></pricing-group-editor>
-          </hem-card>
+          </heros-card>
         `,
       },
       {
         id: "group-save-button",
         compactEditor: true,
         template: html`
-          <hem-card class="inner-card">
-            <hem-action-button-card
+          <heros-card class="inner-card">
+            <heros-action-button-card
               class="inline-action-button wide"
               .label=${this.mode === "new" ? "Save new group" : "Save active group"}
-            ></hem-action-button-card>
-          </hem-card>
+            ></heros-action-button-card>
+          </heros-card>
         `,
       },
     ];
 
     return html`
       <section class="workspace">
-        <hem-editable-grid
+        <heros-editable-grid
           .items=${cards}
           .layout=${this.layout}
           .editing=${this.editing}
@@ -133,7 +133,7 @@ export class PricingGroupWorkspace extends LitElement {
           @layout-change=${this._layoutChanged}
           @layout-remove=${this._layoutRemoved}
           @layout-level-change=${this._levelChanged}
-        ></hem-editable-grid>
+        ></heros-editable-grid>
       </section>
     `;
   }
@@ -213,7 +213,7 @@ export class PricingGroupWorkspace extends LitElement {
     }
 
     .inner-card {
-      --hem-card-padding: 10px;
+      --heros-card-padding: 10px;
     }
 
     .group-selector {
@@ -224,16 +224,16 @@ export class PricingGroupWorkspace extends LitElement {
     }
 
     .group-selector span {
-      color: var(--hem-text);
+      color: var(--heros-text);
       font-size: 0.86rem;
       font-weight: 800;
     }
 
     .group-selector select {
       background: rgba(7, 14, 26, 0.72);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 12px;
-      color: var(--hem-text);
+      color: var(--heros-text);
       font: inherit;
       min-height: 42px;
       padding: 9px 12px;
@@ -254,7 +254,7 @@ export class PricingGroupWorkspace extends LitElement {
     }
 
     .inline-action-button {
-      --hem-action-padding: 8px;
+      --heros-action-padding: 8px;
       display: block;
       height: 100%;
       min-height: 56px;

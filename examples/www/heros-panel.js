@@ -1,23 +1,23 @@
-import "./home-energy-manager-policy-card.js?v=008";
-import "./home-energy-manager-debug-card.js?v=035";
+import "./heros-policy-card.js?v=009";
+import "./heros-debug-card.js?v=036";
 
-const HOME_ENERGY_MANAGER_PANEL_BUILD = "483";
-const HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL = "./home-energy-manager-report-card.js?v=396";
-const HOME_ENERGY_MANAGER_PANEL_THEME_KEY = "home-energy-manager.panel.theme";
-const HOME_ENERGY_MANAGER_PANEL_PAGE_KEY = "home-energy-manager.panel.page";
-const HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY = "hem_page";
-const HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY = "home-energy-manager.panel.battery";
-const HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY = "home-energy-manager.panel.debug";
-const HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY = "home-energy-manager.panel.entry_id";
-const HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL = "/local/ha-git/home_energy_manager_git_last.txt";
-const HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS = 1800;
-const HOME_ENERGY_MANAGER_POLICY_FEEDBACK_MS = 5000;
-const HOME_ENERGY_MANAGER_POLICY_FILE_POLL_MS = 3000;
-const HOME_ENERGY_MANAGER_POLICY_LIVE_REFRESH_MS = 10000;
-const HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS = 120000;
-const HOME_ENERGY_MANAGER_SYNC_POLL_MS = 5000;
-const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
-const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS = [
+const HEROS_PANEL_BUILD = "484";
+const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=397";
+const HEROS_PANEL_THEME_KEY = "heros.panel.theme";
+const HEROS_PANEL_PAGE_KEY = "heros.panel.page";
+const HEROS_PANEL_PAGE_FRAGMENT_KEY = "heros_page";
+const HEROS_PANEL_BATTERY_KEY = "heros.panel.battery";
+const HEROS_PANEL_DEBUG_KEY = "heros.panel.debug";
+const HEROS_PANEL_ENTRY_ID_KEY = "heros.panel.entry_id";
+const HEROS_PANEL_SYNC_LOG_URL = "/local/ha-git/heros_git_last.txt";
+const HEROS_INTERACTION_RENDER_HOLD_MS = 1800;
+const HEROS_POLICY_FEEDBACK_MS = 5000;
+const HEROS_POLICY_FILE_POLL_MS = 3000;
+const HEROS_POLICY_LIVE_REFRESH_MS = 10000;
+const HEROS_PRICING_PENDING_WRITE_MS = 120000;
+const HEROS_SYNC_POLL_MS = 5000;
+const HEROS_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
+const HEROS_PURCHASE_TARIFF_OPTIONS = [
   "Peak",
   "Peak - Morning",
   "Peak - Evening",
@@ -43,16 +43,16 @@ const HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS = [
   "Feed-in Tariff - Time-varying",
   "Free Energy Window - 11am-2pm",
 ];
-const HOME_ENERGY_MANAGER_PANEL_THEMES = [
+const HEROS_PANEL_THEMES = [
   { value: "midnight", label: "Midnight" },
   { value: "sunrise", label: "Sunrise" },
   { value: "neon", label: "Neon" },
   { value: "cyberpunk", label: "Cyberpunk" },
 ];
 
-const HOME_ENERGY_MANAGER_FALLBACK_HOSTS = new WeakSet();
-const HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS = new WeakMap();
-const HOME_ENERGY_MANAGER_PANEL_PAGES = [
+const HEROS_FALLBACK_HOSTS = new WeakSet();
+const HEROS_FALLBACK_CONTROLLERS = new WeakMap();
+const HEROS_PANEL_PAGES = [
   { value: "overview", label: "Overview", icon: "◉" },
   { value: "policy", label: "Policy", icon: "▥" },
   { value: "report", label: "Report", icon: "▤" },
@@ -65,7 +65,7 @@ const HOME_ENERGY_MANAGER_PANEL_PAGES = [
   { value: "debug", label: "Debug", icon: "◫" },
 ];
 
-const HOME_ENERGY_MANAGER_REPORT_CATALOG = [
+const HEROS_REPORT_CATALOG = [
   {
     category: "Operational",
     items: [
@@ -115,7 +115,7 @@ const HOME_ENERGY_MANAGER_REPORT_CATALOG = [
   },
 ];
 
-const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
+const HEROS_FORECAST_ENTITY_FIELDS = [
   {
     slot: "today",
     configKey: "forecast_generation_today_entity",
@@ -258,7 +258,7 @@ const HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS = [
   },
 ];
 
-const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
+const HEROS_BATTERY_ENTITY_FIELDS = [
   {
     slot: "percentage",
     configKey: "battery_percentage_entity",
@@ -448,7 +448,7 @@ const HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS = [
   },
 ];
 
-const HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS = [
+const HEROS_BATTERY_HERO_VALUE_FIELDS = [
   {
     key: "battery_soc",
     heroLabel: "Battery SOC",
@@ -501,7 +501,7 @@ const HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS = [
   },
 ];
 
-const HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS = [
+const HEROS_SOLAR_HERO_VALUE_FIELDS = [
   {
     key: "solar_power",
     heroLabel: "Solar Power",
@@ -539,7 +539,7 @@ const HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS = [
   },
 ];
 
-const HOME_ENERGY_MANAGER_BATTERY_HERO_FIELD_OPTIONS = [
+const HEROS_BATTERY_HERO_FIELD_OPTIONS = [
   { value: "soc", label: "soc" },
   { value: "pbat", label: "pbat" },
   { value: "pload", label: "pload" },
@@ -553,13 +553,13 @@ const HOME_ENERGY_MANAGER_BATTERY_HERO_FIELD_OPTIONS = [
   { value: "forceChargeMode", label: "forceChargeMode" },
 ];
 
-const HOME_ENERGY_MANAGER_BATTERY_HERO_SCOPE_OPTIONS = [
+const HEROS_BATTERY_HERO_SCOPE_OPTIONS = [
   { value: "all_selected_per_battery", label: "All Systems + Selected Battery + Per Battery" },
   { value: "all_selected", label: "All Systems + Selected Battery" },
   { value: "per_battery", label: "Per Battery" },
 ];
 
-class HomeEnergyManagerPanel extends HTMLElement {
+class HerosPanel extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -713,7 +713,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       || this._isForecastSelectorHeld();
   }
 
-  _holdRenderWindow(duration = HOME_ENERGY_MANAGER_INTERACTION_RENDER_HOLD_MS) {
+  _holdRenderWindow(duration = HEROS_INTERACTION_RENDER_HOLD_MS) {
     this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + duration);
     this._queueDeferredRender();
   }
@@ -883,10 +883,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _loadPage() {
     try {
       const url = new URL(window.location.href);
-      const hashPage = new URLSearchParams(String(url.hash || "").replace(/^#/, "")).get(HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY);
-      const queryPage = url.searchParams.get(HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY);
+      const hashPage = new URLSearchParams(String(url.hash || "").replace(/^#/, "")).get(HEROS_PANEL_PAGE_FRAGMENT_KEY);
+      const queryPage = url.searchParams.get(HEROS_PANEL_PAGE_FRAGMENT_KEY);
       return this._normalizePage(
-        hashPage || queryPage || localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY) || "overview",
+        hashPage || queryPage || localStorage.getItem(HEROS_PANEL_PAGE_KEY) || "overview",
       );
     } catch (error) {
       return "overview";
@@ -895,7 +895,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _loadDebugEnabled() {
     try {
-      return localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY) === "true";
+      return localStorage.getItem(HEROS_PANEL_DEBUG_KEY) === "true";
     } catch (error) {
       return false;
     }
@@ -903,7 +903,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _loadSettingsFocus() {
     try {
-      return localStorage.getItem("home-energy-manager.panel.settings.focus") || "entities";
+      return localStorage.getItem("heros.panel.settings.focus") || "entities";
     } catch (error) {
       return "entities";
     }
@@ -932,10 +932,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
       || this._config.theme_panel_art_url
       || "";
     return [
-      `--hem-panel-art-image: ${this._cssUrl(artUrl)};`,
-      `--hem-panel-art-size: ${this._cleanCssValue(this._config.theme_art_size, "cover")};`,
-      `--hem-panel-art-position: ${this._cleanCssValue(this._config.theme_art_position, "center center")};`,
-      `--hem-panel-art-opacity: ${this._cleanCssValue(this._config.theme_art_opacity, "0.18")};`,
+      `--heros-panel-art-image: ${this._cssUrl(artUrl)};`,
+      `--heros-panel-art-size: ${this._cleanCssValue(this._config.theme_art_size, "cover")};`,
+      `--heros-panel-art-position: ${this._cleanCssValue(this._config.theme_art_position, "center center")};`,
+      `--heros-panel-art-opacity: ${this._cleanCssValue(this._config.theme_art_opacity, "0.18")};`,
     ].join(" ");
   }
 
@@ -952,7 +952,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ...this._config,
       theme,
     };
-    this._hass.callService("home_energy_manager", "set_panel_theme", {
+    this._hass.callService("heros", "set_panel_theme", {
       entry_id: entryId,
       panel_theme: theme,
     }).catch((error) => {
@@ -963,7 +963,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _savePage(page) {
     try {
       const normalizedPage = this._normalizePage(page);
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_PAGE_KEY, normalizedPage);
+      localStorage.setItem(HEROS_PANEL_PAGE_KEY, normalizedPage);
       this._syncPageUrl(normalizedPage);
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
@@ -972,7 +972,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _loadBatterySelection() {
     try {
-      localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY);
+      localStorage.removeItem(HEROS_PANEL_BATTERY_KEY);
     } catch (error) {
       // Ignore storage failures; the HA select entity is the source of truth.
     }
@@ -981,7 +981,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _saveBatterySelection(option) {
     try {
-      localStorage.removeItem(HOME_ENERGY_MANAGER_PANEL_BATTERY_KEY);
+      localStorage.removeItem(HEROS_PANEL_BATTERY_KEY);
     } catch (error) {
       // Ignore storage failures; the HA select entity is the source of truth.
     }
@@ -990,7 +990,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _syncPageUrl(page) {
     try {
       const url = new URL(window.location.href);
-      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
+      url.hash = `${HEROS_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
       window.history.replaceState({}, "", url);
     } catch (error) {
       // Ignore URL sync failures in sandboxed or restricted environments.
@@ -999,7 +999,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _saveDebugEnabled(enabled) {
     try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY, enabled ? "true" : "false");
+      localStorage.setItem(HEROS_PANEL_DEBUG_KEY, enabled ? "true" : "false");
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -1007,14 +1007,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _saveSettingsFocus(focus) {
     try {
-      localStorage.setItem("home-energy-manager.panel.settings.focus", focus);
+      localStorage.setItem("heros.panel.settings.focus", focus);
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
   }
 
   _syncLogPath() {
-    return HOME_ENERGY_MANAGER_PANEL_SYNC_LOG_URL;
+    return HEROS_PANEL_SYNC_LOG_URL;
   }
 
   _clearSyncLogTimer() {
@@ -1040,7 +1040,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return;
     }
     try {
-      await this._hass?.callService?.("home_energy_manager", "refresh_state", {
+      await this._hass?.callService?.("heros", "refresh_state", {
         entry_id: entryId,
       });
     } catch (error) {
@@ -1060,7 +1060,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     this._policyChargeLiveRefreshTimer = window.setInterval(() => {
       this._refreshPolicyChargeLiveValues();
-    }, HOME_ENERGY_MANAGER_POLICY_LIVE_REFRESH_MS);
+    }, HEROS_POLICY_LIVE_REFRESH_MS);
   }
 
   async _loadSyncLog() {
@@ -1103,7 +1103,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
     this._syncLogTimer = window.setInterval(() => {
       this._loadSyncLog();
-    }, HOME_ENERGY_MANAGER_SYNC_POLL_MS);
+    }, HEROS_SYNC_POLL_MS);
   }
 
   _loadPricingDraft() {
@@ -1183,15 +1183,15 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _pageHref(page) {
     try {
       const url = new URL(window.location.href);
-      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
+      url.hash = `${HEROS_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
       return url.toString();
     } catch (error) {
-      return `#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
+      return `#${HEROS_PANEL_PAGE_FRAGMENT_KEY}=${encodeURIComponent(this._normalizePage(page))}`;
     }
   }
 
   _availablePages() {
-    return HOME_ENERGY_MANAGER_PANEL_PAGES.filter((page) => page.value !== "debug" || this._debugEnabled);
+    return HEROS_PANEL_PAGES.filter((page) => page.value !== "debug" || this._debugEnabled);
   }
 
   _syncStoredState() {
@@ -1214,8 +1214,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!key) {
       return;
     }
-    const pageKey = HOME_ENERGY_MANAGER_PANEL_PAGE_KEY;
-    const debugKey = HOME_ENERGY_MANAGER_PANEL_DEBUG_KEY;
+    const pageKey = HEROS_PANEL_PAGE_KEY;
+    const debugKey = HEROS_PANEL_DEBUG_KEY;
     if (![pageKey, debugKey].includes(key)) {
       return;
     }
@@ -1227,7 +1227,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _hasPricingUrlAction() {
     try {
-      return Boolean(new URL(window.location.href).searchParams.get("hem_action"));
+      return Boolean(new URL(window.location.href).searchParams.get("heros_action"));
     } catch (error) {
       return false;
     }
@@ -1235,7 +1235,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingEditorModeFromUrl() {
     try {
-      const mode = new URL(window.location.href).searchParams.get("hem_editor");
+      const mode = new URL(window.location.href).searchParams.get("heros_editor");
       return String(mode || "").trim().toLowerCase();
     } catch (error) {
       return "";
@@ -1252,7 +1252,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     } catch (error) {
       return;
     }
-    const action = url.searchParams.get("hem_action");
+    const action = url.searchParams.get("heros_action");
     if (!action) {
       return;
     }
@@ -1334,7 +1334,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         }
         this._savePricingUi(model);
       }
-      window.history.replaceState({}, "", `${url.pathname}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`);
+      window.history.replaceState({}, "", `${url.pathname}#${HEROS_PANEL_PAGE_FRAGMENT_KEY}=pricing`);
     } finally {
       this._processingPricingUrlAction = false;
     }
@@ -1342,28 +1342,28 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _pricingActionHref(action, values = {}) {
     const params = new URLSearchParams({
-      hem_page: "pricing",
-      hem_action: action,
+      heros_page: "pricing",
+      heros_action: action,
       ...Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value ?? "")])),
     });
-    return `/home-energy-manager?${params.toString()}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+    return `/heros?${params.toString()}#${HEROS_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
   }
 
   _pricingEditorHref(mode = "modify") {
     const params = new URLSearchParams({
-      hem_page: "pricing",
-      hem_editor: String(mode || "modify"),
+      heros_page: "pricing",
+      heros_editor: String(mode || "modify"),
     });
-    return `/home-energy-manager?${params.toString()}#${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+    return `/heros?${params.toString()}#${HEROS_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
   }
 
   _setPricingEditorUrl(mode = "modify") {
     try {
       const normalizedMode = String(mode || "modify").trim().toLowerCase() || "modify";
       const url = new URL(window.location.href);
-      url.searchParams.set("hem_page", "pricing");
-      url.searchParams.set("hem_editor", normalizedMode);
-      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+      url.searchParams.set("heros_page", "pricing");
+      url.searchParams.set("heros_editor", normalizedMode);
+      url.hash = `${HEROS_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
       window.history.replaceState({}, "", url.toString());
     } catch (error) {
       // Keep local editor state even if the browser blocks URL updates.
@@ -1373,10 +1373,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _clearPricingEditorUrl() {
     try {
       const url = new URL(window.location.href);
-      url.searchParams.delete("hem_editor");
-      url.searchParams.delete("hem_action");
-      url.searchParams.set("hem_page", "pricing");
-      url.hash = `${HOME_ENERGY_MANAGER_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
+      url.searchParams.delete("heros_editor");
+      url.searchParams.delete("heros_action");
+      url.searchParams.set("heros_page", "pricing");
+      url.hash = `${HEROS_PANEL_PAGE_FRAGMENT_KEY}=pricing`;
       window.history.replaceState({}, "", url.toString());
     } catch (error) {
       // Keep the saved data even if the browser blocks URL cleanup.
@@ -1726,7 +1726,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     this._lastKnownEntryId = normalized;
     try {
-      localStorage.setItem(HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY, normalized);
+      localStorage.setItem(HEROS_PANEL_ENTRY_ID_KEY, normalized);
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
     }
@@ -1737,7 +1737,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return this._lastKnownEntryId;
     }
     try {
-      const remembered = String(localStorage.getItem(HOME_ENERGY_MANAGER_PANEL_ENTRY_ID_KEY) || "").trim();
+      const remembered = String(localStorage.getItem(HEROS_PANEL_ENTRY_ID_KEY) || "").trim();
       if (remembered) {
         this._lastKnownEntryId = remembered;
       }
@@ -1777,7 +1777,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return patterns.some((pattern) => pattern.test(haystack));
     });
 
-    return HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+    return HEROS_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = pick(item.patterns) || null;
       return result;
     }, {});
@@ -1785,20 +1785,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _forecastMappingState() {
     const candidates = this._forecastEntityCandidates();
-    const configured = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+    const configured = HEROS_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = this._configuredEntityId(item.configKey) || "";
       return result;
     }, {
       provider: this._config?.forecast_provider || "none",
     });
     const stored = this._loadForecastMapping();
-    const storedWithConfigFallback = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+    const storedWithConfigFallback = HEROS_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = stored[item.slot] || configured[item.slot] || "";
       return result;
     }, {
       provider: stored.provider || configured.provider,
     });
-    const mapping = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => ({
+    const mapping = HEROS_FORECAST_ENTITY_FIELDS.map((item) => ({
       slot: item.slot,
       entityId: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot] || "",
       entity: this._configuredEntityId(item.configKey) || storedWithConfigFallback[item.slot]
@@ -1899,7 +1899,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _forecastInferProviderFromMapping(mapping = {}) {
-    const entityIds = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS
+    const entityIds = HEROS_FORECAST_ENTITY_FIELDS
       .map((item) => String(mapping?.[item.slot] || "").trim())
       .filter(Boolean);
     if (!entityIds.length) {
@@ -1934,7 +1934,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (this._forecastSetupDraft && typeof this._forecastSetupDraft === "object") {
       return this._forecastSetupDraft;
     }
-    return HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
+    return HEROS_FORECAST_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = String(this._config?.[item.configKey] || "").trim();
       return result;
     }, {
@@ -1953,7 +1953,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const mapping = {
       provider: this.shadowRoot.querySelector('[data-forecast-field="forecast_provider"]')?.value || "none",
     };
-    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+    HEROS_FORECAST_ENTITY_FIELDS.forEach((item) => {
       mapping[item.slot] = this.shadowRoot.querySelector(`[data-forecast-field="${item.configKey}"]`)?.value || "";
     });
     const seeded = this._forecastSeededMapping(mapping.provider, mapping);
@@ -1968,12 +1968,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: String(provider || "none"),
     };
     if (next.provider === "none") {
-      HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+      HEROS_FORECAST_ENTITY_FIELDS.forEach((item) => {
         next[item.slot] = String(current[item.slot] || "");
       });
       return next;
     }
-    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+    HEROS_FORECAST_ENTITY_FIELDS.forEach((item) => {
       const existing = String(current[item.slot] || "").trim();
       if (existing) {
         next[item.slot] = existing;
@@ -2000,7 +2000,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const payload = {
       forecast_provider: String(mapping?.provider || "none"),
     };
-    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+    HEROS_FORECAST_ENTITY_FIELDS.forEach((item) => {
       payload[item.configKey] = String(mapping?.[item.slot] || "");
     });
     return payload;
@@ -2018,7 +2018,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const payload = this._forecastServicePayload(mapping);
     try {
-      await this._hass.callService("home_energy_manager", "set_forecast_mapping", {
+      await this._hass.callService("heros", "set_forecast_mapping", {
         entry_id: this._entryId(),
         ...payload,
       });
@@ -2028,7 +2028,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
       this._forecastSaveStatus = {
         type: "success",
-        message: `Saved ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} forecast mapping(s).`,
+        message: `Saved ${HEROS_FORECAST_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} forecast mapping(s).`,
       };
       this._forecastSetupDirty = false;
       this._forecastSetupDraft = null;
@@ -2047,7 +2047,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _forecastMappingKeyForField(key) {
-    const entityField = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.find((item) => item.configKey === key);
+    const entityField = HEROS_FORECAST_ENTITY_FIELDS.find((item) => item.configKey === key);
     if (entityField) {
       return entityField.slot;
     }
@@ -2063,7 +2063,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: current.provider || "none",
       [mappingKey]: String(value || ""),
     };
-    HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.forEach((item) => {
+    HEROS_FORECAST_ENTITY_FIELDS.forEach((item) => {
       if (!(item.slot in next)) {
         next[item.slot] = current[item.slot] || "";
       }
@@ -2093,7 +2093,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             value: entity.entity_id,
             label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
           }));
-    const selectedIds = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS
+    const selectedIds = HEROS_FORECAST_ENTITY_FIELDS
       .map((item) => String(forecastState?.stored?.[item.slot] || "").trim())
       .filter(Boolean);
     const options = [];
@@ -2226,7 +2226,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batteryProviderSourceLabel(provider, item) {
-    return `Source data.${item.sourceKey || item.fallbackKey} -> Target sensor.home_energy_manager_${item.fallbackKey}`;
+    return `Source data.${item.sourceKey || item.fallbackKey} -> Target sensor.heros_${item.fallbackKey}`;
   }
 
   _clearForecastSaveStatusSoon() {
@@ -2251,17 +2251,17 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _batteryFieldStoredValue(provider, item, stored = {}, configured = {}) {
     const value = String(stored[item.slot] || configured[item.slot] || "").trim();
-    return this._batteryFieldLocked(provider) && this._isHemManagedEntity({ entity_id: value }) ? "" : value;
+    return this._batteryFieldLocked(provider) && this._isHerosManagedEntity({ entity_id: value }) ? "" : value;
   }
 
-  _isHemManagedEntity(entity) {
-    return /\.[a-z0-9_]*home_energy_manager(?:_|$)/i.test(entity?.entity_id || "");
+  _isHerosManagedEntity(entity) {
+    return /\.[a-z0-9_]*heros(?:_|$)/i.test(entity?.entity_id || "");
   }
 
   _batteryProviderSourceSensors() {
     return this._states()
       .filter((entity) => entity?.entity_id?.startsWith("sensor."))
-      .filter((entity) => !this._isHemManagedEntity(entity));
+      .filter((entity) => !this._isHerosManagedEntity(entity));
   }
 
   _batteryEntityCandidatesForProvider(batteryState) {
@@ -2296,20 +2296,20 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batteryMappingState() {
-    const configured = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
+    const configured = HEROS_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = this._configuredEntityId(item.configKey) || "";
       return result;
     }, {
       provider: this._batteryProviderKey(this._config?.battery_provider),
     });
     const stored = this._loadBatteryMapping();
-    const storedWithConfigFallback = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
+    const storedWithConfigFallback = HEROS_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = this._batteryFieldStoredValue(result.provider, item, stored, configured);
       return result;
     }, {
       provider: this._batteryProviderKey(stored.provider || configured.provider),
     });
-    const mapping = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => {
+    const mapping = HEROS_BATTERY_ENTITY_FIELDS.map((item) => {
       const entityId = storedWithConfigFallback[item.slot] || "";
       return {
         slot: item.slot,
@@ -2329,7 +2329,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (this._batterySetupDraft && typeof this._batterySetupDraft === "object") {
       return this._batterySetupDraft;
     }
-    return HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
+    return HEROS_BATTERY_ENTITY_FIELDS.reduce((result, item) => {
       result[item.slot] = String(this._config?.[item.configKey] || "").trim();
       return result;
     }, {
@@ -2357,8 +2357,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _splitHeroMappings(mapping = {}) {
-    const batteryKeys = new Set(HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS.map((item) => item.key));
-    const solarKeys = new Set(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS.map((item) => item.key));
+    const batteryKeys = new Set(HEROS_BATTERY_HERO_VALUE_FIELDS.map((item) => item.key));
+    const solarKeys = new Set(HEROS_SOLAR_HERO_VALUE_FIELDS.map((item) => item.key));
     const battery = {};
     const solar = {};
     Object.entries(mapping || {}).forEach(([key, value]) => {
@@ -2382,7 +2382,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const split = this._splitHeroMappings(mapping || {});
     try {
-      await this._hass.callService("home_energy_manager", "set_hero_mapping", {
+      await this._hass.callService("heros", "set_hero_mapping", {
         entry_id: this._entryId(),
         battery_hero_mapping: JSON.stringify(split.battery),
         solar_hero_mapping: JSON.stringify(split.solar),
@@ -2443,7 +2443,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _clearAllBatteryHeroOverrides() {
     const current = this._batteryHeroMappingDraft();
-    HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS.forEach((definition) => {
+    HEROS_BATTERY_HERO_VALUE_FIELDS.forEach((definition) => {
       delete current[definition.key];
     });
     void this._saveBatteryHeroMapping(current);
@@ -2453,7 +2453,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
 
   _clearAllSolarHeroOverrides() {
     const current = this._batteryHeroMappingDraft();
-    HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS.forEach((definition) => {
+    HEROS_SOLAR_HERO_VALUE_FIELDS.forEach((definition) => {
       delete current[definition.key];
     });
     void this._saveBatteryHeroMapping(current);
@@ -2462,8 +2462,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _setBatteryHeroOverrideField(definitionKey, value) {
-    const definition = HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS
-      .concat(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS)
+    const definition = HEROS_BATTERY_HERO_VALUE_FIELDS
+      .concat(HEROS_SOLAR_HERO_VALUE_FIELDS)
       .find((item) => item.key === definitionKey);
     if (!definition) {
       return;
@@ -2477,8 +2477,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _setBatteryHeroOverrideScope(definitionKey, value) {
-    const definition = HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS
-      .concat(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS)
+    const definition = HEROS_BATTERY_HERO_VALUE_FIELDS
+      .concat(HEROS_SOLAR_HERO_VALUE_FIELDS)
       .find((item) => item.key === definitionKey);
     if (!definition) {
       return;
@@ -2494,14 +2494,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _batterySeededMapping(provider, current = {}) {
     const next = { provider: this._batteryProviderKey(provider) };
     if (next.provider === "none") {
-      HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+      HEROS_BATTERY_ENTITY_FIELDS.forEach((item) => {
         next[item.slot] = String(current[item.slot] || "");
       });
       return next;
     }
-    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+    HEROS_BATTERY_ENTITY_FIELDS.forEach((item) => {
       const existing = String(current[item.slot] || "").trim();
-      if (existing && (!this._batteryFieldLocked(next.provider) || !this._isHemManagedEntity({ entity_id: existing }))) {
+      if (existing && (!this._batteryFieldLocked(next.provider) || !this._isHerosManagedEntity({ entity_id: existing }))) {
         next[item.slot] = existing;
         return;
       }
@@ -2529,7 +2529,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const mapping = {
       provider: this._batteryProviderKey(this.shadowRoot.querySelector('[data-battery-field="battery_provider"]')?.value),
     };
-    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+    HEROS_BATTERY_ENTITY_FIELDS.forEach((item) => {
       mapping[item.slot] = this.shadowRoot.querySelector(`[data-battery-field="${item.configKey}"]`)?.value || "";
     });
     const seeded = this._batterySeededMapping(mapping.provider, mapping);
@@ -2543,9 +2543,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const payload = {
       battery_provider: this._batteryProviderKey(mapping?.provider),
     };
-    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+    HEROS_BATTERY_ENTITY_FIELDS.forEach((item) => {
       const value = String(mapping?.[item.slot] || "").trim();
-      payload[item.configKey] = this._batteryFieldLocked(payload.battery_provider) && this._isHemManagedEntity({ entity_id: value })
+      payload[item.configKey] = this._batteryFieldLocked(payload.battery_provider) && this._isHerosManagedEntity({ entity_id: value })
         ? ""
         : value;
     });
@@ -2564,7 +2564,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     const payload = this._batteryServicePayload(mapping);
     try {
-      await this._hass.callService("home_energy_manager", "set_battery_mapping", {
+      await this._hass.callService("heros", "set_battery_mapping", {
         entry_id: this._entryId(),
         ...payload,
       });
@@ -2574,7 +2574,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       };
       this._batterySaveStatus = {
         type: "success",
-        message: `Saved ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} battery mapping(s).`,
+        message: `Saved ${HEROS_BATTERY_ENTITY_FIELDS.filter((item) => payload[item.configKey]).length} battery mapping(s).`,
       };
       this._batterySetupDirty = false;
       this._batterySetupDraft = null;
@@ -2592,7 +2592,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batteryMappingKeyForField(key) {
-    const entityField = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.find((item) => item.configKey === key);
+    const entityField = HEROS_BATTERY_ENTITY_FIELDS.find((item) => item.configKey === key);
     if (entityField) {
       return entityField.slot;
     }
@@ -2608,7 +2608,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       provider: this._batteryProviderKey(current.provider),
       [mappingKey]: String(value || ""),
     };
-    HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.forEach((item) => {
+    HEROS_BATTERY_ENTITY_FIELDS.forEach((item) => {
       if (!(item.slot in next)) {
         next[item.slot] = current[item.slot] || "";
       }
@@ -2627,7 +2627,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   async _saveConnectionType() {
     const provider = this._batteryProviderKey(this.shadowRoot?.querySelector('[data-connection-type-field="battery_provider"]')?.value || this._config?.battery_provider);
     try {
-      await this._hass.callService("home_energy_manager", "set_battery_mapping", {
+      await this._hass.callService("heros", "set_battery_mapping", {
         entry_id: this._entryId(),
         battery_provider: provider,
       });
@@ -2660,7 +2660,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             value: entity.entity_id,
             label: `${entity.entity_id} · ${this._formatEntityState(entity, "Unavailable")}`,
           }));
-    const selectedIds = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS
+    const selectedIds = HEROS_BATTERY_ENTITY_FIELDS
       .map((item) => String(batteryState?.stored?.[item.slot] || "").trim())
       .filter(Boolean);
     const options = [];
@@ -2778,7 +2778,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _managedEntities() {
-    return this._states().filter((entity) => this._isHemManagedEntity(entity));
+    return this._states().filter((entity) => this._isHerosManagedEntity(entity));
   }
 
   _entityCountByDomain(domain) {
@@ -2786,7 +2786,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _themeLabel() {
-    return HOME_ENERGY_MANAGER_PANEL_THEMES.find((theme) => theme.value === this._theme)?.label || "Midnight";
+    return HEROS_PANEL_THEMES.find((theme) => theme.value === this._theme)?.label || "Midnight";
   }
 
   _connectionName() {
@@ -2802,7 +2802,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       return "HEROS";
     }
 
-    if (/^home energy manager$/i.test(normalized)) {
+    if (/^HEROS$/i.test(normalized)) {
       return "HEROS";
     }
 
@@ -2829,14 +2829,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _entityByKey(key, domain = "sensor") {
-    const baseEntityId = `${domain}.home_energy_manager_${key}`;
+    const baseEntityId = `${domain}.heros_${key}`;
     return this._hass?.states?.[baseEntityId]
       || this._managedEntities().find((entity) => {
         if (!entity.entity_id.startsWith(`${domain}.`)) {
           return false;
         }
         const objectId = entity.entity_id.slice(domain.length + 1).replace(/_\d+$/, "");
-        const keySuffix = `home_energy_manager_${key}`;
+        const keySuffix = `heros_${key}`;
         return objectId === keySuffix || objectId.endsWith(`_${keySuffix}`);
       });
   }
@@ -2956,7 +2956,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!entryId) {
       return "";
     }
-    return `/local/home-energy-manager/${encodeURIComponent(entryId)}/pricing_schedule.json?cb=${Date.now()}`;
+    return `/local/heros/${encodeURIComponent(entryId)}/pricing_schedule.json?cb=${Date.now()}`;
   }
 
   _ensurePricingFileLoaded() {
@@ -3017,7 +3017,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!entryId) {
       return "";
     }
-    return `/local/home-energy-manager/${encodeURIComponent(entryId)}/policy_charge_schedule.json?cb=${Date.now()}`;
+    return `/local/heros/${encodeURIComponent(entryId)}/policy_charge_schedule.json?cb=${Date.now()}`;
   }
 
   _ensurePolicyChargeFileLoaded() {
@@ -3038,7 +3038,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
     if (
       this._policyChargeFileLoadKey === loadKey
-      && now - this._policyChargeFileLoadedAt < HOME_ENERGY_MANAGER_POLICY_FILE_POLL_MS
+      && now - this._policyChargeFileLoadedAt < HEROS_POLICY_FILE_POLL_MS
     ) {
       return;
     }
@@ -3081,7 +3081,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       this._invalidatePolicyChargeFileLoad();
       this._ensurePolicyChargeFileLoaded();
       if (attempts > 1) {
-        this._refreshPolicyChargeFileSoon(HOME_ENERGY_MANAGER_POLICY_FILE_POLL_MS, attempts - 1);
+        this._refreshPolicyChargeFileSoon(HEROS_POLICY_FILE_POLL_MS, attempts - 1);
       }
     }, delayMs);
   }
@@ -3202,7 +3202,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ...(model || {}),
       groups: Array.isArray(model?.groups) ? model.groups : [],
       localUpdatedAt: now,
-      pendingWriteUntil: now + HOME_ENERGY_MANAGER_PRICING_PENDING_WRITE_MS,
+      pendingWriteUntil: now + HEROS_PRICING_PENDING_WRITE_MS,
     });
   }
 
@@ -3274,7 +3274,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       ? this._pricingCustomTariffOptions
       : [];
     return [...new Set([
-      ...HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS,
+      ...HEROS_PURCHASE_TARIFF_OPTIONS,
       ...customOptions.map((option) => String(option || "").trim()).filter(Boolean),
     ])];
   }
@@ -3287,13 +3287,13 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const options = this._purchaseTariffOptions();
     if (!options.includes(normalized)) {
       this._pricingCustomTariffOptions = [...options, normalized]
-        .filter((option) => !HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OPTIONS.includes(option));
+        .filter((option) => !HEROS_PURCHASE_TARIFF_OPTIONS.includes(option));
     }
     return normalized;
   }
 
   _handlePurchaseTariffOther(target) {
-    if (target?.dataset?.pricingPurchaseTariffSelect === undefined || target.value !== HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE) {
+    if (target?.dataset?.pricingPurchaseTariffSelect === undefined || target.value !== HEROS_PURCHASE_TARIFF_OTHER_VALUE) {
       return false;
     }
     const customLabel = this._saveCustomPurchaseTariff(window.prompt("Enter purchase tariff label") || "");
@@ -3303,7 +3303,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         const option = document.createElement("option");
         option.value = customLabel;
         option.textContent = customLabel;
-        const otherOption = Array.from(target.options).find((item) => item.value === HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE);
+        const otherOption = Array.from(target.options).find((item) => item.value === HEROS_PURCHASE_TARIFF_OTHER_VALUE);
         target.insertBefore(option, otherOption || null);
       }
       target.value = customLabel;
@@ -3322,7 +3322,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         ${selectedValue && !includesSelected ? `<option value="${this._escapeHtml(selectedValue)}" selected>${this._escapeHtml(selectedValue)}</option>` : ""}
         <option value="" ${selectedValue ? "" : "selected"}>Select tariff</option>
         ${options.map((option) => `<option value="${this._escapeHtml(option)}" ${option === selectedValue ? "selected" : ""}>${this._escapeHtml(option)}</option>`).join("")}
-        <option value="${HOME_ENERGY_MANAGER_PURCHASE_TARIFF_OTHER_VALUE}">Other- Add to List</option>
+        <option value="${HEROS_PURCHASE_TARIFF_OTHER_VALUE}">Other- Add to List</option>
       </select>
     `;
   }
@@ -3399,14 +3399,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
     return `
       <div class="pricing-group-selector-row">
         <div class="shared-selector pricing-group-selector">
-          <div class="shared-selector__label" id="hem-pricing-group-label">Effective Date / Description</div>
+          <div class="shared-selector__label" id="heros-pricing-group-label">Effective Date / Description</div>
           <div class="shared-selector__picker">
             <button
               type="button"
               class="shared-selector__control"
               aria-haspopup="listbox"
               aria-expanded="${this._pricingGroupSelectorOpen && hasGroups ? "true" : "false"}"
-              aria-labelledby="hem-pricing-group-label"
+              aria-labelledby="heros-pricing-group-label"
               data-pricing-group-toggle
               ${hasGroups ? "" : "disabled"}
             >
@@ -3709,7 +3709,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _policyChargeDefaultPlaceholderRow() {
     return {
       ...this._policyChargeRowDefaults(),
-      row_id: "hem_default_charge_row",
+      row_id: "heros_default_charge_row",
       label: "Battery Charge",
       cutoff_soc: "100",
       start_time: "00:00",
@@ -3778,7 +3778,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     );
     const feedbackVisible = Boolean(model?.charging_now)
       || !feedbackAt
-      || (Date.now() - feedbackAt) < HOME_ENERGY_MANAGER_POLICY_FEEDBACK_MS;
+      || (Date.now() - feedbackAt) < HEROS_POLICY_FEEDBACK_MS;
     if (feedbackVisible) {
       return {
         ...model,
@@ -3932,9 +3932,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._render();
     try {
       if (!model.charging_now) {
-        await this._hass.callService("home_energy_manager", "stop_force_charge", {});
+        await this._hass.callService("heros", "stop_force_charge", {});
       } else {
-        await this._hass.callService("home_energy_manager", "start_force_charge", {
+        await this._hass.callService("heros", "start_force_charge", {
           charge_cap: Number(model.immediate_cutoff_soc || 100),
         });
       }
@@ -3972,7 +3972,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._savePolicyChargeUi(model);
     this._render();
     try {
-      await this._hass.callService("home_energy_manager", "policy_charge_save", {
+      await this._hass.callService("heros", "policy_charge_save", {
         policy_enabled: false,
         policy_name: String(model.policy_name || "Battery Charge"),
         immediate_cutoff_soc: Number(model.immediate_cutoff_soc || 100),
@@ -3985,7 +3985,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           day_types: Array.isArray(row.day_types) ? row.day_types : [],
         })),
       });
-      await this._hass.callService("home_energy_manager", "stop_force_charge", {});
+      await this._hass.callService("heros", "stop_force_charge", {});
       await this._hass.callService("homeassistant", "update_entity", {
         entity_id: this._settingsTargetId(),
       });
@@ -4125,7 +4125,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     this._policyChargeUiDirty = false;
     this._render();
     try {
-      await this._hass.callService("home_energy_manager", "policy_charge_save", {
+      await this._hass.callService("heros", "policy_charge_save", {
         policy_enabled: policyEnabled,
         policy_name: String(model.policy_name || "Battery Charge"),
         immediate_cutoff_soc: Number(model.immediate_cutoff_soc || 100),
@@ -4471,7 +4471,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!this._hass || !group?.group_id) {
       return Promise.resolve();
     }
-    return this._hass.callService("home_energy_manager", "pricing_upsert_group", {
+    return this._hass.callService("heros", "pricing_upsert_group", {
       entry_id: this._entryId(),
       group_id: group.group_id,
       label: group.label,
@@ -4492,7 +4492,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!this._hass || !groupId) {
       return Promise.resolve();
     }
-    return this._hass.callService("home_energy_manager", "pricing_remove_group", {
+    return this._hass.callService("heros", "pricing_remove_group", {
       entry_id: this._entryId(),
       group_id: groupId,
     }).catch((error) => {
@@ -4505,7 +4505,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!this._hass || !groupId || !rule?.rule_id) {
       return Promise.resolve();
     }
-    return this._hass.callService("home_energy_manager", "pricing_upsert_record", {
+    return this._hass.callService("heros", "pricing_upsert_record", {
       entry_id: this._entryId(),
       group_id: groupId,
       record_id: rule.rule_id,
@@ -4528,7 +4528,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     if (!this._hass || !groupId || !ruleId) {
       return Promise.resolve();
     }
-    return this._hass.callService("home_energy_manager", "pricing_remove_record", {
+    return this._hass.callService("heros", "pricing_remove_record", {
       entry_id: this._entryId(),
       group_id: groupId,
       record_id: ruleId,
@@ -4964,11 +4964,11 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _batteryHeroMappingRows() {
-    return this._heroMappingRowsForDefinitions(HOME_ENERGY_MANAGER_BATTERY_HERO_VALUE_FIELDS);
+    return this._heroMappingRowsForDefinitions(HEROS_BATTERY_HERO_VALUE_FIELDS);
   }
 
   _solarHeroMappingRows() {
-    return this._heroMappingRowsForDefinitions(HOME_ENERGY_MANAGER_SOLAR_HERO_VALUE_FIELDS);
+    return this._heroMappingRowsForDefinitions(HEROS_SOLAR_HERO_VALUE_FIELDS);
   }
 
   _heroMappingRowsForDefinitions(definitions) {
@@ -5031,7 +5031,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             ${this._heroMappingFieldSelectField(
               row.key,
               "Mapped Bytewatt field",
-              HOME_ENERGY_MANAGER_BATTERY_HERO_FIELD_OPTIONS,
+              HEROS_BATTERY_HERO_FIELD_OPTIONS,
               row.field,
               this._heroMappingFieldSelectorOpenKey,
               "field",
@@ -5040,7 +5040,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             ${this._heroMappingFieldSelectField(
               row.key,
               "Scope",
-              HOME_ENERGY_MANAGER_BATTERY_HERO_SCOPE_OPTIONS,
+              HEROS_BATTERY_HERO_SCOPE_OPTIONS,
               row.activeScopeMode || "",
               this._heroMappingScopeSelectorOpenKey,
               "scope",
@@ -5162,7 +5162,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     ];
   }
 
-  _hemHeroSetupItems() {
+  _herosHeroSetupItems() {
     const pushSection = (items, label) => {
       items.push({ section: true, label, value: "" });
     };
@@ -5298,7 +5298,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         items: [
           { label: "Managed entities", value: String(counts.managed) },
           { label: "Provider", value: this._config.provider || "Configured provider" },
-          { label: "Entity prefix", value: this._config.entity_prefix || "home_energy_manager" },
+          { label: "Entity prefix", value: this._config.entity_prefix || "heros" },
         ],
       },
       {
@@ -5689,19 +5689,19 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const policyArtifacts = [
       {
         label: "Policy card source",
-        value: `<a href="/local/community/home-energy-manager/home-energy-manager-policy-card.js?v=008" target="_blank" rel="noreferrer">home-energy-manager-policy-card.js</a>`,
+        value: `<a href="/local/community/heros/heros-policy-card.js?v=008" target="_blank" rel="noreferrer">heros-policy-card.js</a>`,
       },
       {
         label: "Older built policy card",
-        value: `<a href="/local/community/home-energy-manager/home-energy-manager-policy-card.048.js" target="_blank" rel="noreferrer">home-energy-manager-policy-card.048.js</a>`,
+        value: `<a href="/local/community/heros/heros-policy-card.048.js" target="_blank" rel="noreferrer">heros-policy-card.048.js</a>`,
       },
       {
         label: "Policy Lovelace example",
-        value: `<a href="/local/community/home-energy-manager/bytewatt_policy_cards.yaml" target="_blank" rel="noreferrer">bytewatt_policy_cards.yaml</a>`,
+        value: `<a href="/local/community/heros/bytewatt_policy_cards.yaml" target="_blank" rel="noreferrer">bytewatt_policy_cards.yaml</a>`,
       },
       {
         label: "Build markers",
-        value: `<a href="/local/community/home-energy-manager/LATEST_BUILD.txt" target="_blank" rel="noreferrer">LATEST_BUILD.txt</a> · <a href="/local/community/home-energy-manager/LATEST_REPORT_BUILD.txt" target="_blank" rel="noreferrer">LATEST_REPORT_BUILD.txt</a>`,
+        value: `<a href="/local/community/heros/LATEST_BUILD.txt" target="_blank" rel="noreferrer">LATEST_BUILD.txt</a> · <a href="/local/community/heros/LATEST_REPORT_BUILD.txt" target="_blank" rel="noreferrer">LATEST_REPORT_BUILD.txt</a>`,
       },
     ];
     return `
@@ -5743,7 +5743,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               Battery Charge follows the same pattern as Buy Price on the Pricing page: one
               themed settings set, with no record group.
             </p>
-            <form class="pricing-form pricing-record-form policy-charge-form" method="get" action="/home-energy-manager#hem_page=policy">
+            <form class="pricing-form pricing-record-form policy-charge-form" method="get" action="/heros#heros_page=policy">
               <section class="pricing-record-section pricing-record-section--buy policy-record-section policy-record-section--charge">
                 <div class="pricing-record-section__heading">
               <div>
@@ -5875,7 +5875,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _reportCatalog() {
-    return HOME_ENERGY_MANAGER_REPORT_CATALOG.map((group) => {
+    return HEROS_REPORT_CATALOG.map((group) => {
       const items = group.items
         .map((item) => {
           const label = `${item.label}${item.built ? "" : " TBB"}`;
@@ -6102,7 +6102,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         : "",
     ].filter(Boolean).join("");
     const storageItems = [
-      { label: "Local report archive", value: "Home Assistant www/home-energy-manager-history/<entry_id>/history.json" },
+      { label: "Local report archive", value: "Home Assistant www/heros-history/<entry_id>/history.json" },
       { label: "Local scope CSVs", value: "One CSV per scope for exported daily report rows" },
       { label: "Current purpose", value: "Power diagram snapshots, daily report rows, and archive backfill state" },
       { label: "Long-term detailed data", value: "InfluxDB will hold detailed sensor history for long-range analysis" },
@@ -6352,7 +6352,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const forecastState = this._forecastMappingState();
     const forecastProvider = String(forecastState.stored?.provider || forecastState.provider || "none");
     const discoveredCount = Object.values(forecastState.candidates).filter(Boolean).length || 0;
-    const mappedCount = HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS
+    const mappedCount = HEROS_FORECAST_ENTITY_FIELDS
       .filter((item) => String(forecastState.stored?.[item.slot] || "").trim())
       .length;
     const setupStatus = mappedCount
@@ -6364,7 +6364,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       : "";
     const batteryState = this._batteryMappingState();
     const batteryProvider = this._batteryProviderKey(batteryState.stored?.provider || batteryState.provider);
-    const batteryMappedCount = HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS
+    const batteryMappedCount = HEROS_BATTERY_ENTITY_FIELDS
       .filter((item) => String(batteryState.stored?.[item.slot] || "").trim())
       .length;
     const batteryDiscoveredCount = Object.values(batteryState.candidates).filter(Boolean).length || 0;
@@ -6384,7 +6384,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const bytewattItems = this._bytewattSetupItems(batteryProvider);
     const batteryHeroMappingRows = this._renderBatteryHeroMappingRows();
     const solarHeroMappingRows = this._renderSolarHeroMappingRows();
-    const hemHeroItems = this._hemHeroSetupItems();
+    const herosHeroItems = this._herosHeroSetupItems();
     const bytewattDebugPayload = this._bytewattSetupDebugPayload();
     return `
       <section class="forecast">
@@ -6422,7 +6422,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               { value: "solcast", label: "Solcast" },
               { value: "other", label: "Other / template" },
             ], forecastProvider)}
-            ${HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => this._forecastSelectField(
+            ${HEROS_FORECAST_ENTITY_FIELDS.map((item) => this._forecastSelectField(
               item.configKey,
               item.label,
               this._forecastEntityOptions(forecastState),
@@ -6458,7 +6458,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
               { value: "bytewatt_local", label: "ByteWatt Local" },
               { value: "other", label: "Other / template" },
             ], batteryProvider)}
-            ${HOME_ENERGY_MANAGER_BATTERY_ENTITY_FIELDS.map((item) => this._batterySelectField(
+            ${HEROS_BATTERY_ENTITY_FIELDS.map((item) => this._batterySelectField(
               item.configKey,
               item.label,
               this._batteryEntityOptions(batteryState),
@@ -6546,7 +6546,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             the key live HEROS highlights used across the panel for comparison against ByteWatt.
           </p>
           <ul class="panel-list">
-            ${this._valueList(hemHeroItems, "No HEROS hero sensor values available yet")}
+            ${this._valueList(herosHeroItems, "No HEROS hero sensor values available yet")}
           </ul>
         </article>
       </section>
@@ -6881,8 +6881,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
                 ${this._renderHelpButton("group", "Group help")}
               </div>
               ${this._renderHelpPanel("group")}
-              <form class="pricing-form pricing-group-edit-form" method="get" action="/home-energy-manager">
-              <input type="hidden" name="hem_page" value="pricing" />
+              <form class="pricing-form pricing-group-edit-form" method="get" action="/heros">
+              <input type="hidden" name="heros_page" value="pricing" />
               <input type="hidden" name="group_id" data-pricing-group-field="group_id" value="${this._escapeHtml(String(activeGroup.group_id || groupDraft.group_id || ""))}" />
               <label>
                 <span>Group</span>
@@ -6939,9 +6939,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
               </p>
               ${recordWarningMarkup}
               <div class="pricing-holiday-form pricing-record-form ${recordEditorMode ? "" : "is-hidden"}">
-                <form class="pricing-record-section pricing-record-section--buy pricing-buy-form ${showBuyRecordEditor ? "" : "is-hidden"}" method="get" action="/home-energy-manager#hem_page=pricing">
-                  <input type="hidden" name="hem_action" value="add_rule" />
-                  <input type="hidden" name="hem_page" value="pricing" />
+                <form class="pricing-record-section pricing-record-section--buy pricing-buy-form ${showBuyRecordEditor ? "" : "is-hidden"}" method="get" action="/heros#heros_page=pricing">
+                  <input type="hidden" name="heros_action" value="add_rule" />
+                  <input type="hidden" name="heros_page" value="pricing" />
                   <input type="hidden" name="record_type" value="buy" />
                   <input type="hidden" name="rule_id" data-pricing-record-type="buy" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(buyRuleDraft.rule_id || ""))}" />
                   <div class="pricing-record-section__heading">
@@ -6977,9 +6977,9 @@ class HomeEnergyManagerPanel extends HTMLElement {
                     <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-record>Cancel</button>
                   </div>
                 </form>
-                <form class="pricing-record-section pricing-record-section--sell pricing-sell-form ${showSellRecordEditor ? "" : "is-hidden"}" method="get" action="/home-energy-manager#hem_page=pricing">
-                  <input type="hidden" name="hem_action" value="add_rule" />
-                  <input type="hidden" name="hem_page" value="pricing" />
+                <form class="pricing-record-section pricing-record-section--sell pricing-sell-form ${showSellRecordEditor ? "" : "is-hidden"}" method="get" action="/heros#heros_page=pricing">
+                  <input type="hidden" name="heros_action" value="add_rule" />
+                  <input type="hidden" name="heros_page" value="pricing" />
                   <input type="hidden" name="record_type" value="sell" />
                   <input type="hidden" name="rule_id" data-pricing-record-type="sell" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(sellRuleDraft.rule_id || ""))}" />
                   <div class="pricing-record-section__heading">
@@ -7043,7 +7043,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   _settingsPage() {
     const settingsItems = [
       { label: "Theme", value: this._themeLabel() },
-      { label: "Route", value: this._route?.path || this._panel?.url_path || "home-energy-manager" },
+      { label: "Route", value: this._route?.path || this._panel?.url_path || "heros" },
       { label: "Screen", value: this._narrow ? "narrow" : "wide" },
       { label: "Connection Type", value: this._connectionTypeLabel(this._config?.battery_provider) },
       { label: "Debug", value: this._debugEnabled ? "Enabled" : "Disabled" },
@@ -7082,7 +7082,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           <ul class="key-list key-list--compact">
             ${this._valueList([
               { label: "Forecast provider", value: this._config?.forecast_provider || "none" },
-              ...HOME_ENERGY_MANAGER_FORECAST_ENTITY_FIELDS.map((item) => ({
+              ...HEROS_FORECAST_ENTITY_FIELDS.map((item) => ({
                 label: `${item.label} entity`,
                 value: this._configuredEntityId(item.configKey) || "Not set",
               })),
@@ -7110,10 +7110,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Local</span>
           </div>
           <div class="settings-toggle">
-            <label class="toggle-row" for="hem-debug-toggle">
+            <label class="toggle-row" for="heros-debug-toggle">
               <span class="toggle-row__label">Enable Debug</span>
               <span class="toggle-row__control">
-                <input id="hem-debug-toggle" type="checkbox" data-debug-toggle aria-label="Enable debug mode" ${this._debugEnabled ? "checked" : ""} />
+                <input id="heros-debug-toggle" type="checkbox" data-debug-toggle aria-label="Enable debug mode" ${this._debugEnabled ? "checked" : ""} />
                 <span class="toggle-row__switch" aria-hidden="true"></span>
               </span>
             </label>
@@ -7131,10 +7131,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
             </button>
           </div>
           <div class="settings-toggle">
-            <label class="toggle-row" for="hem-connection-type">
+            <label class="toggle-row" for="heros-connection-type">
               <span class="toggle-row__label">Connection Type</span>
               <span class="toggle-row__control">
-                <select id="hem-connection-type" data-connection-type-field="battery_provider" aria-label="Connection type">
+                <select id="heros-connection-type" data-connection-type-field="battery_provider" aria-label="Connection type">
                   ${[
                     { value: "bytewatt_web", label: "ByteWatt Web" },
                     { value: "bytewatt_local", label: "ByteWatt Local" },
@@ -7159,7 +7159,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
             <span>Local</span>
           </div>
           <div class="theme-picker theme-picker--stacked" role="group" aria-label="Theme presets">
-            ${HOME_ENERGY_MANAGER_PANEL_THEMES.map((theme) => `
+            ${HEROS_PANEL_THEMES.map((theme) => `
               <button
                 type="button"
                 class="theme-pill ${theme.value === this._theme ? "is-active" : ""}"
@@ -7339,12 +7339,12 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _mountEmbeddedCards() {
-    const prefix = this._config?.entity_prefix || "home_energy_manager";
+    const prefix = this._config?.entity_prefix || "heros";
     const settingsTarget = this._config?.settings_target || `select.house_${prefix}_settings_target`;
     const mounts = [
       {
         selector: '[data-embedded="battery-policy"]',
-        tag: "home-energy-manager-policy-card",
+        tag: "heros-policy-card",
         config: {
           ...this._config,
           entity_prefix: prefix,
@@ -7354,7 +7354,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       },
       {
         selector: '[data-embedded="feedin-policy"]',
-        tag: "home-energy-manager-policy-card",
+        tag: "heros-policy-card",
         config: {
           ...this._config,
           entity_prefix: prefix,
@@ -7364,8 +7364,8 @@ class HomeEnergyManagerPanel extends HTMLElement {
       },
       {
         selector: '[data-embedded="report"]',
-        tag: "home-energy-manager-report-card",
-        moduleUrl: HOME_ENERGY_MANAGER_REPORT_CARD_MODULE_URL,
+        tag: "heros-report-card",
+        moduleUrl: HEROS_REPORT_CARD_MODULE_URL,
         config: {
           ...this._config,
           entity_prefix: prefix,
@@ -7374,7 +7374,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
       },
       {
         selector: '[data-embedded="debug"]',
-        tag: "home-energy-manager-debug-card",
+        tag: "heros-debug-card",
         config: {
           ...this._config,
           entity_prefix: prefix,
@@ -7394,7 +7394,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
           if (typeof currentElement.setConfig === "function") {
             currentElement.setConfig(config);
           }
-          if (tag === "home-energy-manager-report-card") {
+          if (tag === "heros-report-card") {
             const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
             currentElement.pendingSelection = this._pendingBatterySelection || "";
             currentElement.selectorOpen = hasPendingSelection;
@@ -7447,7 +7447,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         if (typeof element.setConfig === "function") {
           element.setConfig(config);
         }
-        if (tag === "home-energy-manager-report-card") {
+        if (tag === "heros-report-card") {
           const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
           element.pendingSelection = this._pendingBatterySelection || "";
           element.selectorOpen = hasPendingSelection;
@@ -7468,7 +7468,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 
   _settingsTargetId() {
-    const prefix = this._config?.entity_prefix || "home_energy_manager";
+    const prefix = this._config?.entity_prefix || "heros";
     return this._config?.settings_target || `select.house_${prefix}_settings_target`;
   }
 
@@ -7576,14 +7576,14 @@ class HomeEnergyManagerPanel extends HTMLElement {
       : "";
     return `
       <div class="shared-selector">
-        <div class="shared-selector__label" id="hem-shared-battery-label">Battery Selection</div>
+        <div class="shared-selector__label" id="heros-shared-battery-label">Battery Selection</div>
         <div class="shared-selector__picker">
           <button
             type="button"
             class="shared-selector__control"
             aria-haspopup="listbox"
             aria-expanded="${selectorState.showMenu ? "true" : "false"}"
-            aria-labelledby="hem-shared-battery-label"
+            aria-labelledby="heros-shared-battery-label"
             data-shared-settings-target-toggle="${this._settingsTargetId()}"
             ${selectorState.hasOptions ? "" : "disabled"}
           >
@@ -7721,10 +7721,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     const availablePages = this._availablePages();
 
     this.shadowRoot.innerHTML = `
-      <link rel="stylesheet" href="/local/community/home-energy-manager/home-energy-manager-panel.css?v=${HOME_ENERGY_MANAGER_PANEL_BUILD}">
+      <link rel="stylesheet" href="/local/community/heros/heros-panel.css?v=${HEROS_PANEL_BUILD}">
       <section class="panel shell theme-${this._theme}" data-theme="${this._theme}" style="${this._themeStyleVars()}">
         <header class="hero">
-          <div class="hero__badge">v${HOME_ENERGY_MANAGER_PANEL_BUILD}</div>
+          <div class="hero__badge">v${HEROS_PANEL_BUILD}</div>
           <div class="hero__copy">
             <h1>${title}</h1>
             <p>${subtitle}</p>
@@ -7801,10 +7801,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     }
 
     this.shadowRoot.querySelectorAll("[data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day]").forEach((field) => {
-      if (field.__hemNativeInputStopBound) {
+      if (field.__herosNativeInputStopBound) {
         return;
       }
-      field.__hemNativeInputStopBound = true;
+      field.__herosNativeInputStopBound = true;
       ["pointerdown", "mousedown", "mouseup", "click"].forEach((eventName) => {
         field.addEventListener(eventName, (event) => {
           event.stopPropagation();
@@ -8083,10 +8083,10 @@ class HomeEnergyManagerPanel extends HTMLElement {
     });
 
     this.shadowRoot.querySelectorAll('[data-pricing-action-link]').forEach((link) => {
-      if (link.__hemPricingActionRefreshBound) {
+      if (link.__herosPricingActionRefreshBound) {
         return;
       }
-      link.__hemPricingActionRefreshBound = true;
+      link.__herosPricingActionRefreshBound = true;
       ["pointerdown", "mousedown", "click"].forEach((eventName) => {
         link.addEventListener(eventName, () => {
           this._refreshPricingActionLink(link);
@@ -8615,7 +8615,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         if (!this._hass) {
           return;
         }
-        this._hass.callService("home_energy_manager", "pricing_upsert_rule", {
+        this._hass.callService("heros", "pricing_upsert_rule", {
           entry_id: this._entryId(),
           rule_id: draft.rule_id,
           effective_date: draft.effective_date,
@@ -8689,7 +8689,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         if (!this._hass) {
           return;
         }
-        this._hass.callService("home_energy_manager", "pricing_remove_rule", {
+        this._hass.callService("heros", "pricing_remove_rule", {
           entry_id: this._entryId(),
           rule_id: pricingDelete.dataset.pricingDeleteRule,
         }).catch((error) => {
@@ -8710,7 +8710,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         if (draft.holiday_date) {
           holidayDates.add(String(draft.holiday_date));
         }
-        this._hass.callService("home_energy_manager", "pricing_set_holidays", {
+        this._hass.callService("heros", "pricing_set_holidays", {
           entry_id: this._entryId(),
           holiday_dates: Array.from(holidayDates),
           holiday_source: draft.holiday_source || "manual",
@@ -8731,7 +8731,7 @@ class HomeEnergyManagerPanel extends HTMLElement {
         const current = new Set(Array.isArray(this._pricingScheduleData().holidayDates) ? this._pricingScheduleData().holidayDates : []);
         current.delete(String(pricingHolidayRemove.dataset.pricingRemoveHoliday || ""));
         const draft = this._syncPricingDraftFromInputs();
-        this._hass.callService("home_energy_manager", "pricing_set_holidays", {
+        this._hass.callService("heros", "pricing_set_holidays", {
           entry_id: this._entryId(),
           holiday_dates: Array.from(current),
           holiday_source: draft.holiday_source || "manual",
@@ -8823,16 +8823,16 @@ class HomeEnergyManagerPanel extends HTMLElement {
   }
 }
 
-function bootstrapHomeEnergyManagerPanelFallback(root = document) {
+function bootstrapHerosPanelFallback(root = document) {
   const hosts = [];
   const visit = (node) => {
     if (!node) {
       return;
     }
-    if (node.matches?.("home-energy-manager-panel")) {
+    if (node.matches?.("heros-panel")) {
       hosts.push(node);
     }
-    node.querySelectorAll?.("home-energy-manager-panel").forEach((host) => hosts.push(host));
+    node.querySelectorAll?.("heros-panel").forEach((host) => hosts.push(host));
     node.querySelectorAll?.("*").forEach((element) => {
       if (element.shadowRoot) {
         visit(element.shadowRoot);
@@ -8841,19 +8841,19 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
   };
   visit(root);
   hosts.forEach((host) => {
-    if (HOME_ENERGY_MANAGER_FALLBACK_HOSTS.has(host)) {
+    if (HEROS_FALLBACK_HOSTS.has(host)) {
       return;
     }
-    HOME_ENERGY_MANAGER_FALLBACK_HOSTS.add(host);
-    if (host instanceof HomeEnergyManagerPanel) {
-      HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, host);
+    HEROS_FALLBACK_HOSTS.add(host);
+    if (host instanceof HerosPanel) {
+      HEROS_FALLBACK_CONTROLLERS.set(host, host);
       return;
     }
-    const renderRoot = host instanceof HomeEnergyManagerPanel
+    const renderRoot = host instanceof HerosPanel
       ? host.shadowRoot
       : host;
 
-    const panel = Object.create(HomeEnergyManagerPanel.prototype);
+    const panel = Object.create(HerosPanel.prototype);
     Object.defineProperty(panel, "shadowRoot", {
       configurable: true,
       value: renderRoot,
@@ -8899,7 +8899,7 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
     panel._embeddedModuleErrors = {};
     panel._pricingAutoCommitTimer = null;
     panel._lastPricingAutoCommitSignature = "";
-    HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.set(host, panel);
+    HEROS_FALLBACK_CONTROLLERS.set(host, panel);
 
     Object.defineProperty(host, "hass", {
       configurable: true,
@@ -8977,30 +8977,30 @@ function bootstrapHomeEnergyManagerPanelFallback(root = document) {
   });
 }
 
-function homeEnergyManagerPanelControllerForRoot(root) {
-  const host = root?.host?.matches?.("home-energy-manager-panel") ? root.host : null;
+function herosPanelControllerForRoot(root) {
+  const host = root?.host?.matches?.("heros-panel") ? root.host : null;
   if (!host) {
     return null;
   }
-  if (!HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.has(host)) {
-    bootstrapHomeEnergyManagerPanelFallback(host);
+  if (!HEROS_FALLBACK_CONTROLLERS.has(host)) {
+    bootstrapHerosPanelFallback(host);
   }
-  return HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.get(host) || null;
+  return HEROS_FALLBACK_CONTROLLERS.get(host) || null;
 }
 
-function homeEnergyManagerPanelControllerForEvent(event) {
+function herosPanelControllerForEvent(event) {
   const path = event?.composedPath?.() || [];
-  const host = path.find((node) => node?.matches?.("home-energy-manager-panel"));
+  const host = path.find((node) => node?.matches?.("heros-panel"));
   if (!host) {
     return null;
   }
-  if (!HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.has(host)) {
-    bootstrapHomeEnergyManagerPanelFallback(host);
+  if (!HEROS_FALLBACK_CONTROLLERS.has(host)) {
+    bootstrapHerosPanelFallback(host);
   }
-  return HOME_ENERGY_MANAGER_FALLBACK_CONTROLLERS.get(host) || null;
+  return HEROS_FALLBACK_CONTROLLERS.get(host) || null;
 }
 
-function handleHomeEnergyManagerGlobalActivation(event) {
+function handleHerosGlobalActivation(event) {
   const path = event?.composedPath?.() || [];
   const actionLink = path.find((node) => node?.dataset?.pricingActionLink);
   const newGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
@@ -9012,8 +9012,8 @@ function handleHomeEnergyManagerGlobalActivation(event) {
   if (!newGroup && !addGroup && !addRule && !pageButton) {
     return;
   }
-  const panel = homeEnergyManagerPanelControllerForEvent(event)
-    || homeEnergyManagerPanelControllerForRoot(actionLink?.getRootNode?.());
+  const panel = herosPanelControllerForEvent(event)
+    || herosPanelControllerForRoot(actionLink?.getRootNode?.());
   if (!panel) {
     return;
   }
@@ -9036,10 +9036,10 @@ function handleHomeEnergyManagerGlobalActivation(event) {
   }
 }
 
-const homeEnergyManagerPanelInlineAction = (event, action, recordType = "") => {
+const herosPanelInlineAction = (event, action, recordType = "") => {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-    const panel = homeEnergyManagerPanelControllerForRoot(event?.currentTarget?.getRootNode?.());
+    const panel = herosPanelControllerForRoot(event?.currentTarget?.getRootNode?.());
     if (!panel) {
       return;
     }
@@ -9062,22 +9062,22 @@ const homeEnergyManagerPanelInlineAction = (event, action, recordType = "") => {
   typeof globalThis !== "undefined" ? globalThis : null,
 ].filter(Boolean).forEach((scope) => {
   try {
-    scope.homeEnergyManagerPanelInlineAction = homeEnergyManagerPanelInlineAction;
+    scope.herosPanelInlineAction = herosPanelInlineAction;
   } catch (error) {
     // Ignore non-writable host scopes.
   }
 });
 
-function startHomeEnergyManagerPanelFallback() {
-  bootstrapHomeEnergyManagerPanelFallback(document);
+function startHerosPanelFallback() {
+  bootstrapHerosPanelFallback(document);
   if (typeof window.setInterval === "function") {
-    window.setInterval(() => bootstrapHomeEnergyManagerPanelFallback(document), 1000);
+    window.setInterval(() => bootstrapHerosPanelFallback(document), 1000);
   }
-  if (!window.__hemGlobalActivationBound) {
-    window.__hemGlobalActivationBound = true;
+  if (!window.__herosGlobalActivationBound) {
+    window.__herosGlobalActivationBound = true;
     ["pointerdown", "mousedown", "click"].forEach((eventName) => {
-      window.addEventListener(eventName, handleHomeEnergyManagerGlobalActivation, true);
-      document.addEventListener(eventName, handleHomeEnergyManagerGlobalActivation, true);
+      window.addEventListener(eventName, handleHerosGlobalActivation, true);
+      document.addEventListener(eventName, handleHerosGlobalActivation, true);
     });
   }
   if (typeof MutationObserver === "undefined") {
@@ -9086,7 +9086,7 @@ function startHomeEnergyManagerPanelFallback() {
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes?.forEach((node) => {
-        bootstrapHomeEnergyManagerPanelFallback(node);
+        bootstrapHerosPanelFallback(node);
       });
     });
   });
@@ -9094,12 +9094,12 @@ function startHomeEnergyManagerPanelFallback() {
 }
 
 if (typeof customElements !== "undefined") {
-  if (!customElements.get("home-energy-manager-panel")) {
-    customElements.define("home-energy-manager-panel", HomeEnergyManagerPanel);
+  if (!customElements.get("heros-panel")) {
+    customElements.define("heros-panel", HerosPanel);
   }
-  startHomeEnergyManagerPanelFallback();
+  startHerosPanelFallback();
 } else {
-  startHomeEnergyManagerPanelFallback();
+  startHerosPanelFallback();
 }
 
 

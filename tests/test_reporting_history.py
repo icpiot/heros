@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_reporting_module():
-    package = types.ModuleType("custom_components.home_energy_manager")
-    package.__path__ = [str(ROOT / "custom_components" / "home_energy_manager")]
-    sys.modules.setdefault("custom_components.home_energy_manager", package)
+    package = types.ModuleType("custom_components.heros")
+    package.__path__ = [str(ROOT / "custom_components" / "heros")]
+    sys.modules.setdefault("custom_components.heros", package)
 
     homeassistant = types.ModuleType("homeassistant")
     homeassistant_core = types.ModuleType("homeassistant.core")
@@ -31,8 +31,8 @@ def _load_reporting_module():
     sys.modules.setdefault("homeassistant.util.dt", homeassistant_dt)
 
     spec = importlib.util.spec_from_file_location(
-        "custom_components.home_energy_manager.reporting",
-        ROOT / "custom_components" / "home_energy_manager" / "reporting.py",
+        "custom_components.heros.reporting",
+        ROOT / "custom_components" / "heros" / "reporting.py",
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -110,14 +110,14 @@ def test_mark_missing_date_keeps_existing_valid_record(tmp_path):
         reason="no_reporting_data",
     )
 
-    payload = json.loads((tmp_path / "www" / "home-energy-manager-history" / "entry-1" / "history.json").read_text(encoding="utf-8"))
+    payload = json.loads((tmp_path / "www" / "heros-history" / "entry-1" / "history.json").read_text(encoding="utf-8"))
     scope = payload["scopes"]["all"]
     assert "2026-07-08" in scope["records"]
     assert "2026-07-08" not in scope.get("missing_dates", {})
 
 
 def test_mark_missing_date_removes_blank_record(tmp_path):
-    history_dir = tmp_path / "www" / "home-energy-manager-history" / "entry-1"
+    history_dir = tmp_path / "www" / "heros-history" / "entry-1"
     history_dir.mkdir(parents=True, exist_ok=True)
     history_file = history_dir / "history.json"
     history_file.write_text(
@@ -281,12 +281,12 @@ def test_report_history_stores_forecast_snapshot_in_json_and_csv(tmp_path):
         reporting=reporting,
     )
 
-    history_file = tmp_path / "www" / "home-energy-manager-history" / "entry-1" / "history.json"
+    history_file = tmp_path / "www" / "heros-history" / "entry-1" / "history.json"
     payload = json.loads(history_file.read_text(encoding="utf-8"))
     row = payload["scopes"]["all"]["records"]["2026-08-20"]
     assert row["forecast"]["provider"] == "forecast_solar"
 
-    csv_file = tmp_path / "www" / "home-energy-manager-history" / "entry-1" / "all.csv"
+    csv_file = tmp_path / "www" / "heros-history" / "entry-1" / "all.csv"
     csv_text = csv_file.read_text(encoding="utf-8")
     assert "forecast_provider" in csv_text
     assert "forecast_solar" in csv_text

@@ -23,10 +23,18 @@ Management / Energy Dashboard functionality. Use **HEROS** for this custom
 system and its reporting, tariff analysis, battery/solar optimisation, and
 automated energy-control features.
 
-The Home Assistant integration domain, services, entity IDs, storage folders,
-custom element tags, and served asset paths intentionally remain
-`home_energy_manager` / `home-energy-manager` for compatibility with existing
-installations, dashboards, automations, helpers, and browser caches.
+The integration domain, service namespace, storage folders, asset paths, and
+repository name use `heros`; custom element tags use the `heros-` prefix.
+This is a new integration namespace, intended for a fresh installation.
+Existing installations require a separately planned migration of configuration,
+entity registries, history, dashboards, automations, helpers, and stored reports.
+Changing names alone does not migrate that data.
+
+HEROS is provider-independent in scope. ByteWatt is the currently implemented
+provider. A read-only [FoxESS Cloud V2 transport](docs/FOXESS_V2.md) now supports
+web-credential authentication and captured REST reads without an OpenAPI key.
+Its live connection and entity/reporting integration remain separate validation
+steps; it is not yet offered by the HEROS setup UI.
 
 ## Features
 
@@ -63,7 +71,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/home-energy-manager/home-energy-manager-panel.js?v=483`
+`/local/community/heros/heros-panel.js?v=484`
 
 The panel ships with built-in theme presets:
 
@@ -72,7 +80,7 @@ The panel ships with built-in theme presets:
 - `neon`
 
 The Home Assistant deploy scripts are manifest-driven:
-[`scripts/ha_deploy.manifest`](C:\Dev\repos\home-energy-manager\scripts\ha_deploy.manifest)
+[`scripts/ha_deploy.manifest`](C:\Dev\repos\heros\scripts\ha_deploy.manifest)
 controls which repo paths are copied into HA, so the same script shape can be
 reused for other projects by swapping the manifest and environment variables.
 For Codex-driven live sync work, prefer the direct Home Assistant config share
@@ -89,7 +97,7 @@ For ongoing Codex-assisted work in this repo:
 
 ### Manual
 
-Copy `custom_components/home_energy_manager` into your Home Assistant `custom_components/`
+Copy `custom_components/heros` into your Home Assistant `custom_components/`
 directory, restart, then add the integration as above.
 
 ## Setup
@@ -158,7 +166,7 @@ from the live forecast sensor mapping. It is intended for benchmark/backfill
 data when the provider plan supports the Forecast.Solar `history` endpoint.
 Public Forecast.Solar access does not provide this history endpoint.
 
-See [docs/FORECAST_HISTORY.md](C:\Dev\repos\home-energy-manager\docs\FORECAST_HISTORY.md)
+See [docs/FORECAST_HISTORY.md](C:\Dev\repos\heros\docs\FORECAST_HISTORY.md)
 for the required settings and service flow.
 
 ## Entities
@@ -188,23 +196,23 @@ notification explains which batch failed and why, and the pending changes are
 The legacy "set this one thing" services still work — they stage the change
 and submit immediately (no Submit button press needed for services):
 
-- `home_energy_manager.set_minimum_soc` — set minimum battery SOC (1–100 %)
-- `home_energy_manager.set_charge_cap` — set charge cap (1–100 %)
-- `home_energy_manager.set_discharge_start_time` / `set_discharge_time` — discharge window
-- `home_energy_manager.set_charge_start_time` / `set_charge_end_time` — charge window
-- `home_energy_manager.update_battery_settings` — set any combination in one call
+- `heros.set_minimum_soc` — set minimum battery SOC (1–100 %)
+- `heros.set_charge_cap` — set charge cap (1–100 %)
+- `heros.set_discharge_start_time` / `set_discharge_time` — discharge window
+- `heros.set_charge_start_time` / `set_charge_end_time` — charge window
+- `heros.update_battery_settings` — set any combination in one call
 
 Grid Feed-in:
 
-- `home_energy_manager.set_grid_feedin_enabled` — toggle Grid Feed-in Function on/off
-- `home_energy_manager.set_grid_feedin_cutoff_soc` — set discharging cutoff SOC (0–100 %)
-- `home_energy_manager.update_grid_feedin_slot` — set start/end/power for slot 1–6
+- `heros.set_grid_feedin_enabled` — toggle Grid Feed-in Function on/off
+- `heros.set_grid_feedin_cutoff_soc` — set discharging cutoff SOC (0–100 %)
+- `heros.update_grid_feedin_slot` — set start/end/power for slot 1–6
 
 Maintenance:
 
-- `home_energy_manager.force_reconnect` — drop the session and re-authenticate
-- `home_energy_manager.health_check` — run network + auth + API diagnostics
-- `home_energy_manager.toggle_diagnostics` — verbose API logging on/off
+- `heros.force_reconnect` — drop the session and re-authenticate
+- `heros.health_check` — run network + auth + API diagnostics
+- `heros.toggle_diagnostics` — verbose API logging on/off
 
 All services accept an optional `entry_id` field. If you have a single
 provider account configured you can omit it; with multiple accounts it's
@@ -215,10 +223,10 @@ required (the call will tell you which entry_ids exist).
 Pricing remains file-based for now because the dataset is small and the panel
 already works well with a lightweight store.
 
-- Current storage root: `www/home-energy-manager/<entry_id>/`
+- Current storage root: `www/heros/<entry_id>/`
 - Live schedule file: `pricing_schedule.json`
 - Historical pricing file: `pricing.json`
-- Legacy fallback: `www/home-energy-manager-pricing/<entry_id>/` remains
+- Legacy fallback: `www/heros-pricing/<entry_id>/` remains
   readable while old data is being cleaned up
 
 This keeps the pricing workflow simple and keeps the shared state easy to
@@ -260,11 +268,11 @@ same provider chart data again.
 Report and archive diagnostics should read that HA-served archive directly.
 They must not depend on browser `localStorage` copies of report history.
 
-See [docs/REPORTING_STORAGE.md](C:/Dev/repos/home-energy-manager/docs/REPORTING_STORAGE.md)
+See [docs/REPORTING_STORAGE.md](C:/Dev/repos/heros/docs/REPORTING_STORAGE.md)
 for the current archive layout and the intended split between HEROS report
 storage and InfluxDB time-series retention.
 
-See [docs/REPORTING_PAYLOAD.md](C:/Dev/repos/home-energy-manager/docs/REPORTING_PAYLOAD.md)
+See [docs/REPORTING_PAYLOAD.md](C:/Dev/repos/heros/docs/REPORTING_PAYLOAD.md)
 for the compact reporting payload contract used by the Report page and embedded
 report card.
 
@@ -278,7 +286,7 @@ automation:
       entity_id: sensor.electricity_price_tier
       to: 'peak'
     action:
-      service: home_energy_manager.update_battery_settings
+      service: heros.update_battery_settings
       data:
         start_discharge: "17:00"
         end_discharge: "22:00"
@@ -290,7 +298,7 @@ automation:
       entity_id: sensor.electricity_price_tier
       to: 'off_peak'
     action:
-      service: home_energy_manager.update_battery_settings
+      service: heros.update_battery_settings
       data:
         start_charge: "01:00"
         end_charge: "05:00"
@@ -300,7 +308,7 @@ automation:
       platform: time
       at: "09:00:00"
     action:
-      service: home_energy_manager.set_grid_feedin_enabled
+      service: heros.set_grid_feedin_enabled
       data:
         feedin_enabled: true
 ```
@@ -350,12 +358,12 @@ Enable debug logging in `configuration.yaml` to see all fields the API returns:
 logger:
   default: info
   logs:
-    custom_components.home_energy_manager: debug
+    custom_components.heros: debug
 ```
 
 ## Support
 
-Open an issue at https://github.com/icpiot/home-energy-manager/issues.
+Open an issue at https://github.com/icpiot/heros/issues.
 
 ## Credits
 

@@ -21,10 +21,10 @@ resolve_config_dir() {
 }
 
 CONFIG_DIR="$(resolve_config_dir)"
-REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/home-energy-manager}"
+REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/heros}"
 
 detach_if_running_from_repo() {
-  if [ -n "${HOME_ENERGY_MANAGER_SCRIPT_DETACHED:-}" ]; then
+  if [ -n "${HEROS_SCRIPT_DETACHED:-}" ]; then
     return 0
   fi
 
@@ -39,10 +39,10 @@ detach_if_running_from_repo() {
 
   case "$script_abs" in
     "$REPO_DIR"/*)
-      tmp_script="$(mktemp "${TMPDIR:-/tmp}/home-energy-manager-git-pull.XXXXXX.sh")"
+      tmp_script="$(mktemp "${TMPDIR:-/tmp}/heros-git-pull.XXXXXX.sh")"
       cp "$script_abs" "$tmp_script"
       chmod +x "$tmp_script"
-      export HOME_ENERGY_MANAGER_SCRIPT_DETACHED=1
+      export HEROS_SCRIPT_DETACHED=1
       exec bash "$tmp_script" "$@"
       ;;
   esac
@@ -52,14 +52,14 @@ detach_if_running_from_repo "$@"
 
 cd "$CONFIG_DIR" || exit 1
 
-PROJECT_NAME="${PROJECT_NAME:-Home Energy Manager}"
-PROJECT_SLUG="${PROJECT_SLUG:-home_energy_manager}"
+PROJECT_NAME="${PROJECT_NAME:-HEROS}"
+PROJECT_SLUG="${PROJECT_SLUG:-heros}"
 TOKEN_FILE="${TOKEN_FILE:-$CONFIG_DIR/.github_pat}"
 LOG_DIR="${LOG_DIR:-$CONFIG_DIR/www/ha-git}"
 LOG="${LOG:-$LOG_DIR/${PROJECT_SLUG}_git_last.txt}"
 SCRIPT_BUILD="${SCRIPT_BUILD:-2026-07-17.02}"
-REPO_URL="${REPO_URL:-github.com/icpiot/home-energy-manager.git}"
-REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/home-energy-manager}"
+REPO_URL="${REPO_URL:-github.com/icpiot/heros.git}"
+REPO_DIR="${REPO_DIR:-$CONFIG_DIR/repos/heros}"
 BRANCH="${GIT_BRANCH:-main}"
 DEPLOY_MANIFEST="${DEPLOY_MANIFEST:-$REPO_DIR/scripts/ha_deploy.manifest}"
 FETCH_ATTEMPTS="${FETCH_ATTEMPTS:-3}"

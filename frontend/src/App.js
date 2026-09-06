@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
-import { createMockHemDataProvider } from "./services/hemDataProvider.js";
-import "./components/HemShell.js";
+import { createMockHerosDataProvider } from "./services/herosDataProvider.js";
+import "./components/HerosShell.js";
 import "./pages/BatteryPage.js";
 import "./pages/ForecastPage.js";
 import "./pages/ForecastSetupPage.js";
@@ -12,17 +12,17 @@ import "./pages/ReportPage.js";
 import "./pages/SettingsPage.js";
 import "./pages/SolarPage.js";
 
-export class HemApp extends LitElement {
+export class HerosApp extends LitElement {
   static properties = {
     activePage: { type: String },
-    hemState: { type: Object },
+    herosState: { type: Object },
   };
 
   constructor() {
     super();
     this.activePage = "overview";
-    this.dataProvider = createMockHemDataProvider();
-    this.hemState = this.dataProvider.getSnapshot();
+    this.dataProvider = createMockHerosDataProvider();
+    this.herosState = this.dataProvider.getSnapshot();
   }
 
   connectedCallback() {
@@ -38,63 +38,63 @@ export class HemApp extends LitElement {
 
   _syncPageFromLocation = () => {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    this.activePage = hash.get("hem_page") || "overview";
+    this.activePage = hash.get("heros_page") || "overview";
   };
 
   _selectPage(event) {
     const { page } = event.detail;
-    window.location.hash = `hem_page=${page}`;
+    window.location.hash = `heros_page=${page}`;
     this.activePage = page;
   }
 
   renderPage() {
     if (this.activePage === "pricing") {
-      return html`<hem-pricing-page .hemState=${this.hemState}></hem-pricing-page>`;
+      return html`<heros-pricing-page .herosState=${this.herosState}></heros-pricing-page>`;
     }
 
     if (this.activePage === "battery") {
-      return html`<hem-battery-page .hemState=${this.hemState}></hem-battery-page>`;
+      return html`<heros-battery-page .herosState=${this.herosState}></heros-battery-page>`;
     }
 
     if (this.activePage === "solar") {
-      return html`<hem-solar-page .hemState=${this.hemState}></hem-solar-page>`;
+      return html`<heros-solar-page .herosState=${this.herosState}></heros-solar-page>`;
     }
 
     if (this.activePage === "forecast") {
-      return html`<hem-forecast-page .hemState=${this.hemState}></hem-forecast-page>`;
+      return html`<heros-forecast-page .herosState=${this.herosState}></heros-forecast-page>`;
     }
 
     if (this.activePage === "forecast-setup") {
-      return html`<hem-forecast-setup-page .hemState=${this.hemState}></hem-forecast-setup-page>`;
+      return html`<heros-forecast-setup-page .herosState=${this.herosState}></heros-forecast-setup-page>`;
     }
 
     if (this.activePage === "history") {
-      return html`<hem-history-page .hemState=${this.hemState}></hem-history-page>`;
+      return html`<heros-history-page .herosState=${this.herosState}></heros-history-page>`;
     }
 
     if (this.activePage === "policy") {
-      return html`<hem-policy-page .hemState=${this.hemState}></hem-policy-page>`;
+      return html`<heros-policy-page .herosState=${this.herosState}></heros-policy-page>`;
     }
 
     if (this.activePage === "report") {
-      return html`<hem-report-page .hemState=${this.hemState}></hem-report-page>`;
+      return html`<heros-report-page .herosState=${this.herosState}></heros-report-page>`;
     }
 
     if (this.activePage === "settings") {
-      return html`<hem-settings-page .hemState=${this.hemState}></hem-settings-page>`;
+      return html`<heros-settings-page .herosState=${this.herosState}></heros-settings-page>`;
     }
 
-    return html`<hem-overview-page .hemState=${this.hemState}></hem-overview-page>`;
+    return html`<heros-overview-page .herosState=${this.herosState}></heros-overview-page>`;
   }
 
   render() {
     return html`
-      <hem-shell
+      <heros-shell
         .activePage=${this.activePage}
         @page-selected=${this._selectPage}
       >
         ${this.renderPage()}
-      </hem-shell>
+      </heros-shell>
     `;
   }
 
@@ -106,4 +106,4 @@ export class HemApp extends LitElement {
   `;
 }
 
-customElements.define("hem-app", HemApp);
+customElements.define("heros-app", HerosApp);

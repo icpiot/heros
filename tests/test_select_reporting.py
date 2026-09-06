@@ -29,9 +29,9 @@ def _load_select_module():
     class _AddEntitiesCallback:
         pass
 
-    package = types.ModuleType("custom_components.home_energy_manager")
-    package.__path__ = [str(ROOT / "custom_components" / "home_energy_manager")]
-    sys.modules.setdefault("custom_components.home_energy_manager", package)
+    package = types.ModuleType("custom_components.heros")
+    package.__path__ = [str(ROOT / "custom_components" / "heros")]
+    sys.modules.setdefault("custom_components.heros", package)
 
     homeassistant = types.ModuleType("homeassistant")
     homeassistant_components = types.ModuleType("homeassistant.components")
@@ -54,22 +54,22 @@ def _load_select_module():
     homeassistant_helpers_dispatcher.async_dispatcher_connect = lambda *args, **kwargs: None
     homeassistant_helpers_dispatcher.async_dispatcher_send = lambda *args, **kwargs: None
 
-    coordinator_module = types.ModuleType("custom_components.home_energy_manager.coordinator")
+    coordinator_module = types.ModuleType("custom_components.heros.coordinator")
     coordinator_module.ByteWattDataUpdateCoordinator = object
 
-    settings_module = types.ModuleType("custom_components.home_energy_manager.settings_manager")
+    settings_module = types.ModuleType("custom_components.heros.settings_manager")
     settings_module.SettingsManager = object
 
-    topology_path = ROOT / "custom_components" / "home_energy_manager" / "topology.py"
+    topology_path = ROOT / "custom_components" / "heros" / "topology.py"
     topology_spec = importlib.util.spec_from_file_location(
-        "custom_components.home_energy_manager.topology",
+        "custom_components.heros.topology",
         topology_path,
     )
     topology_module = importlib.util.module_from_spec(topology_spec)
     sys.modules[topology_spec.name] = topology_module
     topology_spec.loader.exec_module(topology_module)
 
-    reporting_module = types.ModuleType("custom_components.home_energy_manager.reporting")
+    reporting_module = types.ModuleType("custom_components.heros.reporting")
     reporting_module.build_forecast_snapshot = lambda hass, config: {
         "provider": config.get("forecast_provider", "none"),
         "values": {},
@@ -94,14 +94,14 @@ def _load_select_module():
     sys.modules.setdefault("homeassistant.helpers.entity_platform", homeassistant_entity_platform)
     sys.modules.setdefault("homeassistant.helpers.dispatcher", homeassistant_helpers_dispatcher)
     sys.modules.setdefault("homeassistant.helpers.update_coordinator", homeassistant_update_coordinator)
-    sys.modules.setdefault("custom_components.home_energy_manager.coordinator", coordinator_module)
-    sys.modules.setdefault("custom_components.home_energy_manager.settings_manager", settings_module)
-    sys.modules.setdefault("custom_components.home_energy_manager.topology", topology_module)
-    sys.modules.setdefault("custom_components.home_energy_manager.reporting", reporting_module)
+    sys.modules.setdefault("custom_components.heros.coordinator", coordinator_module)
+    sys.modules.setdefault("custom_components.heros.settings_manager", settings_module)
+    sys.modules.setdefault("custom_components.heros.topology", topology_module)
+    sys.modules.setdefault("custom_components.heros.reporting", reporting_module)
 
-    select_path = ROOT / "custom_components" / "home_energy_manager" / "select.py"
+    select_path = ROOT / "custom_components" / "heros" / "select.py"
     spec = importlib.util.spec_from_file_location(
-        "custom_components.home_energy_manager.select",
+        "custom_components.heros.select",
         select_path,
     )
     module = importlib.util.module_from_spec(spec)
@@ -113,7 +113,7 @@ def _load_select_module():
 def test_settings_target_timezone_reads_entity_coordinator():
     """Guard against using an undefined local coordinator during entity setup."""
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "select.py"
+        "custom_components", "heros", "select.py"
     ).read_text(encoding="utf-8")
     assert "getattr(coordinator.client" not in source
     assert "getattr(self.coordinator.client" in source
@@ -227,7 +227,7 @@ def test_direct_api_summary_keeps_mppt_and_power_source_fields():
 
 def test_direct_api_live_battery_shape_keeps_per_battery_mppt_fields():
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "select.py"
+        "custom_components", "heros", "select.py"
     ).read_text(encoding="utf-8")
 
     for field in (
@@ -242,7 +242,7 @@ def test_direct_api_live_battery_shape_keeps_per_battery_mppt_fields():
 
 def test_history_hint_exposes_inventory_and_scope_summaries():
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "select.py"
+        "custom_components", "heros", "select.py"
     ).read_text(encoding="utf-8")
 
     assert '"inventory_scopes"' in source
@@ -255,7 +255,7 @@ def test_history_hint_exposes_inventory_and_scope_summaries():
 
 def test_coordinator_retries_inverter_inventory_when_only_one_system_is_cached():
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "coordinator.py"
+        "custom_components", "heros", "coordinator.py"
     ).read_text(encoding="utf-8")
 
     assert "async def _refresh_inverter_inventory_if_needed" in source
@@ -265,7 +265,7 @@ def test_coordinator_retries_inverter_inventory_when_only_one_system_is_cached()
 
 def test_history_backfill_forwards_scope_to_provider_fetch():
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "__init__.py"
+        "custom_components", "heros", "__init__.py"
     ).read_text(encoding="utf-8")
 
     assert 'history_sys_sn = None if scope_key == "all" else scope_key' in source
@@ -274,7 +274,7 @@ def test_history_backfill_forwards_scope_to_provider_fetch():
 
 def test_history_backfill_only_includes_realtime_for_the_actual_current_day():
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "__init__.py"
+        "custom_components", "heros", "__init__.py"
     ).read_text(encoding="utf-8")
 
     assert 'today_date = dt_util.now().date().isoformat()' in source
@@ -283,7 +283,7 @@ def test_history_backfill_only_includes_realtime_for_the_actual_current_day():
 
 def test_live_battery_summary_keeps_per_battery_mppt_source_fields():
     source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "home_energy_manager", "coordinator.py"
+        "custom_components", "heros", "coordinator.py"
     ).read_text(encoding="utf-8")
 
     for field in (
@@ -303,7 +303,7 @@ def test_settings_target_options_merge_live_batteries_when_discovery_is_incomple
         sys_sn="25000SB244W00011",
     )
     hass = types.SimpleNamespace(data={
-        "home_energy_manager": {
+        "heros": {
             "entry-1": {
                 "inverters": [discovered],
             }

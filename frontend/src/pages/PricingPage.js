@@ -1,7 +1,7 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemActionButtonCard.js";
-import "../components/HemCard.js";
+import "../components/HerosActionButtonCard.js";
+import "../components/HerosCard.js";
 import "../components/PricingGroupWorkspace.js";
 import "../components/PricingGroupEditor.js";
 import { LayoutController } from "../layout/LayoutController.js";
@@ -12,9 +12,9 @@ import {
   pricingDefaultLayout,
 } from "../layout/pricingLayout.js";
 
-export class HemPricingPage extends LitElement {
+export class HerosPricingPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     selectedGroupId: { state: true },
     editorMode: { state: true },
     editingLayout: { type: Boolean },
@@ -31,7 +31,7 @@ export class HemPricingPage extends LitElement {
     this.editingLayout = false;
     this.previewingLayout = false;
     this.groupWorkspaceLayout = undefined;
-    this.addNewRateGroupLevel = window.localStorage.getItem("hem.frontend.pricing.add-new-rate-group.level") || "group";
+    this.addNewRateGroupLevel = window.localStorage.getItem("heros.frontend.pricing.add-new-rate-group.level") || "group";
     this._handleLayoutAction = this._handleLayoutAction.bind(this);
     this._groupWorkspaceLayoutChanged = this._groupWorkspaceLayoutChanged.bind(this);
     this._itemLevelChanged = this._itemLevelChanged.bind(this);
@@ -52,7 +52,7 @@ export class HemPricingPage extends LitElement {
   }
 
   get groups() {
-    return this.hemState?.pricing?.groups ?? [];
+    return this.herosState?.pricing?.groups ?? [];
   }
 
   get selectedGroup() {
@@ -128,32 +128,32 @@ export class HemPricingPage extends LitElement {
         <nav aria-label="Pricing layout editor controls">
           ${this.previewingLayout
             ? html`
-                <button class="hem-button" data-layout-action="edit" type="button">Back to Edit</button>
-                <button class="hem-button" data-layout-action="save" type="button">Save Layout</button>
-                <button class="hem-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
-                <button class="hem-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
+                <button class="heros-button" data-layout-action="edit" type="button">Back to Edit</button>
+                <button class="heros-button" data-layout-action="save" type="button">Save Layout</button>
+                <button class="heros-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
+                <button class="heros-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
               `
             : this.editingLayout
             ? html`
-                <button class="hem-button" data-layout-action="preview" type="button">Preview Layout</button>
-                <button class="hem-button" data-layout-action="save" type="button">Save Layout</button>
-                <button class="hem-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
-                <button class="hem-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
+                <button class="heros-button" data-layout-action="preview" type="button">Preview Layout</button>
+                <button class="heros-button" data-layout-action="save" type="button">Save Layout</button>
+                <button class="heros-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
+                <button class="heros-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
               `
             : html`
-                <button class="hem-button" data-layout-action="edit" type="button">Edit Layout</button>
+                <button class="heros-button" data-layout-action="edit" type="button">Edit Layout</button>
               `}
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout && !this.previewingLayout}
         @layout-change=${this._layoutChanged}
         @layout-remove=${this._layoutRemoved}
         @layout-level-change=${this._itemLevelChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
@@ -180,10 +180,10 @@ export class HemPricingPage extends LitElement {
           <span>Preview hides edit handles so you can check the real rendered layout before saving.</span>
         </div>
         <nav aria-label="Pricing layout preview controls">
-          <button class="hem-button" data-layout-action="edit" type="button">Back to Edit</button>
-          <button class="hem-button" data-layout-action="save" type="button">Save Layout</button>
-          <button class="hem-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
-          <button class="hem-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
+          <button class="heros-button" data-layout-action="edit" type="button">Back to Edit</button>
+          <button class="heros-button" data-layout-action="save" type="button">Save Layout</button>
+          <button class="heros-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
+          <button class="heros-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
         </nav>
       </section>
 
@@ -255,7 +255,7 @@ export class HemPricingPage extends LitElement {
     ];
 
     return html`
-      <hem-card>
+      <heros-card>
         <header>
           <div>
             <h3>Pricing Summary</h3>
@@ -270,13 +270,13 @@ export class HemPricingPage extends LitElement {
             </article>
           `)}
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderGroupListCard(group) {
     return html`
-      <hem-card>
+      <heros-card>
         <header>
           <div>
             <h3>Rate Group List</h3>
@@ -299,19 +299,19 @@ export class HemPricingPage extends LitElement {
             @group-item-level-change=${this._itemLevelChanged}
           ></pricing-group-workspace>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderAddNewRateGroupActionCard() {
     return html`
-      <hem-card class="button-card">
-        <hem-action-button-card
+      <heros-card class="button-card">
+        <heros-action-button-card
           class="free-action-button"
           label="Add as new rate group"
           @click=${() => { this.editorMode = "new"; }}
-        ></hem-action-button-card>
-      </hem-card>
+        ></heros-action-button-card>
+      </heros-card>
     `;
   }
 
@@ -371,7 +371,7 @@ export class HemPricingPage extends LitElement {
 
   _renderGroupWorkspaceCard(group) {
     return html`
-      <hem-card>
+      <heros-card>
         <pricing-group-workspace
           .group=${group}
           .mode=${this.editorMode}
@@ -380,13 +380,13 @@ export class HemPricingPage extends LitElement {
           @group-mode-change=${(event) => { this.editorMode = event.detail.mode; }}
           @group-layout-change=${this._groupWorkspaceLayoutChanged}
         ></pricing-group-workspace>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderRateRecordFormsCard(group) {
     return html`
-      <hem-card>
+      <heros-card>
         <header>
           <div>
             <h3>Rate Records</h3>
@@ -397,7 +397,7 @@ export class HemPricingPage extends LitElement {
           ${this._renderRecordForm("buy")}
           ${this._renderRecordForm("sell")}
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -410,10 +410,10 @@ export class HemPricingPage extends LitElement {
             <strong>${isSell ? "Sell Electricity" : "Buy Electricity"}</strong>
             <span>${isSell ? "Feed-in tariff rows have their own time and day selection" : "Purchase tariff rows are independent from feed-in rows"}</span>
           </div>
-          <hem-action-button-card
+          <heros-action-button-card
             class="inline-action-button wide"
             .label=${isSell ? "+ Add sell price" : "+ Add buy price"}
-          ></hem-action-button-card>
+          ></heros-action-button-card>
         </div>
         <div class="record-fields">
           <label class="wide">
@@ -465,7 +465,7 @@ export class HemPricingPage extends LitElement {
     const isSell = type === "sell";
     const rules = group?.rules?.filter((rule) => rule.direction === type) ?? [];
     return html`
-      <hem-card>
+      <heros-card>
         <header>
           <div>
             <h3>${isSell ? "Sell prices saved" : "Buy prices saved"}</h3>
@@ -499,7 +499,7 @@ export class HemPricingPage extends LitElement {
                 </article>
               `}
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -556,7 +556,7 @@ export class HemPricingPage extends LitElement {
   _itemLevelChanged(event) {
     if (!this.editingLayout || event.detail.id !== "add-new-rate-group-action") return;
     this.addNewRateGroupLevel = event.detail.target === "page" ? "page" : "group";
-    window.localStorage.setItem("hem.frontend.pricing.add-new-rate-group.level", this.addNewRateGroupLevel);
+    window.localStorage.setItem("heros.frontend.pricing.add-new-rate-group.level", this.addNewRateGroupLevel);
   }
 
   _saveLayout() {
@@ -580,7 +580,7 @@ export class HemPricingPage extends LitElement {
     this._groupWorkspace()?.resetLayout();
     this.groupWorkspaceLayout = this._groupWorkspace()?.layout;
     this.addNewRateGroupLevel = "group";
-    window.localStorage.setItem("hem.frontend.pricing.add-new-rate-group.level", this.addNewRateGroupLevel);
+    window.localStorage.setItem("heros.frontend.pricing.add-new-rate-group.level", this.addNewRateGroupLevel);
     this.editingLayout = true;
     this.previewingLayout = false;
   }
@@ -600,9 +600,9 @@ export class HemPricingPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -618,11 +618,11 @@ export class HemPricingPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.16em;
@@ -648,7 +648,7 @@ export class HemPricingPage extends LitElement {
     }
 
     p {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .group-selector {
@@ -676,16 +676,16 @@ export class HemPricingPage extends LitElement {
 
     label span,
     .summary span {
-      color: var(--hem-text);
+      color: var(--heros-text);
       font-size: 0.86rem;
       font-weight: 800;
     }
 
     select {
       background: rgba(7, 14, 26, 0.72);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 12px;
-      color: var(--hem-text);
+      color: var(--heros-text);
       font: inherit;
       min-height: 42px;
       padding: 9px 12px;
@@ -699,7 +699,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .action-note {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       font-size: 0.9rem;
     }
 
@@ -742,7 +742,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .inline-action-button {
-      --hem-action-padding: 4px;
+      --heros-action-padding: 4px;
       display: block;
       height: 44px;
       width: 132px;
@@ -767,7 +767,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .record-action-workspace span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       font-size: 0.78rem;
       font-weight: 900;
       letter-spacing: 0.08em;
@@ -783,9 +783,9 @@ export class HemPricingPage extends LitElement {
     .ha-hero,
     .ha-rate-group {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       padding: 22px 24px;
     }
 
@@ -806,9 +806,9 @@ export class HemPricingPage extends LitElement {
 
     .ha-stat-grid article {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 20px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       min-height: 72px;
       padding: 14px 18px;
     }
@@ -816,7 +816,7 @@ export class HemPricingPage extends LitElement {
     .ha-stat-grid span,
     .ha-rate-group > header > span,
     .ha-records > header > span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.1em;
@@ -897,7 +897,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .ha-selected-group-tiles span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       display: block;
       font-size: 0.68rem;
       font-weight: 900;
@@ -921,7 +921,7 @@ export class HemPricingPage extends LitElement {
     .ha-selected-group-chips span {
       background: rgba(255, 255, 255, 0.06);
       border-radius: 999px;
-      color: var(--hem-text);
+      color: var(--heros-text);
       padding: 9px 13px;
     }
 
@@ -969,7 +969,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .button-card {
-      --hem-card-padding: 10px;
+      --heros-card-padding: 10px;
       display: block;
       height: 100%;
     }
@@ -991,7 +991,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .inline-group-summary span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.1em;
@@ -999,7 +999,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .inline-group-summary small {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     nav {
@@ -1010,9 +1010,9 @@ export class HemPricingPage extends LitElement {
     }
 
     button,
-    .hem-button,
+    .heros-button,
     .ha-action-button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -1086,9 +1086,9 @@ export class HemPricingPage extends LitElement {
       color: #06111f;
     }
 
-    .hem-button.secondary {
+    .heros-button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .summary {
@@ -1131,7 +1131,7 @@ export class HemPricingPage extends LitElement {
 
     .pricing-tiles span,
     .saved-record dt {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       display: block;
       font-size: 0.72rem;
       font-weight: 900;
@@ -1171,7 +1171,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .record-editor__heading span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       display: block;
       font-size: 0.78rem;
       font-weight: 900;
@@ -1192,9 +1192,9 @@ export class HemPricingPage extends LitElement {
 
     input {
       background: rgba(7, 14, 26, 0.72);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 12px;
-      color: var(--hem-text);
+      color: var(--heros-text);
       min-height: 42px;
       padding: 9px 12px;
       width: 100%;
@@ -1238,7 +1238,7 @@ export class HemPricingPage extends LitElement {
     }
 
     .record-list span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .saved-record {
@@ -1268,7 +1268,7 @@ export class HemPricingPage extends LitElement {
 
     .saved-record p,
     .empty-state {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       margin: 0;
     }
 
@@ -1304,4 +1304,4 @@ export class HemPricingPage extends LitElement {
   `;
 }
 
-customElements.define("hem-pricing-page", HemPricingPage);
+customElements.define("heros-pricing-page", HerosPricingPage);

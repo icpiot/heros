@@ -10,9 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_forecast_history_module():
-    package = types.ModuleType("custom_components.home_energy_manager")
-    package.__path__ = [str(ROOT / "custom_components" / "home_energy_manager")]
-    sys.modules.setdefault("custom_components.home_energy_manager", package)
+    package = types.ModuleType("custom_components.heros")
+    package.__path__ = [str(ROOT / "custom_components" / "heros")]
+    sys.modules.setdefault("custom_components.heros", package)
 
     aiohttp = types.ModuleType("aiohttp")
     aiohttp.ClientTimeout = lambda **kwargs: kwargs
@@ -30,8 +30,8 @@ def _load_forecast_history_module():
     sys.modules.setdefault("homeassistant.helpers.aiohttp_client", homeassistant_aiohttp)
 
     spec = importlib.util.spec_from_file_location(
-        "custom_components.home_energy_manager.forecast_history",
-        ROOT / "custom_components" / "home_energy_manager" / "forecast_history.py",
+        "custom_components.heros.forecast_history",
+        ROOT / "custom_components" / "heros" / "forecast_history.py",
     )
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module

@@ -15,11 +15,11 @@ def test_pricing_panel_ui_overlap_and_delete_logic():
         const fs = require("fs");
         const vm = require("vm");
 
-        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
         source = source.replace(/^import .*$/mg, "");
         source = source.replace(
-          "class HomeEnergyManagerPanel extends HTMLElement",
-          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
         );
 
         class HTMLElement {
@@ -64,9 +64,9 @@ def test_pricing_panel_ui_overlap_and_delete_logic():
         };
         context.globalThis = context;
         vm.createContext(context);
-        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
 
-        const panel = new context.HomeEnergyManagerPanel();
+        const panel = new context.HerosPanel();
         panel._connectionName = () => "Test Provider";
         const group = {
           ...panel._pricingUiGroupDefaults(),
@@ -142,11 +142,11 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
         const fs = require("fs");
         const vm = require("vm");
 
-        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
         source = source.replace(/^import .*$/mg, "");
         source = source.replace(
-          "class HomeEnergyManagerPanel extends HTMLElement",
-          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
         );
 
         class HTMLElement {
@@ -191,9 +191,9 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
         };
         context.globalThis = context;
         vm.createContext(context);
-        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
 
-        const panel = new context.HomeEnergyManagerPanel();
+        const panel = new context.HerosPanel();
         panel._connectionName = () => "Test Provider";
         panel._render = () => {};
         panel._holdRenderWindow = () => {};
@@ -253,11 +253,11 @@ def test_pricing_panel_ui_prefers_backend_file_data_over_stale_browser_storage()
         const fs = require("fs");
         const vm = require("vm");
 
-        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
         source = source.replace(/^import .*$/mg, "");
         source = source.replace(
-          "class HomeEnergyManagerPanel extends HTMLElement",
-          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
         );
 
         class HTMLElement {
@@ -272,7 +272,7 @@ def test_pricing_panel_ui_prefers_backend_file_data_over_stale_browser_storage()
         }
 
         const storage = new Map([
-          ["home-energy-manager.panel.pricing.ui", JSON.stringify({
+          ["heros.panel.pricing.ui", JSON.stringify({
             groups: [{ group_id: "local-only", label: "Local draft" }],
             activeGroupId: "local-only",
             warning: "stale local draft",
@@ -307,9 +307,9 @@ def test_pricing_panel_ui_prefers_backend_file_data_over_stale_browser_storage()
         };
         context.globalThis = context;
         vm.createContext(context);
-        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
 
-        const panel = new context.HomeEnergyManagerPanel();
+        const panel = new context.HerosPanel();
         panel._connectionName = () => "Test Provider";
         panel._pricingScheduleData = () => ({
           available: true,
@@ -333,7 +333,7 @@ def test_pricing_panel_ui_prefers_backend_file_data_over_stale_browser_storage()
         const ok = Boolean(backendGroup)
           && !restored.groups.some((group) => group.group_id === "local-only")
           && restored.activeGroupId === "backend-group"
-          && storage.has("home-energy-manager.panel.pricing.ui");
+          && storage.has("heros.panel.pricing.ui");
 
         if (!ok) {
           console.error(JSON.stringify({ restored, storage: [...storage.entries()] }, null, 2));
@@ -351,11 +351,11 @@ def test_pricing_panel_ui_backend_file_load_does_not_replace_pending_local_recor
         const fs = require("fs");
         const vm = require("vm");
 
-        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
         source = source.replace(/^import .*$/mg, "");
         source = source.replace(
-          "class HomeEnergyManagerPanel extends HTMLElement",
-          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
         );
 
         class HTMLElement {
@@ -379,7 +379,7 @@ def test_pricing_panel_ui_backend_file_load_does_not_replace_pending_local_recor
           ],
         };
         const storage = new Map([
-          ["home-energy-manager.panel.pricing.ui", JSON.stringify({
+          ["heros.panel.pricing.ui", JSON.stringify({
             groups: [group],
             activeGroupId: "group",
             localUpdatedAt: Date.now(),
@@ -416,16 +416,16 @@ def test_pricing_panel_ui_backend_file_load_does_not_replace_pending_local_recor
         };
         context.globalThis = context;
         vm.createContext(context);
-        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
 
-        const panel = new context.HomeEnergyManagerPanel();
+        const panel = new context.HerosPanel();
         panel._savePricingUiFromBackend({
           groups: [{ ...group, rules: [{ rule_id: "peak", record_type: "buy", label: "Peak" }] }],
           activeGroupId: "group",
           backendUpdatedAt: "2026-08-01T00:00:00+00:00",
         });
 
-        const restored = JSON.parse(storage.get("home-energy-manager.panel.pricing.ui"));
+        const restored = JSON.parse(storage.get("heros.panel.pricing.ui"));
         const rules = restored.groups[0]?.rules || [];
         if (rules.length !== 2 || !rules.some((rule) => rule.rule_id === "shoulder")) {
           console.error(JSON.stringify({ restored }, null, 2));
@@ -443,11 +443,11 @@ def test_pricing_panel_ui_keeps_selected_future_group_active():
         const fs = require("fs");
         const vm = require("vm");
 
-        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
         source = source.replace(/^import .*$/mg, "");
         source = source.replace(
-          "class HomeEnergyManagerPanel extends HTMLElement",
-          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
         );
 
         class HTMLElement {
@@ -490,9 +490,9 @@ def test_pricing_panel_ui_keeps_selected_future_group_active():
         };
         context.globalThis = context;
         vm.createContext(context);
-        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
 
-        const panel = new context.HomeEnergyManagerPanel();
+        const panel = new context.HerosPanel();
         const selectedGroup = {
           group_id: "future-group",
           label: "Future Group",
@@ -528,11 +528,11 @@ def test_pricing_panel_ui_new_group_keeps_stable_group_id():
         const fs = require("fs");
         const vm = require("vm");
 
-        let source = fs.readFileSync("examples/www/home-energy-manager-panel.js", "utf8");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
         source = source.replace(/^import .*$/mg, "");
         source = source.replace(
-          "class HomeEnergyManagerPanel extends HTMLElement",
-          "globalThis.HomeEnergyManagerPanel = class HomeEnergyManagerPanel extends HTMLElement",
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
         );
 
         class HTMLElement {
@@ -575,9 +575,9 @@ def test_pricing_panel_ui_new_group_keeps_stable_group_id():
         };
         context.globalThis = context;
         vm.createContext(context);
-        vm.runInContext(source, context, { filename: "home-energy-manager-panel.js" });
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
 
-        const panel = new context.HomeEnergyManagerPanel();
+        const panel = new context.HerosPanel();
         panel._render = () => {};
         panel._holdRenderWindow = () => {};
         panel._connectionName = () => "Test Provider";

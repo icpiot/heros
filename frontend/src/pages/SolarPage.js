@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   solarDefaultLayout,
 } from "../layout/solarLayout.js";
 
-export class HemSolarPage extends LitElement {
+export class HerosSolarPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -65,41 +65,41 @@ export class HemSolarPage extends LitElement {
         <nav aria-label="Solar layout editor controls">
           ${this.editingLayout
             ? html`
-                <button class="hem-button" data-layout-action="save" type="button">Save Layout</button>
-                <button class="hem-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
-                <button class="hem-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
+                <button class="heros-button" data-layout-action="save" type="button">Save Layout</button>
+                <button class="heros-button secondary" data-layout-action="cancel" type="button">Cancel Changes</button>
+                <button class="heros-button secondary" data-layout-action="reset" type="button">Reset Layout</button>
               `
             : html`
-                <button class="hem-button" data-layout-action="edit" type="button">Edit Layout</button>
+                <button class="heros-button" data-layout-action="edit" type="button">Edit Layout</button>
               `}
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderSummaryCard() {
-    const solar = this.hemState.solar;
+    const solar = this.herosState.solar;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Solar now</p>
         <h3>${solar.powerKw} kW</h3>
         <strong class="hero-value">${solar.todayKwh} kWh</strong>
         <p>Generated today</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderForecastCard() {
-    const solar = this.hemState.solar;
+    const solar = this.herosState.solar;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Forecast</p>
         <h3>${solar.forecast}</h3>
         <section class="mini-grid">
@@ -107,25 +107,25 @@ export class HemSolarPage extends LitElement {
           <article><span>15:00</span><strong>4.8 kW</strong></article>
           <article><span>18:00</span><strong>1.2 kW</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderExportCard() {
-    const home = this.hemState.home;
+    const home = this.herosState.home;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Grid export</p>
         <h3>${home.gridKw} kW</h3>
         <p>${home.todayExportedKwh} kWh exported today</p>
         <div class="bar"><span style="width: 64%"></span></div>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderArrayCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Array status</p>
         <h3>All strings online</h3>
         <section class="mini-grid">
@@ -133,19 +133,19 @@ export class HemSolarPage extends LitElement {
           <article><span>West</span><strong>1.9 kW</strong></article>
           <article><span>East</span><strong>1.6 kW</strong></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderHistoryCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Production history</p>
         <h3>7 day average: 19.8 kWh</h3>
         <section class="spark-bars" aria-label="Mock solar production history">
           ${[45, 72, 58, 88, 64, 92, 76].map((height) => html`<span style="height:${height}%"></span>`)}
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -193,9 +193,9 @@ export class HemSolarPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -211,13 +211,13 @@ export class HemSolarPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label,
     .mini-grid span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -240,7 +240,7 @@ export class HemSolarPage extends LitElement {
     }
 
     p {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -258,8 +258,8 @@ export class HemSolarPage extends LitElement {
     }
 
     button,
-    .hem-button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+    .heros-button {
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -269,9 +269,9 @@ export class HemSolarPage extends LitElement {
       padding: 12px 16px;
     }
 
-    .hem-button.secondary {
+    .heros-button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .bar {
@@ -283,7 +283,7 @@ export class HemSolarPage extends LitElement {
     }
 
     .bar span {
-      background: linear-gradient(90deg, var(--hem-accent), var(--hem-accent-2));
+      background: linear-gradient(90deg, var(--heros-accent), var(--heros-accent-2));
       display: block;
       height: 100%;
     }
@@ -316,7 +316,7 @@ export class HemSolarPage extends LitElement {
     }
 
     .spark-bars span {
-      background: linear-gradient(180deg, var(--hem-accent-2), var(--hem-accent));
+      background: linear-gradient(180deg, var(--heros-accent-2), var(--heros-accent));
       border-radius: 999px 999px 4px 4px;
       flex: 1;
       min-width: 16px;
@@ -339,4 +339,4 @@ export class HemSolarPage extends LitElement {
   `;
 }
 
-customElements.define("hem-solar-page", HemSolarPage);
+customElements.define("heros-solar-page", HerosSolarPage);

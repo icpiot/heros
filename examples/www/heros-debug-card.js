@@ -1,8 +1,8 @@
-const HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD = "036";
+const HEROS_DEBUG_CARD_BUILD = "036";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
-    const prefix = config?.entity_prefix || "home_energy_manager";
+    const prefix = config?.entity_prefix || "heros";
     this._config = {
       entity_prefix: prefix,
       settings_target: config?.settings_target || `select.house_${prefix}_settings_target`,
@@ -336,7 +336,7 @@ class ByteWattDebugCard extends HTMLElement {
     const base = explicitBase
       ? explicitBase.replace(/\/+$/, "")
       : entryId
-        ? `/local/home-energy-manager-history/${entryId}`
+        ? `/local/heros-history/${entryId}`
         : "";
     if (!base) return "";
     return `${base}/history.json`;
@@ -886,7 +886,7 @@ class ByteWattDebugCard extends HTMLElement {
         force: Boolean(force),
       };
       if (entryId) payload.entry_id = entryId;
-      await this._hass.callService("home_energy_manager", "ensure_report_history", payload);
+      await this._hass.callService("heros", "ensure_report_history", payload);
       this._status = `${force ? "Forced " : ""}archive probe sent for ${scopeKey} ${this._debugPeriod} ${startDate} -> ${endDate}`;
       this._statusKind = "success";
       if (this._historyConfigured()) {
@@ -923,7 +923,7 @@ class ByteWattDebugCard extends HTMLElement {
         force: Boolean(force),
       };
       if (entryId) payload.entry_id = entryId;
-      await this._hass.callService("home_energy_manager", "ensure_report_history", payload);
+      await this._hass.callService("heros", "ensure_report_history", payload);
       this._status = `${force ? "Forced " : ""}download sent for ${scopeKey} ${selectedDate}`;
       this._statusKind = "success";
       if (this._historyConfigured()) {
@@ -1318,7 +1318,7 @@ class ByteWattDebugCard extends HTMLElement {
             <div class="title">
               <span>HEROS</span>
               <span>${this._escape(this._config.title)}</span>
-          <span class="badge">v${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}</span>
+          <span class="badge">v${HEROS_DEBUG_CARD_BUILD}</span>
             </div>
             <div class="button-row header-actions">
               <button class="button" type="button" id="probe-button">Probe archive</button>
@@ -1510,13 +1510,13 @@ class ByteWattDebugCard extends HTMLElement {
   }
 }
 
-if (typeof customElements !== "undefined" && !customElements.get("home-energy-manager-debug-card")) {
-  customElements.define("home-energy-manager-debug-card", ByteWattDebugCard);
+if (typeof customElements !== "undefined" && !customElements.get("heros-debug-card")) {
+  customElements.define("heros-debug-card", ByteWattDebugCard);
 }
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: "home-energy-manager-debug-card",
+  type: "heros-debug-card",
   name: "HEROS Debug Card",
-  description: `HEROS debug card build ${HOME_ENERGY_MANAGER_DEBUG_CARD_BUILD}.`,
+  description: `HEROS debug card build ${HEROS_DEBUG_CARD_BUILD}.`,
 });

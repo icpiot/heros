@@ -21,8 +21,8 @@ from .pricing import (
 
 _LOGGER = logging.getLogger(__name__)
 
-PRICING_DIR_NAME = "home-energy-manager"
-LEGACY_PRICING_DIR_NAME = "home-energy-manager-pricing"
+PRICING_DIR_NAME = "heros"
+LEGACY_PRICING_DIR_NAME = "heros-pricing"
 PRICING_FILE_NAME = "pricing.json"
 PRICING_SCHEDULE_FILE_NAME = "pricing_schedule.json"
 

@@ -362,7 +362,7 @@ export class EditableGrid extends LitElement {
       border: 1px solid rgba(37, 255, 210, 0.42);
       border-radius: 999px;
       bottom: 12px;
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       display: none;
       font-size: 0.68rem;
       font-weight: 800;
@@ -413,7 +413,7 @@ export class EditableGrid extends LitElement {
     }
 
     .is-editing .ui-resizable-handle {
-      background: var(--hem-accent);
+      background: var(--heros-accent);
       border: 2px solid #03101a;
       border-radius: 999px;
       box-shadow: 0 0 14px rgba(0, 229, 255, 0.55);
@@ -493,4 +493,4 @@ export class EditableGrid extends LitElement {
   `];
 }
 
-customElements.define("hem-editable-grid", EditableGrid);
+customElements.define("heros-editable-grid", EditableGrid);

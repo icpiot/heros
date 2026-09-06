@@ -13,7 +13,7 @@ const pages = [
   ["settings", "Settings", "Settings"],
 ];
 
-export class HemShell extends LitElement {
+export class HerosShell extends LitElement {
   static properties = {
     activePage: { type: String },
   };
@@ -57,9 +57,9 @@ export class HemShell extends LitElement {
 
     header {
       background: linear-gradient(135deg, rgba(13, 30, 50, 0.95), rgba(12, 19, 40, 0.92));
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 20px;
       padding: 24px;
     }
@@ -71,7 +71,7 @@ export class HemShell extends LitElement {
     }
 
     .eyebrow {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.75rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -80,7 +80,7 @@ export class HemShell extends LitElement {
     }
 
     .lede {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
       margin: 10px 0 0;
     }
 
@@ -96,7 +96,7 @@ export class HemShell extends LitElement {
       background: rgba(3, 16, 26, 0.84);
       border: 1px solid rgba(0, 229, 255, 0.5);
       border-radius: 999px;
-      color: var(--hem-text);
+      color: var(--heros-text);
       display: inline-flex;
       font-weight: 900;
       gap: 10px;
@@ -110,7 +110,7 @@ export class HemShell extends LitElement {
     }
 
     span {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-weight: 900;
     }
 
@@ -126,4 +126,4 @@ export class HemShell extends LitElement {
   `;
 }
 
-customElements.define("hem-shell", HemShell);
+customElements.define("heros-shell", HerosShell);

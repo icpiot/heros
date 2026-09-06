@@ -44,55 +44,55 @@ While editing, the grid background, card outline, drag handle, and resize handle
 Overview layout data is currently stored in browser `localStorage` using this versioned key:
 
 ```text
-hem.frontend.layout.overview.v1
+heros.frontend.layout.overview.v1
 ```
 
 Pricing layout data uses its own key:
 
 ```text
-hem.frontend.layout.pricing.v2
+heros.frontend.layout.pricing.v2
 ```
 
 Battery layout data uses:
 
 ```text
-hem.frontend.layout.battery.v2
+heros.frontend.layout.battery.v2
 ```
 
 Solar layout data uses:
 
 ```text
-hem.frontend.layout.solar.v1
+heros.frontend.layout.solar.v1
 ```
 
 Forecast layout data uses:
 
 ```text
-hem.frontend.layout.forecast.v1
+heros.frontend.layout.forecast.v1
 ```
 
 History layout data uses:
 
 ```text
-hem.frontend.layout.history.v1
+heros.frontend.layout.history.v1
 ```
 
 Policy layout data uses:
 
 ```text
-hem.frontend.layout.policy.v1
+heros.frontend.layout.policy.v1
 ```
 
 Report layout data uses:
 
 ```text
-hem.frontend.layout.report.v1
+heros.frontend.layout.report.v1
 ```
 
 Settings layout data uses:
 
 ```text
-hem.frontend.layout.settings.v1
+heros.frontend.layout.settings.v1
 ```
 
 The default layout remains in source control at:
@@ -107,7 +107,7 @@ Invalid or outdated saved layout data is ignored safely and the source-defined d
 
 The data boundary and layout persistence are deliberately separated:
 
-- `src/services/hemDataProvider.js` currently returns mocked HEROS state, and can later be replaced with Home Assistant entity/API data.
+- `src/services/herosDataProvider.js` currently returns mocked HEROS state, and can later be replaced with Home Assistant entity/API data.
 - `src/layout/LocalStorageLayoutRepository.js` currently stores layouts in `localStorage`.
 - `src/layout/LayoutController.js` manages edit/save/cancel/reset state.
 - `src/components/EditableGrid.js` owns the GridStack integration.
@@ -140,8 +140,8 @@ frontend/
 - `index.html` hosts the Lit app.
 - `src/main.js` loads global styles, GridStack CSS, and the app shell.
 - `src/App.js` routes between Overview and Pricing in the standalone frontend.
-- `src/components/HemShell.js` provides the app frame and navigation.
-- `src/components/HemCard.js` provides the shared card surface.
+- `src/components/HerosShell.js` provides the app frame and navigation.
+- `src/components/HerosCard.js` provides the shared card surface.
 - `src/components/OverviewMetricCard.js` renders Overview card content.
 - `src/components/EditableGrid.js` provides the reusable GridStack editable layout component.
 - `src/components/LayoutToolbar.js` provides Edit, Save, Cancel, and Reset controls.
@@ -151,6 +151,6 @@ frontend/
 - `src/layout/overviewLayout.js` defines stable Overview card IDs and the source default layout.
 - `src/layout/LayoutController.js` manages draft, saved, cancel, and reset behaviour.
 - `src/layout/LocalStorageLayoutRepository.js` stores and validates layouts through a replaceable persistence boundary.
-- `src/data/mockHemState.js` contains initial mock battery, inverter, solar, home, and pricing data.
-- `src/services/hemDataProvider.js` is the current mock data-provider boundary.
+- `src/data/mockHerosState.js` contains initial mock battery, inverter, solar, home, and pricing data.
+- `src/services/herosDataProvider.js` is the current mock data-provider boundary.
 - `src/styles/base.css` contains shared global styling.

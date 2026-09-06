@@ -19,7 +19,7 @@ import requests
 # Make the integration importable when running this script directly.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from custom_components.home_energy_manager.api.neovolt_auth import (  # noqa: E402
+from custom_components.heros.api.neovolt_auth import (  # noqa: E402
     EncryptionError,
     encrypt_password,
 )

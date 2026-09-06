@@ -6,8 +6,8 @@ This document describes the pricing data shape used by the Pricing UI.
 
 Pricing stays file-backed for now because the dataset is small and the workflow
 is easiest to reason about that way. The current live files live under
-`www/home-energy-manager/<entry_id>/`, with the older
-`www/home-energy-manager-pricing/<entry_id>/` path kept as a legacy read
+`www/heros/<entry_id>/`, with the older
+`www/heros-pricing/<entry_id>/` path kept as a legacy read
 fallback during cleanup.
 
 ## Data model
@@ -211,7 +211,7 @@ Suggested migration:
 
 ## Implementation checklist
 
-1. Extend `custom_components/home_energy_manager/pricing.py`.
+1. Extend `custom_components/heros/pricing.py`.
    - Add `PricingRateRecord`.
    - Add `PricingRateGroup`.
    - Add version 2 parsing/serialization to `PricingSchedule`.
@@ -219,13 +219,13 @@ Suggested migration:
    - Add active-group and active-record lookup helpers.
    - Add backend overlap validation.
 
-2. Extend `custom_components/home_energy_manager/pricing_store.py`.
+2. Extend `custom_components/heros/pricing_store.py`.
    - Add group upsert/remove methods.
    - Add record upsert/remove methods.
    - Persist version 2 schedules to the same `pricing_schedule.json` file.
    - Keep reading old schedules without data loss.
 
-3. Extend `custom_components/home_energy_manager/const.py`.
+3. Extend `custom_components/heros/const.py`.
    - Add service constants:
      - `SERVICE_PRICING_UPSERT_GROUP`
      - `SERVICE_PRICING_REMOVE_GROUP`
@@ -234,17 +234,17 @@ Suggested migration:
    - Add attribute constants for `group_id`, `record_id`,
      `effective_start_date`, `day_types`, and group-level charges.
 
-4. Extend `custom_components/home_energy_manager/__init__.py`.
+4. Extend `custom_components/heros/__init__.py`.
    - Register the four new services.
    - Validate duplicate group start dates.
    - Validate record overlaps before saving.
    - Fire the existing pricing-changed dispatcher after group/record changes.
 
-5. Extend `custom_components/home_energy_manager/services.yaml`.
+5. Extend `custom_components/heros/services.yaml`.
    - Document the four new services and fields.
    - Leave old services documented until migration is complete.
 
-6. Extend `custom_components/home_energy_manager/sensor.py`.
+6. Extend `custom_components/heros/sensor.py`.
    - Expose `group_count`, `record_count`, `groups`, `active_group`, and
      `active_record`.
    - Keep `rule_count`, `rules`, and `date_map` attributes during transition.

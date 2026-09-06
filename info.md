@@ -29,16 +29,16 @@ Host inverter (used for Grid Feed-in and cycle strategy control).
 
 ## Available services
 
-Battery: `home_energy_manager.set_minimum_soc`, `home_energy_manager.set_charge_cap`,
-`home_energy_manager.set_discharge_start_time`, `home_energy_manager.set_discharge_time`,
-`home_energy_manager.set_charge_start_time`, `home_energy_manager.set_charge_end_time`,
-`home_energy_manager.update_battery_settings`
+Battery: `heros.set_minimum_soc`, `heros.set_charge_cap`,
+`heros.set_discharge_start_time`, `heros.set_discharge_time`,
+`heros.set_charge_start_time`, `heros.set_charge_end_time`,
+`heros.update_battery_settings`
 
-Grid feed-in: `home_energy_manager.set_grid_feedin_enabled`,
-`home_energy_manager.set_grid_feedin_cutoff_soc`, `home_energy_manager.update_grid_feedin_slot`
+Grid feed-in: `heros.set_grid_feedin_enabled`,
+`heros.set_grid_feedin_cutoff_soc`, `heros.update_grid_feedin_slot`
 
-Maintenance: `home_energy_manager.force_reconnect`, `home_energy_manager.health_check`,
-`home_energy_manager.toggle_diagnostics`
+Maintenance: `heros.force_reconnect`, `heros.health_check`,
+`heros.toggle_diagnostics`
 
 All services accept an optional `entry_id` field (required only when you have
 multiple Byte-Watt accounts configured).

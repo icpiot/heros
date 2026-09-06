@@ -1,6 +1,6 @@
 import { LitElement, css, html } from "lit";
 import "../components/EditableGrid.js";
-import "../components/HemCard.js";
+import "../components/HerosCard.js";
 import { LayoutController } from "../layout/LayoutController.js";
 import { LocalStorageLayoutRepository } from "../layout/LocalStorageLayoutRepository.js";
 import {
@@ -9,9 +9,9 @@ import {
   settingsDefaultLayout,
 } from "../layout/settingsLayout.js";
 
-export class HemSettingsPage extends LitElement {
+export class HerosSettingsPage extends LitElement {
   static properties = {
-    hemState: { type: Object },
+    herosState: { type: Object },
     editingLayout: { type: Boolean },
     layout: { type: Array },
   };
@@ -68,31 +68,31 @@ export class HemSettingsPage extends LitElement {
         </nav>
       </section>
 
-      <hem-editable-grid
+      <heros-editable-grid
         .items=${cards}
         .layout=${this.layout}
         .editing=${this.editingLayout}
         @layout-change=${this._layoutChanged}
-      ></hem-editable-grid>
+      ></heros-editable-grid>
     `;
   }
 
   _renderConnectionCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Connection</p>
         <h3>HEROS</h3>
         <section class="rule-list">
           <article><strong>Status</strong><span>Connected</span></article>
           <article><strong>Source</strong><span>Mock provider</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderThemeCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Theme</p>
         <h3>Theme selection</h3>
         <div class="pill-row">
@@ -101,15 +101,15 @@ export class HemSettingsPage extends LitElement {
           <button type="button">Classic</button>
         </div>
         <p>Theme controls live on Settings in the standalone app.</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderForecastCard() {
-    const forecast = this.hemState?.forecast ?? {};
+    const forecast = this.herosState?.forecast ?? {};
     const providerCount = forecast.providers?.length ?? 0;
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Forecast</p>
         <h3>Mapping setup</h3>
         <section class="rule-list">
@@ -118,38 +118,38 @@ export class HemSettingsPage extends LitElement {
           <article><strong>Snapshot</strong><span>${forecast.snapshotAt || "Not recorded"}</span></article>
         </section>
         <p>Use the Forecast page to map entities from Forecast.Solar, Solcast, or template sensors.</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderDataCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Data</p>
         <h3>Mock data provider</h3>
         <strong class="hero-value">Local</strong>
         <p>Ready to swap for Home Assistant entities later.</p>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderEntitiesCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Entity mapping</p>
         <h3>Primary devices</h3>
         <section class="rule-list">
-          <article><strong>Battery</strong><span>${this.hemState.battery.selectedBattery}</span></article>
-          <article><strong>Inverter</strong><span>${this.hemState.inverter.status}</span></article>
-          <article><strong>Solar</strong><span>${this.hemState.solar.powerKw} kW</span></article>
+          <article><strong>Battery</strong><span>${this.herosState.battery.selectedBattery}</span></article>
+          <article><strong>Inverter</strong><span>${this.herosState.inverter.status}</span></article>
+          <article><strong>Solar</strong><span>${this.herosState.solar.powerKw} kW</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
   _renderDebugCard() {
     return html`
-      <hem-card>
+      <heros-card>
         <p class="card-label">Diagnostics</p>
         <h3>Frontend runtime</h3>
         <section class="rule-list">
@@ -157,7 +157,7 @@ export class HemSettingsPage extends LitElement {
           <article><strong>Persistence</strong><span>localStorage</span></article>
           <article><strong>Layout key</strong><span>settings.v1</span></article>
         </section>
-      </hem-card>
+      </heros-card>
     `;
   }
 
@@ -205,9 +205,9 @@ export class HemSettingsPage extends LitElement {
     .page-head,
     .layout-toolbar {
       background: rgba(8, 18, 31, 0.9);
-      border: 1px solid var(--hem-border);
+      border: 1px solid var(--heros-border);
       border-radius: 24px;
-      box-shadow: var(--hem-shadow);
+      box-shadow: var(--heros-shadow);
       margin-bottom: 16px;
       padding: 22px;
     }
@@ -223,12 +223,12 @@ export class HemSettingsPage extends LitElement {
 
     .layout-toolbar.editing {
       border-color: rgba(37, 255, 210, 0.75);
-      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--hem-shadow);
+      box-shadow: 0 0 0 1px rgba(37, 255, 210, 0.14), var(--heros-shadow);
     }
 
     .eyebrow,
     .card-label {
-      color: var(--hem-accent);
+      color: var(--heros-accent);
       font-size: 0.72rem;
       font-weight: 900;
       letter-spacing: 0.14em;
@@ -253,7 +253,7 @@ export class HemSettingsPage extends LitElement {
     p,
     .layout-toolbar span,
     .rule-list span {
-      color: var(--hem-muted);
+      color: var(--heros-muted);
     }
 
     .hero-value {
@@ -277,7 +277,7 @@ export class HemSettingsPage extends LitElement {
     }
 
     button {
-      background: linear-gradient(135deg, var(--hem-accent), var(--hem-hot));
+      background: linear-gradient(135deg, var(--heros-accent), var(--heros-hot));
       border: 0;
       border-radius: 999px;
       color: #06111f;
@@ -289,7 +289,7 @@ export class HemSettingsPage extends LitElement {
 
     button.secondary {
       background: rgba(11, 25, 42, 0.86);
-      color: var(--hem-text);
+      color: var(--heros-text);
     }
 
     .rule-list {
@@ -321,4 +321,4 @@ export class HemSettingsPage extends LitElement {
   `;
 }
 
-customElements.define("hem-settings-page", HemSettingsPage);
+customElements.define("heros-settings-page", HerosSettingsPage);
