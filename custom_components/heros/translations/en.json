@@ -12,6 +12,7 @@
         "data": {
           "username": "Username",
           "password": "Password",
+          "foxess_v2_wasm_path": "FoxESS V2 signature.wasm path",
           "scan_interval": "Scan interval (seconds)"
         }
       },

@@ -25,6 +25,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
+from .api.foxess_v2 import FoxESSV2Error, async_create_foxess_v2_client
 from .coordinator import ByteWattDataUpdateCoordinator
 from .forecast_history import async_test_forecast_history_source, forecast_history_source_from_config
 from .policy_charge import PolicyChargeSchedule
@@ -37,7 +38,11 @@ from .topology import DiscoveredInverter
 from .const import (
     DOMAIN,
     CONF_PROVIDER,
+    CONF_FOXESS_V2_WASM_PATH,
     PROVIDER_BYTEWATT,
+    PROVIDER_FOXESS_MODBUS,
+    PROVIDER_FOXESS_V1,
+    PROVIDER_FOXESS_V2,
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_FORECAST_PROVIDER,
@@ -256,7 +261,10 @@ PANEL_CUSTOM_CONFIG = {
     }
 }
 PANEL_PROVIDER_LABELS = {
-    PROVIDER_BYTEWATT: "HEROS",
+    PROVIDER_BYTEWATT: "Bytewatt",
+    PROVIDER_FOXESS_V1: "FoxESS_v1",
+    PROVIDER_FOXESS_V2: "FoxESS_v2",
+    PROVIDER_FOXESS_MODBUS: "FoxESS_Modbus",
 }
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
@@ -363,7 +371,13 @@ def _unregister_frontend_panel(hass: HomeAssistant) -> None:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Byte-Watt from a config entry."""
+    """Set up HEROS from a config entry."""
+    provider = entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT)
+    if provider == PROVIDER_FOXESS_V2:
+        return await _async_setup_foxess_v2_entry(hass, entry)
+    if provider != PROVIDER_BYTEWATT:
+        raise HomeAssistantError(f"Provider {provider!r} is not implemented yet")
+
     username = entry.data[CONF_USERNAME]
     password = entry.data[CONF_PASSWORD]
     host_system_id = entry.data.get(CONF_HOST_SYSTEM_ID, "")
@@ -523,6 +537,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
             )
 
+    return True
+
+
+async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up the read-only FoxESS Cloud V2 transport."""
+    try:
+        client = await async_create_foxess_v2_client(
+            hass,
+            entry.data[CONF_USERNAME],
+            entry.data[CONF_PASSWORD],
+            entry.data[CONF_FOXESS_V2_WASM_PATH],
+        )
+        plants = await client.discover_plants(force=True)
+    except (KeyError, FoxESSV2Error) as err:
+        raise HomeAssistantError("FoxESS_v2 setup failed") from err
+
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "client": client,
+        "provider": PROVIDER_FOXESS_V2,
+        "plants": plants,
+        "config": dict(entry.data),
+        "options": dict(entry.options or {}),
+    }
+    _register_frontend_panel(hass, entry)
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 

@@ -19,7 +19,9 @@ from homeassistant.helpers.selector import (
 )
 
 from .bytewatt_client import ByteWattClient
+from .api.foxess_v2 import FoxESSV2Error, async_create_foxess_v2_client
 from .const import (
+    CONF_FOXESS_V2_WASM_PATH,
     CONF_PROVIDER,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
@@ -49,6 +51,9 @@ from .const import (
     DOMAIN,
     MIN_SCAN_INTERVAL,
     PROVIDER_BYTEWATT,
+    PROVIDER_FOXESS_MODBUS,
+    PROVIDER_FOXESS_V1,
+    PROVIDER_FOXESS_V2,
     PROVIDER_OTHER,
 )
 
@@ -87,9 +92,27 @@ def _build_inverter_options(inverters: list[dict[str, Any]]) -> list[SelectOptio
 
 def _provider_options() -> list[SelectOptionDict]:
     return [
-        SelectOptionDict(value=PROVIDER_BYTEWATT, label="ByteWatt"),
-        SelectOptionDict(value=PROVIDER_OTHER, label="Other (future)"),
+        SelectOptionDict(value=PROVIDER_BYTEWATT, label="Bytewatt"),
+        SelectOptionDict(value=PROVIDER_FOXESS_V1, label="FoxESS_v1"),
+        SelectOptionDict(value=PROVIDER_FOXESS_V2, label="FoxESS_v2"),
+        SelectOptionDict(value=PROVIDER_FOXESS_MODBUS, label="FoxESS_Modbus"),
     ]
+
+
+def _provider_login_schema(provider: str) -> vol.Schema:
+    fields: dict[Any, Any] = {
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
+            vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)
+        ),
+        vol.Optional(
+            CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
+        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
+    }
+    if provider == PROVIDER_FOXESS_V2:
+        fields[vol.Required(CONF_FOXESS_V2_WASM_PATH)] = str
+    return vol.Schema(fields)
 
 
 def _forecast_provider_options() -> list[SelectOptionDict]:
@@ -260,21 +283,12 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         provider = user_input[CONF_PROVIDER]
         self._user_input = {CONF_PROVIDER: provider}
 
-        if provider == PROVIDER_OTHER:
+        if provider in {PROVIDER_FOXESS_V1, PROVIDER_FOXESS_MODBUS, PROVIDER_OTHER}:
             return self.async_abort(reason="provider_coming_soon")
 
         return self.async_show_form(
             step_id="provider_login",
-            data_schema=vol.Schema({
-                vol.Required(CONF_USERNAME): str,
-                vol.Required(CONF_PASSWORD): str,
-                vol.Optional(
-                    CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(
-                    CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
-            }),
+            data_schema=_provider_login_schema(provider),
             errors={},
         )
 
@@ -287,6 +301,29 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
             self._user_input.update(user_input)
+
+            provider = self._user_input.get(CONF_PROVIDER, PROVIDER_BYTEWATT)
+            if provider == PROVIDER_FOXESS_V2:
+                try:
+                    client = await async_create_foxess_v2_client(
+                        self.hass,
+                        user_input[CONF_USERNAME],
+                        user_input[CONF_PASSWORD],
+                        user_input[CONF_FOXESS_V2_WASM_PATH],
+                    )
+                    await client.discover_plants(force=True)
+                except FoxESSV2Error:
+                    errors["base"] = "auth"
+                else:
+                    self._client = None
+                    self._inverters = []
+                    return await self.async_step_forecast_setup()
+
+                return self.async_show_form(
+                    step_id="provider_login",
+                    data_schema=_provider_login_schema(provider),
+                    errors=errors,
+                )
 
             client = ByteWattClient(
                 self.hass, user_input[CONF_USERNAME], user_input[CONF_PASSWORD]
@@ -315,16 +352,9 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="provider_login",
-            data_schema=vol.Schema({
-                vol.Required(CONF_USERNAME): str,
-                vol.Required(CONF_PASSWORD): str,
-                vol.Optional(
-                    CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(
-                    CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
-            }),
+            data_schema=_provider_login_schema(
+                self._user_input.get(CONF_PROVIDER, PROVIDER_BYTEWATT)
+            ),
             errors=errors,
         )
 
