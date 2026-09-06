@@ -6,7 +6,11 @@ It is a generic system for multiple energy providers, not a provider-branded pro
 ## Repository and namespace
 
 - GitHub: https://github.com/icpiot/heros
-- Local repository: `C:\Dev\repos\heros`
+- Intended local repository: `C:\Dev\repos\heros`.
+- Local folder move is pending: Windows rejected it because another process has
+  the repository open. Close the project and terminals using it, rename the
+  folder to `heros`, then reopen it. The current task still uses the original
+  local directory until that move succeeds.
 - Working branch: `codex/heros`
 - Integration package: `custom_components/heros`
 - Integration and service domain: `heros`
@@ -45,5 +49,5 @@ publish this branch. Git history retains its historical names.
 Live HA/browser behavior remains unverified; ask the user for a hard refresh
 before continuing when runtime validation requires one.
 
-Reopen the project in Codex from the new local path. Existing tasks may retain
+After completing the pending folder move, reopen Codex from the new local path. Existing tasks may retain
 their old working directory and need to be continued from the renamed project.
