@@ -96,9 +96,12 @@ directional meanings.
 
 ## Polling, privacy and lifecycle
 
-Requests are spaced at least five seconds apart by default. For a future HA
-coordinator, use `DEFAULT_POLL_INTERVAL` (300 seconds) or slower and do not poll
-static detail/discovery on each telemetry update. This is a conservative local
+Requests are spaced at least five seconds apart by default. The Home Assistant
+coordinator uses the fixed `DEFAULT_POLL_INTERVAL` of 300 seconds for FoxESS_v2,
+matching the slow cloud update cadence observed during testing. HEROS does not
+show a polling interval option for FoxESS_v2 setup or options, and old stored
+`scan_interval` values are ignored for this provider. Static detail/discovery
+should not be polled on each telemetry update. This is a conservative local
 policy, not a claim about FoxESS's undocumented private API quota.
 
 Every request has a 30-second timeout, bounded response size, and disabled

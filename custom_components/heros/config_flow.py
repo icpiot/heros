@@ -102,13 +102,14 @@ def _provider_login_schema(provider: str) -> vol.Schema:
     fields: dict[Any, Any] = {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(
-            vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)
-        ),
         vol.Optional(
             CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
         ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
     }
+    if provider != PROVIDER_FOXESS_V2:
+        fields[
+            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL)
+        ] = vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL))
     return vol.Schema(fields)
 
 
@@ -549,20 +550,24 @@ class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
+        fields: dict[Any, Any] = {
+            vol.Optional(
+                CONF_HISTORY_BACKFILL_YEARS,
+                default=self.config_entry.options.get(
+                    CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
+                ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
+        }
+        if self.config_entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT) != PROVIDER_FOXESS_V2:
+            fields[
                 vol.Optional(
                     CONF_SCAN_INTERVAL,
                     default=self.config_entry.options.get(
                         CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                     ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(
-                    CONF_HISTORY_BACKFILL_YEARS,
-                    default=self.config_entry.options.get(
-                        CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
-                    ),
-                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
-            }),
+                )
+            ] = vol.All(vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL))
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(fields),
         )

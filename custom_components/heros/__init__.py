@@ -25,6 +25,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
+from .api.foxess_v2 import DEFAULT_POLL_INTERVAL as FOXESS_V2_POLL_INTERVAL
 from .api.foxess_v2 import FoxESSV2Error, async_create_foxess_v2_client
 from .coordinator import ByteWattDataUpdateCoordinator
 from .forecast_history import async_test_forecast_history_source, forecast_history_source_from_config
@@ -544,11 +545,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the read-only FoxESS Cloud V2 transport."""
     options = entry.options or {}
-    scan_interval = options.get(
-        CONF_SCAN_INTERVAL,
-        entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-    )
-
+    scan_interval = FOXESS_V2_POLL_INTERVAL
     recovery_options = {
         CONF_RECOVERY_ENABLED:        options.get(CONF_RECOVERY_ENABLED, DEFAULT_RECOVERY_ENABLED),
         CONF_HEARTBEAT_INTERVAL:      options.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL),
