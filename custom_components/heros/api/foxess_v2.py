@@ -237,7 +237,7 @@ class FoxESSV2Client:
         })
 
 
-async def async_create_foxess_v2_client(hass, username, password, wasm_path):
+async def async_create_foxess_v2_client(hass, username, password, wasm_path=None):
     """HA bridge: shared HTTP, configured timezone, and executor-only WASM setup.
 
     Raises a sanitized FoxESSV2Error on setup failure. The integration's owning
@@ -245,7 +245,7 @@ async def async_create_foxess_v2_client(hass, username, password, wasm_path):
     Creating the client itself makes no cloud requests.
     """
     try:
-        wasm_asset = Path(wasm_path)
+        wasm_asset = Path(wasm_path or hass.config.path("heros", "foxess", "signature.wasm"))
         wasm_asset.parent.mkdir(parents=True, exist_ok=True)
         if not wasm_asset.is_file():
             raise FoxESSV2Error("FoxESS V2 signer file is missing")

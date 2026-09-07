@@ -21,8 +21,6 @@ from homeassistant.helpers.selector import (
 from .bytewatt_client import ByteWattClient
 from .api.foxess_v2 import FoxESSV2Error, async_create_foxess_v2_client
 from .const import (
-    CONF_FOXESS_V2_WASM_PATH,
-    DEFAULT_FOXESS_V2_WASM_PATH,
     CONF_PROVIDER,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
@@ -111,13 +109,6 @@ def _provider_login_schema(provider: str) -> vol.Schema:
             CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
         ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
     }
-    if provider == PROVIDER_FOXESS_V2:
-        fields[
-            vol.Required(
-                CONF_FOXESS_V2_WASM_PATH,
-                default=DEFAULT_FOXESS_V2_WASM_PATH,
-            )
-        ] = str
     return vol.Schema(fields)
 
 
@@ -315,7 +306,6 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         self.hass,
                         user_input[CONF_USERNAME],
                         user_input[CONF_PASSWORD],
-                        user_input[CONF_FOXESS_V2_WASM_PATH],
                     )
                     await client.discover_plants(force=True)
                 except FoxESSV2Error:

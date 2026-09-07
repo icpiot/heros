@@ -547,7 +547,7 @@ async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) 
             hass,
             entry.data[CONF_USERNAME],
             entry.data[CONF_PASSWORD],
-            entry.data[CONF_FOXESS_V2_WASM_PATH],
+            entry.data.get(CONF_FOXESS_V2_WASM_PATH),
         )
         plants = await client.discover_plants(force=True)
     except (KeyError, FoxESSV2Error) as err:
