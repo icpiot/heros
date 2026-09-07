@@ -542,6 +542,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the read-only FoxESS Cloud V2 transport."""
+    options = entry.options or {}
+    scan_interval = options.get(
+        CONF_SCAN_INTERVAL,
+        entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+    )
+
+    recovery_options = {
+        CONF_RECOVERY_ENABLED:        options.get(CONF_RECOVERY_ENABLED, DEFAULT_RECOVERY_ENABLED),
+        CONF_HEARTBEAT_INTERVAL:      options.get(CONF_HEARTBEAT_INTERVAL, DEFAULT_HEARTBEAT_INTERVAL),
+        CONF_MAX_DATA_AGE:            options.get(CONF_MAX_DATA_AGE, DEFAULT_MAX_DATA_AGE),
+        CONF_STALE_CHECKS_THRESHOLD:  options.get(CONF_STALE_CHECKS_THRESHOLD, DEFAULT_STALE_CHECKS_THRESHOLD),
+        CONF_NOTIFY_ON_RECOVERY:      options.get(CONF_NOTIFY_ON_RECOVERY, DEFAULT_NOTIFY_ON_RECOVERY),
+        CONF_DIAGNOSTICS_MODE:        options.get(CONF_DIAGNOSTICS_MODE, DEFAULT_DIAGNOSTICS_MODE),
+        CONF_AUTO_RECONNECT_TIME:     options.get(CONF_AUTO_RECONNECT_TIME, DEFAULT_AUTO_RECONNECT_TIME),
+    }
+
     try:
         client = await async_create_foxess_v2_client(
             hass,
@@ -553,15 +569,30 @@ async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) 
     except (KeyError, FoxESSV2Error) as err:
         raise HomeAssistantError("FoxESS_v2 setup failed") from err
 
+    coordinator = ByteWattDataUpdateCoordinator(
+        hass,
+        client=client,
+        scan_interval=scan_interval,
+        entry_id=entry.entry_id,
+        options=recovery_options,
+    )
+    pricing_store = PricingScheduleStore(hass, entry.entry_id)
+    policy_charge_store = PolicyChargeScheduleStore(hass, entry.entry_id)
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
+        "coordinator": coordinator,
+        "pricing_store": pricing_store,
+        "policy_charge_store": policy_charge_store,
         "provider": PROVIDER_FOXESS_V2,
         "plants": plants,
         "config": dict(entry.data),
         "options": dict(entry.options or {}),
     }
     _register_frontend_panel(hass, entry)
+    await coordinator.async_config_entry_first_refresh()
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    entry.async_on_unload(lambda: client.session.clear_credentials())
     return True
 
 

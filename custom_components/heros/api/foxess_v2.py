@@ -242,6 +242,81 @@ class FoxESSV2Client:
             "downloadFlag": False,
         })
 
+    async def get_battery_data(self, **_kwargs):
+        """Return the first read-only FoxESS fields in HEROS' existing data shape."""
+        plants = await self.list_plants()
+        if not plants:
+            raise FoxESSV2Error("FoxESS returned no plants")
+        plant = plants[0]
+        plant_id = plant["plantID"]
+        work_mode = await self.get_work_mode(plant_id)
+        last_energy = await self.get_last_energy(plant_id)
+        alarms = await self.get_alarms(plant_id)
+
+        current_power_w = _foxess_amount(plant.get("currentPower"), target_unit="W")
+        today_yield_kwh = _foxess_amount(plant.get("todayYield"), target_unit="kWh")
+        total_yield_kwh = _foxess_amount(plant.get("totalYield"), target_unit="kWh")
+        system_size_kw = _foxess_amount(plant.get("systemSize"), target_unit="kW")
+        today_production_kwh = _foxess_amount(
+            _nested(last_energy, "production", "todayProduction"), target_unit="kWh"
+        )
+        today_consumption_kwh = _foxess_amount(
+            _nested(last_energy, "consumption", "todayConsumption"), target_unit="kWh"
+        )
+        online = work_mode.get("online") if isinstance(work_mode, dict) else None
+        alarm_count = alarms.get("alarmCount") if isinstance(alarms, dict) else None
+        work_mode_value = work_mode.get("workMode") if isinstance(work_mode, dict) else None
+
+        data = {
+            "provider": "foxess_v2",
+            "communication_status": "online" if online is True else "offline" if online is False else "unknown",
+            "operating_mode": work_mode_value,
+            "alarm_state": alarm_count,
+            "plant_status": plant.get("status"),
+            "ppv": current_power_w,
+            "pv_input_total_power": current_power_w,
+            "Total_Solar_Generation": total_yield_kwh,
+            "PV_Generated_Today": today_production_kwh if today_production_kwh is not None else today_yield_kwh,
+            "Consumed_Today": today_consumption_kwh,
+            "total_house_consumption": today_consumption_kwh,
+            "system_size_kw": system_size_kw,
+            "raw_provider": {
+                "plant": plant,
+                "work_mode": work_mode,
+                "last_energy": last_energy,
+                "alarms": alarms,
+            },
+        }
+        return {key: value for key, value in data.items() if value is not None}
+
+
+def _nested(value: Any, *keys: str) -> Any:
+    for key in keys:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
+def _foxess_amount(value: Any, *, target_unit: str) -> float | None:
+    if not isinstance(value, dict):
+        return None
+    try:
+        amount = float(value.get("value"))
+    except (TypeError, ValueError):
+        return None
+    unit = str(value.get("unit") or "").strip().lower()
+    target = target_unit.lower()
+    if target == "w" and unit == "kw":
+        return amount * 1000
+    if target == "kw" and unit == "w":
+        return amount / 1000
+    if target == "kwh" and unit == "wh":
+        return amount / 1000
+    if target == "wh" and unit == "kwh":
+        return amount * 1000
+    return amount
+
 
 async def async_create_foxess_v2_client(hass, username, password, wasm_path=None):
     """HA bridge: shared HTTP, configured timezone, and executor-only WASM setup.

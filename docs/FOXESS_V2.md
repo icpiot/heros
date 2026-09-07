@@ -64,6 +64,36 @@ The analysis date uses year/month/day string fields. Other dimensions, writes,
 arbitrary hosts/paths and WebSocket endpoints are rejected. Results are preserved
 as provider payloads; no unverified field normalization is performed.
 
+## Initial HEROS mappings
+
+The first FoxESS_v2 mapping pass is read-only and intentionally narrow. HEROS
+maps only fields whose source meaning is clear from the captured endpoint and
+label. These values flow through `FoxESSV2Client.get_battery_data()` into the
+existing HEROS coordinator/sensor payload shape:
+
+| FoxESS source | HEROS field | Unit handling | Confidence |
+| --- | --- | --- | --- |
+| `list_plants()[0].currentPower.value` | `ppv`, `pv_input_total_power` | Converts kW to W when needed | High |
+| `list_plants()[0].totalYield.value` | `Total_Solar_Generation` | Converts Wh to kWh when needed | High |
+| `get_last_energy().production.todayProduction.value` | `PV_Generated_Today` | Converts Wh to kWh when needed | High |
+| `list_plants()[0].todayYield.value` | `PV_Generated_Today` fallback | Converts Wh to kWh when needed | High |
+| `get_last_energy().consumption.todayConsumption.value` | `Consumed_Today`, `total_house_consumption` | Converts Wh to kWh when needed | High |
+| `get_work_mode().online` | `communication_status` | Boolean to `online` / `offline` | High |
+| `get_work_mode().workMode` | `operating_mode` | String preserved | High |
+| `get_alarms().alarmCount` | `alarm_state` | Integer preserved | High |
+| `list_plants()[0].status` | `plant_status` | Integer preserved | Medium |
+| `list_plants()[0].systemSize.value` | `system_size_kw` | Converts W to kW when needed | Medium |
+
+The adapter also keeps the source payloads under `raw_provider` for diagnostics
+and later mapping work. It must not log or expose raw provider payloads by
+default because plant metadata can contain identifiers and location details.
+
+Battery charge/discharge power, grid import/export, feed-in, and SOC are not
+mapped yet. They appear to require the DAY analysis series (`socData`,
+`supplyData`, and `usageData`) or another captured endpoint. Those series need
+their sanitized `name` and `variable` labels inspected before HEROS assigns
+directional meanings.
+
 ## Polling, privacy and lifecycle
 
 Requests are spaced at least five seconds apart by default. For a future HA

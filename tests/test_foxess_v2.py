@@ -208,6 +208,58 @@ def test_discover_plants_matches_config_flow_contract():
     assert run(client.discover_plants(force=True)) == [{"plantID": "synthetic-b"}]
 
 
+def test_get_battery_data_maps_high_confidence_foxess_fields():
+    plant = {
+        "plantID": "synthetic-plant",
+        "status": 1,
+        "currentPower": {"unit": "kW", "value": "1.25"},
+        "todayYield": {"unit": "kWh", "value": "3.4"},
+        "totalYield": {"unit": "kWh", "value": "456.7"},
+        "systemSize": {"unit": "kW", "value": "5.5"},
+    }
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [plant]}),
+        ok({"online": True, "workMode": "SelfUse"}),
+        ok({
+            "production": {"todayProduction": {"unit": "kWh", "value": "3.8"}},
+            "consumption": {"todayConsumption": {"unit": "kWh", "value": "7.2"}},
+        }),
+        ok({"alarmCount": 0}),
+    ])
+    data = run(api.FoxESSV2Client(session).get_battery_data())
+    assert data["provider"] == "foxess_v2"
+    assert data["communication_status"] == "online"
+    assert data["operating_mode"] == "SelfUse"
+    assert data["alarm_state"] == 0
+    assert data["plant_status"] == 1
+    assert data["ppv"] == 1250
+    assert data["pv_input_total_power"] == 1250
+    assert data["Total_Solar_Generation"] == 456.7
+    assert data["PV_Generated_Today"] == 3.8
+    assert data["Consumed_Today"] == 7.2
+    assert data["total_house_consumption"] == 7.2
+    assert data["system_size_kw"] == 5.5
+    assert set(data["raw_provider"]) == {"plant", "work_mode", "last_energy", "alarms"}
+
+
+def test_get_battery_data_falls_back_to_plant_today_yield():
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{
+            "plantID": "synthetic-plant",
+            "todayYield": {"unit": "Wh", "value": "2500"},
+        }]}),
+        ok({"online": False}),
+        ok({"production": {}, "consumption": {}}),
+        ok({"alarmCount": 2}),
+    ])
+    data = run(api.FoxESSV2Client(session).get_battery_data())
+    assert data["communication_status"] == "offline"
+    assert data["PV_Generated_Today"] == 2.5
+    assert data["alarm_state"] == 2
+
+
 @pytest.mark.parametrize("path", ["https://other.invalid/dew/w/plant/work/mode", "//other.invalid/test", "/write", "/dew/v0/wsmaitian"])
 def test_arbitrary_hosts_writes_and_websockets_are_rejected(path):
     session, http, _ = make_session([])
