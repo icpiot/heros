@@ -67,6 +67,15 @@ def test_foxess_v2_runtime_forwards_sensors_only():
     assert "async_forward_entry_setups(entry, FOXESS_V2_PLATFORMS)" in source
 
 
+def test_foxess_v2_unload_uses_forwarded_platforms_only():
+    import custom_components.heros as integration
+
+    source = inspect.getsource(integration.async_unload_entry)
+    assert "platforms = FOXESS_V2_PLATFORMS if provider == PROVIDER_FOXESS_V2 else PLATFORMS" in source
+    assert "for platform in platforms" in source
+    assert "for platform in PLATFORMS" not in source
+
+
 def test_foxess_v2_runtime_uses_fixed_polling_interval():
     import custom_components.heros as integration
 

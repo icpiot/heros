@@ -770,6 +770,8 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry_data = hass.data[DOMAIN].get(entry.entry_id)
+    provider = entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT)
+    platforms = FOXESS_V2_PLATFORMS if provider == PROVIDER_FOXESS_V2 else PLATFORMS
 
     # Warn the user if they have unsaved pending changes that will be lost
     if entry_data:
@@ -796,11 +798,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await coordinator.stop_heartbeat()
             _LOGGER.info("ByteWatt heartbeat monitoring stopped")
 
+        client = entry_data.get("client")
+        session = getattr(client, "session", None)
+        clear_credentials = getattr(session, "clear_credentials", None)
+        if callable(clear_credentials):
+            clear_credentials()
+
     unload_ok = all(
         await asyncio.gather(
             *[
                 hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
+                for platform in platforms
             ]
         )
     )
