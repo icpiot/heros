@@ -197,6 +197,7 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
+FOXESS_V2_PLATFORMS = ["sensor"]
 
 PANEL_COMPONENT_NAME = "heros-panel"
 PANEL_FRONTEND_URL_PATH = "heros"
@@ -591,6 +592,7 @@ async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) 
     }
     _register_frontend_panel(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    await hass.config_entries.async_forward_entry_setups(entry, FOXESS_V2_PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     entry.async_on_unload(lambda: client.session.clear_credentials())
     return True

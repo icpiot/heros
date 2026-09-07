@@ -46,3 +46,11 @@ def test_foxess_v2_setup_does_not_request_external_forecast_entities():
     )[0]
     assert "self._user_input[CONF_FORECAST_PROVIDER] = FORECAST_PROVIDER_NONE" in foxess_branch
     assert "return await self.async_step_forecast_setup()" not in foxess_branch
+
+
+def test_foxess_v2_runtime_forwards_sensors_only():
+    import custom_components.heros as integration
+
+    assert integration.FOXESS_V2_PLATFORMS == ["sensor"]
+    source = inspect.getsource(integration._async_setup_foxess_v2_entry)
+    assert "async_forward_entry_setups(entry, FOXESS_V2_PLATFORMS)" in source
