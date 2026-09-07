@@ -1,7 +1,7 @@
 """Provider setup contract tests for HEROS."""
 from __future__ import annotations
 
-from custom_components.heros.config_flow import _provider_options
+from custom_components.heros.config_flow import _provider_options, _provider_login_schema
 from custom_components.heros.const import (
     CONF_FOXESS_V2_WASM_PATH,
     DEFAULT_FOXESS_V2_WASM_PATH,
@@ -26,3 +26,8 @@ def test_foxess_v2_wasm_path_config_key_is_stable():
     """FoxESS_v2 setup points at the WASM signer added for Cloud V2."""
     assert CONF_FOXESS_V2_WASM_PATH == "foxess_v2_wasm_path"
     assert DEFAULT_FOXESS_V2_WASM_PATH == "/config/heros/foxess/signature.wasm"
+
+
+def test_foxess_login_does_not_request_signer_path():
+    schema = _provider_login_schema(PROVIDER_FOXESS_V2)
+    assert CONF_FOXESS_V2_WASM_PATH not in {key.schema for key in schema.schema}

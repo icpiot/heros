@@ -28,9 +28,10 @@ The signer asset is operator-provided and must have SHA-256:
 
 HEROS does not redistribute FoxESS's proprietary glue or WASM, or download them
 per request. Redistribution permission was not established by the handoff. Keep
-the asset outside version control. The setup form defaults to
-`/config/heros/foxess/signature.wasm`, and HEROS creates the parent folder when
-the V2 provider is selected. A missing signer file or changed asset is rejected
+the asset outside version control. HEROS resolves `heros/foxess/signature.wasm`
+inside Home Assistant's config directory automatically; the login form does not
+ask for a signer path. Existing entries with an explicit path remain supported.
+A missing signer file or changed asset is rejected
 until separately verified. The HA factory installs the pinned Python runtime
 through HA's requirements helper only when the V2 transport is requested.
 Runtime installation/architecture failures become a controlled setup error;
