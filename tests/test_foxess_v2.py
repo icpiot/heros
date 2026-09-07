@@ -197,6 +197,17 @@ def test_undiscovered_plant_is_rejected():
     assert len(http.calls) == 2
 
 
+def test_discover_plants_matches_config_flow_contract():
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-a"}]}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-b"}]}),
+    ])
+    client = api.FoxESSV2Client(session)
+    assert run(client.discover_plants(force=True)) == [{"plantID": "synthetic-a"}]
+    assert run(client.discover_plants(force=True)) == [{"plantID": "synthetic-b"}]
+
+
 @pytest.mark.parametrize("path", ["https://other.invalid/dew/w/plant/work/mode", "//other.invalid/test", "/write", "/dew/v0/wsmaitian"])
 def test_arbitrary_hosts_writes_and_websockets_are_rejected(path):
     session, http, _ = make_session([])

@@ -167,6 +167,12 @@ class FoxESSV2Client:
         self.session = session
         self._plant_ids = None
 
+    async def discover_plants(self, *, force=False):
+        """Return discovered plants using the provider-neutral setup contract."""
+        if force:
+            self._plant_ids = None
+        return await self.list_plants()
+
     async def list_plants(self):
         plants = []
         seen = set()
