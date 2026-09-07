@@ -313,7 +313,8 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     self._client = None
                     self._inverters = []
-                    return await self.async_step_forecast_setup()
+                    self._user_input[CONF_FORECAST_PROVIDER] = FORECAST_PROVIDER_NONE
+                    return self._create_entry()
 
                 return self.async_show_form(
                     step_id="provider_login",

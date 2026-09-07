@@ -1,7 +1,13 @@
 """Provider setup contract tests for HEROS."""
 from __future__ import annotations
 
-from custom_components.heros.config_flow import _provider_options, _provider_login_schema
+import inspect
+
+from custom_components.heros.config_flow import (
+    ByteWattConfigFlow,
+    _provider_login_schema,
+    _provider_options,
+)
 from custom_components.heros.const import (
     CONF_FOXESS_V2_WASM_PATH,
     DEFAULT_FOXESS_V2_WASM_PATH,
@@ -31,3 +37,12 @@ def test_foxess_v2_wasm_path_config_key_is_stable():
 def test_foxess_login_does_not_request_signer_path():
     schema = _provider_login_schema(PROVIDER_FOXESS_V2)
     assert CONF_FOXESS_V2_WASM_PATH not in {key.schema for key in schema.schema}
+
+
+def test_foxess_v2_setup_does_not_request_external_forecast_entities():
+    source = inspect.getsource(ByteWattConfigFlow.async_step_provider_login)
+    foxess_branch = source.split("if provider == PROVIDER_FOXESS_V2:", 1)[1].split(
+        "client = ByteWattClient", 1
+    )[0]
+    assert "self._user_input[CONF_FORECAST_PROVIDER] = FORECAST_PROVIDER_NONE" in foxess_branch
+    assert "return await self.async_step_forecast_setup()" not in foxess_branch
