@@ -4,6 +4,7 @@ from __future__ import annotations
 from custom_components.heros.config_flow import _provider_options
 from custom_components.heros.const import (
     CONF_FOXESS_V2_WASM_PATH,
+    DEFAULT_FOXESS_V2_WASM_PATH,
     PROVIDER_BYTEWATT,
     PROVIDER_FOXESS_MODBUS,
     PROVIDER_FOXESS_V1,
@@ -24,3 +25,4 @@ def test_provider_selector_lists_supported_provider_paths():
 def test_foxess_v2_wasm_path_config_key_is_stable():
     """FoxESS_v2 setup points at the WASM signer added for Cloud V2."""
     assert CONF_FOXESS_V2_WASM_PATH == "foxess_v2_wasm_path"
+    assert DEFAULT_FOXESS_V2_WASM_PATH == "/config/heros/foxess/signature.wasm"

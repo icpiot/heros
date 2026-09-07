@@ -5,6 +5,7 @@ import asyncio
 from datetime import date as calendar_date, datetime
 import hashlib
 import json as json_module
+from pathlib import Path
 import time
 from typing import Any, Protocol
 from urllib.parse import parse_qsl, urlsplit
@@ -244,13 +245,19 @@ async def async_create_foxess_v2_client(hass, username, password, wasm_path):
     Creating the client itself makes no cloud requests.
     """
     try:
+        wasm_asset = Path(wasm_path)
+        wasm_asset.parent.mkdir(parents=True, exist_ok=True)
+        if not wasm_asset.is_file():
+            raise FoxESSV2Error("FoxESS V2 signer file is missing")
         # Install only for this opt-in transport, so ByteWatt setup does not
         # acquire a native WASM dependency on unsupported host architectures.
         from homeassistant.requirements import async_process_requirements
         await async_process_requirements(hass, "heros", [WASM_REQUIREMENT])
-        signer = await hass.async_add_executor_job(FoxESSV2Signer, wasm_path)
+        signer = await hass.async_add_executor_job(FoxESSV2Signer, str(wasm_asset))
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
         return FoxESSV2Client(FoxESSV2Session(async_get_clientsession(hass), signer,
             username, password, timezone=hass.config.time_zone))
+    except FoxESSV2Error:
+        raise
     except Exception:
         raise FoxESSV2Error("FoxESS V2 client setup failed") from None

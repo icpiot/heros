@@ -28,11 +28,13 @@ The signer asset is operator-provided and must have SHA-256:
 
 HEROS does not redistribute FoxESS's proprietary glue or WASM, or download them
 per request. Redistribution permission was not established by the handoff. Keep
-the asset outside version control and pass its path to the factory. A changed
-asset is rejected until separately verified. The HA factory installs the pinned
-Python runtime through HA's requirements helper only when the V2 transport is
-requested. Runtime installation/architecture failures become a controlled setup
-error; existing ByteWatt startup does not load this dependency.
+the asset outside version control. The setup form defaults to
+`/config/heros/foxess/signature.wasm`, and HEROS creates the parent folder when
+the V2 provider is selected. A missing signer file or changed asset is rejected
+until separately verified. The HA factory installs the pinned Python runtime
+through HA's requirements helper only when the V2 transport is requested.
+Runtime installation/architecture failures become a controlled setup error;
+existing ByteWatt startup does not load this dependency.
 
 ## Connection sequence
 
