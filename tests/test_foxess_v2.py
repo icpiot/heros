@@ -216,12 +216,25 @@ def test_signer_failure_is_sanitized():
     assert not http.calls
 
 
-def test_setup_failure_is_controlled():
+def test_setup_failure_is_controlled(tmp_path):
     class Hass:
         async def async_add_executor_job(self, *args):
             raise RuntimeError("synthetic-secret")
+    wasm_path = tmp_path / "signature.wasm"
+    wasm_path.write_bytes(b"not real wasm")
     with pytest.raises(api.FoxESSV2Error, match="setup failed"):
-        run(api.async_create_foxess_v2_client(Hass(), "u", "p", "not-an-asset"))
+        run(api.async_create_foxess_v2_client(Hass(), "u", "p", str(wasm_path)))
+
+
+def test_setup_creates_signer_directory_and_reports_missing_file(tmp_path):
+    class Hass:
+        async def async_add_executor_job(self, *args):
+            raise AssertionError("signer should not load without an asset")
+
+    wasm_path = tmp_path / "heros" / "foxess" / "signature.wasm"
+    with pytest.raises(api.FoxESSV2Error, match="signer file is missing"):
+        run(api.async_create_foxess_v2_client(Hass(), "u", "p", str(wasm_path)))
+    assert wasm_path.parent.is_dir()
 
 
 @pytest.fixture
