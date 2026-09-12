@@ -16,6 +16,10 @@ This folder contains two UI artifacts linked to the current branch work:
 - `www/heros-debug-card.js`
   A focused inspector card for raw entity state, archive metadata, and probe actions.
 
+The Lovelace filenames use the HEROS namespace. The example entity IDs still
+contain `bytewatt` because they match the device name used by the original
+ByteWatt installation; entity IDs may differ on a fresh Home Assistant setup.
+
 ## Why Both Exist
 
 The integration backend is only partially modeled today. The confirmed controls

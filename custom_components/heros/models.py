@@ -1,4 +1,4 @@
-"""Data models for the Byte-Watt integration."""
+"""Data models for the HEROS integration."""
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 

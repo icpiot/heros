@@ -1,4 +1,4 @@
-"""Number entities for the Byte-Watt integration."""
+"""Number entities for the HEROS integration."""
 from __future__ import annotations
 
 import logging

@@ -10,8 +10,8 @@ cards kept as optional building blocks rather than the primary UI.
 Requires Home Assistant **2024.11.0** or later.
 
 Current live development validation is against Home Assistant OS with Core
-**2026.9.0**, Supervisor **2026.08.0**, Operating System **18.2**, and Frontend
-**20260826.4**.
+**2026.9.1**, Supervisor **2026.08.0**, Operating System **18.2**, and Frontend
+**20260826.6**.
 
 ## Naming
 
@@ -80,12 +80,9 @@ The panel ships with built-in theme presets:
 - `neon`
 
 The Home Assistant deploy scripts are manifest-driven:
-[`scripts/ha_deploy.manifest`](C:\Dev\repos\heros\scripts\ha_deploy.manifest)
-controls which repo paths are copied into HA, so the same script shape can be
-reused for other projects by swapping the manifest and environment variables.
-For Codex-driven live sync work, prefer the direct Home Assistant config share
-`\\10.0.0.102\config\` rather than relying on a mapped `H:\` drive being
-present in the current session.
+[`scripts/ha_deploy.manifest`](scripts/ha_deploy.manifest) controls which repo
+paths are copied into HA, so the same script shape can be reused for other
+projects by swapping the manifest and environment variables.
 
 ### Development workflow
 
@@ -116,8 +113,8 @@ HEROS → ⋮ → Reconfigure.
 
 ### Setup persistence
 
-Setup mappings and hero-mapping overrides are intended to be shared Home Energy
-Manager configuration, not browser-local preferences.
+Setup mappings and hero-mapping overrides are shared HEROS configuration, not
+browser-local preferences.
 
 That means forecast setup mappings, battery setup mappings, and hero mapping
 overrides should be loaded from Home Assistant-backed config and saved through
@@ -166,8 +163,8 @@ from the live forecast sensor mapping. It is intended for benchmark/backfill
 data when the provider plan supports the Forecast.Solar `history` endpoint.
 Public Forecast.Solar access does not provide this history endpoint.
 
-See [docs/FORECAST_HISTORY.md](C:\Dev\repos\heros\docs\FORECAST_HISTORY.md)
-for the required settings and service flow.
+See [docs/FORECAST_HISTORY.md](docs/FORECAST_HISTORY.md) for the required
+settings and service flow.
 
 ## Entities
 
@@ -268,13 +265,12 @@ same provider chart data again.
 Report and archive diagnostics should read that HA-served archive directly.
 They must not depend on browser `localStorage` copies of report history.
 
-See [docs/REPORTING_STORAGE.md](C:/Dev/repos/heros/docs/REPORTING_STORAGE.md)
-for the current archive layout and the intended split between HEROS report
-storage and InfluxDB time-series retention.
+See [docs/REPORTING_STORAGE.md](docs/REPORTING_STORAGE.md) for the current
+archive layout and the intended split between HEROS report storage and InfluxDB
+time-series retention.
 
-See [docs/REPORTING_PAYLOAD.md](C:/Dev/repos/heros/docs/REPORTING_PAYLOAD.md)
-for the compact reporting payload contract used by the Report page and embedded
-report card.
+See [docs/REPORTING_PAYLOAD.md](docs/REPORTING_PAYLOAD.md) for the compact
+reporting payload contract used by the Report page and embedded report card.
 
 ## Example automations
 

@@ -1,4 +1,4 @@
-"""Grid Feed-in Control entities for the Byte-Watt integration.
+"""Grid Feed-in Control entities for the HEROS integration.
 
 Entities go through SettingsManager; the Submit button pushes the
 staged payload to the API. There is no per-entity API write path.

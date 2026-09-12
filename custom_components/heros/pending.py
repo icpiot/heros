@@ -106,7 +106,7 @@ class ByteWattSubmitButton(_PendingButtonBase):
         if not result.any_attempted or result.all_ok:
             return
 
-        notification_id = f"bytewatt_submit_{entry_id}"
+        notification_id = f"heros_submit_{entry_id}"
 
         # Partial or total failure — be specific about what failed and why.
         failures = []
@@ -153,6 +153,6 @@ class ByteWattDiscardButton(_PendingButtonBase):
             f"Discarded {count} unsaved setting change(s). Entities now reflect "
             f"the inverter's current state.",
             title="HEROS: pending discarded",
-            notification_id=f"bytewatt_discard_{entry_id}",
+            notification_id=f"heros_discard_{entry_id}",
         )
         await self.coordinator.async_request_refresh()

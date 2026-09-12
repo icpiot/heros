@@ -1,4 +1,4 @@
-"""Diagnostic and health check services for ByteWatt integration."""
+"""Diagnostic and health check services for HEROS integration."""
 import json
 import logging
 import socket

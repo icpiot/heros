@@ -1,4 +1,4 @@
-"""Switch entities for the Byte-Watt integration."""
+"""Switch entities for the HEROS integration."""
 from __future__ import annotations
 
 import logging

@@ -5697,7 +5697,7 @@ class HerosPanel extends HTMLElement {
       },
       {
         label: "Policy Lovelace example",
-        value: `<a href="/local/community/heros/bytewatt_policy_cards.yaml" target="_blank" rel="noreferrer">bytewatt_policy_cards.yaml</a>`,
+        value: `<a href="https://github.com/icpiot/heros/blob/main/examples/lovelace/heros_policy_cards.yaml" target="_blank" rel="noreferrer">heros_policy_cards.yaml</a>`,
       },
       {
         label: "Build markers",
@@ -9101,5 +9101,4 @@ if (typeof customElements !== "undefined") {
 } else {
   startHerosPanelFallback();
 }
-
 

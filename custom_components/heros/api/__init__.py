@@ -1,1 +1,1 @@
-"""API client for the Byte-Watt integration."""
+"""API client support for the HEROS integration."""
