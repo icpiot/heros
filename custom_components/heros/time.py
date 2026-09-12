@@ -1,4 +1,4 @@
-"""Time entities for the Byte-Watt integration."""
+"""Time entities for the HEROS integration."""
 from __future__ import annotations
 
 import logging

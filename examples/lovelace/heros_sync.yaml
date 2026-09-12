@@ -3,13 +3,13 @@ cards:
   - type: horizontal-stack
     cards:
       - type: button
-        name: Home Energy Pull
+        name: HEROS Pull
         icon: mdi:cloud-download-outline
         tap_action:
           action: call-service
           service: shell_command.git_pull_config
       - type: button
-        name: Home Energy Push
+        name: HEROS Push
         icon: mdi:cloud-upload-outline
         tap_action:
           action: call-service

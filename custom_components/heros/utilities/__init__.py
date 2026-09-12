@@ -1,1 +1,1 @@
-"""Utilities for the Byte-Watt integration."""
+"""Utilities for the HEROS integration."""

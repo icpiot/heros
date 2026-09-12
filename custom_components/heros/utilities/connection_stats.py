@@ -1,4 +1,4 @@
-"""Connection statistics tracking for ByteWatt integration."""
+"""Connection statistics tracking for HEROS integration."""
 import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple

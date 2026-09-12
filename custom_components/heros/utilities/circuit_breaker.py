@@ -1,4 +1,4 @@
-"""Circuit breaker pattern implementation for ByteWatt integration."""
+"""Circuit breaker pattern implementation for HEROS integration."""
 import logging
 from datetime import datetime
 from enum import Enum

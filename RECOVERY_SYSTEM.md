@@ -1,8 +1,10 @@
-# ByteWatt Integration Automatic Recovery System
+# HEROS Automatic Recovery System
 
 ## Overview
 
-We've implemented a robust automatic recovery system for the ByteWatt Home Assistant integration to solve the issue where the plugin would randomly stop updating and not come back online. This document summarizes the key components of this system.
+HEROS includes an automatic recovery system for cloud-provider connections. It
+detects stale updates and attempts to restore service without requiring a full
+Home Assistant restart. This document summarizes the current recovery flow.
 
 ## Core Components
 
@@ -35,7 +37,7 @@ The ByteWatt client now has methods to safely reset its state:
 
 We've added a service that users can call to manually trigger the recovery process:
 
-- **Service name**: `bytewatt.force_reconnect`
+- **Service name**: `heros.force_reconnect`
 - **Location**: `__init__.py` - `handle_force_reconnect()` service handler
 
 ## Technical Improvements
@@ -55,14 +57,15 @@ The recovery system works automatically in the background, but can also be manua
 ```yaml
 # Example automation to force reconnect if needed
 automation:
-  - alias: "ByteWatt Recovery"
+  - alias: "HEROS Recovery"
     trigger:
       - platform: state
-        entity_id: sensor.bytewatt_soc
+        # Replace this with the Battery Percentage entity created by HEROS.
+        entity_id: sensor.your_heros_battery_percentage
         for: 
           minutes: 10
     action:
-      - service: bytewatt.force_reconnect
+      - service: heros.force_reconnect
 ```
 
 ## Future Enhancements

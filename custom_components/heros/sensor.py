@@ -1,4 +1,4 @@
-"""Sensor platform for Byte-Watt integration."""
+"""Sensor platform for HEROS integration."""
 import logging
 from typing import Callable, Dict, Optional, Any
 from datetime import datetime
@@ -719,5 +719,4 @@ class PolicyChargeScheduleSensor(CoordinatorEntity, SensorEntity):
             "schedules": [schedule.to_dict() for schedule in self._schedule_set.schedules],
             "updated_at": self._schedule_set.updated_at,
         }
-
 

@@ -1,4 +1,4 @@
-"""Data update coordinator for Byte-Watt integration."""
+"""Data update coordinator for HEROS integration."""
 import asyncio
 import json
 import logging
@@ -53,8 +53,8 @@ from .utilities.diagnostic_service import DiagnosticService
 _LOGGER = logging.getLogger(__name__)
 
 # Notification IDs
-NOTIFICATION_RECOVERY = "bytewatt_recovery"
-NOTIFICATION_ERROR = "bytewatt_error"
+NOTIFICATION_RECOVERY = "heros_recovery"
+NOTIFICATION_ERROR = "heros_error"
 NOTIFICATION_POLICY_CHARGE = "heros_policy_charge"
 INVERTER_REDISCOVERY_INTERVAL = timedelta(minutes=15)
 
@@ -289,8 +289,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                 if self._notify_on_recovery:
                     async_create(
                         self.hass,
-                        f"ByteWatt integration error: {err}",
-                        title="ByteWatt Connection Error",
+                        f"HEROS connection error: {err}",
+                        title="HEROS Connection Error",
                         notification_id=NOTIFICATION_ERROR,
                     )
 
@@ -752,7 +752,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
 
         recovery_type = "scheduled" if is_scheduled else "automatic"
         _LOGGER.warning(
-            "Performing ByteWatt integration %s recovery (attempt %d)",
+            "Performing HEROS %s recovery (attempt %d)",
             recovery_type, self._recovery_attempts,
         )
 
@@ -767,8 +767,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
         if self._notify_on_recovery:
             async_create(
                 self.hass,
-                f"ByteWatt integration is attempting to reconnect ({recovery_type} recovery)",
-                title="ByteWatt Recovery",
+                f"HEROS is attempting to reconnect ({recovery_type} recovery)",
+                title="HEROS Recovery",
                 notification_id=NOTIFICATION_RECOVERY,
             )
 
@@ -793,7 +793,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                      or self._last_successful_update > last_update_before)
             )
             if recovered:
-                _LOGGER.info("ByteWatt integration recovery completed successfully")
+                _LOGGER.info("HEROS recovery completed successfully")
                 self.diagnostic_service.log_diagnostic("recovery_result", {
                     "success": True,
                     "timestamp": dt_util.utcnow().isoformat(),
@@ -802,8 +802,8 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     async_dismiss(self.hass, NOTIFICATION_RECOVERY)
                     async_create(
                         self.hass,
-                        "ByteWatt integration successfully reconnected to the API",
-                        title="ByteWatt Recovery Success",
+                        "HEROS successfully reconnected to the API",
+                        title="HEROS Recovery Success",
                         notification_id=NOTIFICATION_RECOVERY,
                     )
             else:
@@ -814,7 +814,7 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     "(API still returning errors or no data)"
                 )
         except Exception as err:
-            _LOGGER.error("ByteWatt recovery failed: %s", err)
+            _LOGGER.error("HEROS recovery failed: %s", err)
             self.diagnostic_service.log_diagnostic("recovery_result", {
                 "success": False,
                 "error": str(err),
@@ -829,9 +829,9 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
             if self._notify_on_recovery:
                 async_create(
                     self.hass,
-                    f"ByteWatt recovery attempt failed: {err}. "
+                    f"HEROS recovery attempt failed: {err}. "
                     f"Will retry in {next_check_seconds} seconds.",
-                    title="ByteWatt Recovery Failed",
+                    title="HEROS Recovery Failed",
                     notification_id=NOTIFICATION_RECOVERY,
                 )
 

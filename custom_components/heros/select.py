@@ -1,4 +1,4 @@
-"""Select entities for the Byte-Watt integration."""
+"""Select entities for the HEROS integration."""
 from __future__ import annotations
 
 from typing import Any

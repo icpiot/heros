@@ -6,11 +6,9 @@ It is a generic system for multiple energy providers, not a provider-branded pro
 ## Repository and namespace
 
 - GitHub: https://github.com/icpiot/heros
-- Local repository: `C:\Dev\repos\heros`.
-- The local folder move is complete and verified. The saved HEROS project in
-  Codex points to this path. Existing tasks may retain their original working
-  directory, so use the explicit new path for commands.
-- Working branch: `codex/heros`
+- The local working-copy location is environment-specific; use the repository
+  root rather than a hard-coded machine path.
+- Primary branch: `main`
 - Integration package: `custom_components/heros`
 - Integration and service domain: `heros`
 - Frontend custom elements: `heros-*`
@@ -21,9 +19,9 @@ It is a generic system for multiple energy providers, not a provider-branded pro
 
 ## Installation boundaries
 
-The existing ByteWatt installation at `10.0.0.102` is untouched. Do not sync or
-migrate it without explicit authorization. The new test instance is `10.0.0.111`
-with config share `\\10.0.0.111\config`.
+The existing ByteWatt installation is untouched. Do not sync or migrate it
+without explicit authorization. Test-instance details belong in local operator
+notes rather than this public repository document.
 
 The renamed integration is intended for a fresh installation. It does not
 automatically migrate existing config entries, entity registries, recorded
@@ -36,24 +34,17 @@ ByteWatt remains the implemented provider. Config flow and runtime setup directl
 instantiate its client; the coordinator, settings manager, and reporting depend
 on ByteWatt behavior. A provider selector alone is not a complete abstraction.
 Additional providers need separate adapters and capability-aware shared code.
-The naming change did not add FoxESS. Subsequent local work added an isolated
-read-only V2 client and Python WASM signer; see `docs/FOXESS_V2.md` for the scope,
-acceptance tests, operator-provided signer asset, and live validation status.
-The subsequent V2 local regression suite passed 200 tests (31 V2 tests), with
-the required real-WASM vector and two additional Node-reference vectors. This
-V2 work is not pushed or synced; live credentials are still needed for the
-read-only connection check. No setup UI, entity/reporting mapping, WebSocket,
-or control implementation was added.
+The naming change did not originally add FoxESS. The current `main` branch now
+contains an isolated read-only FoxESS V2 transport and setup-flow support; see
+`docs/FOXESS_V2.md` for its scope, acceptance tests, operator-provided signer
+asset, and live validation status. It is still not a replacement for the
+ByteWatt provider's live entity, reporting, WebSocket, or control paths.
 
 ## Validation and publication
 
-Baseline and final suite: 118 tests passed, 2 skipped. All served JavaScript
-files pass `node --check`; Python compilation and the Vite production build pass.
-Panel build is 484, policy 009, report loader 397/component 086, debug 036.
-The user authorized publication of the rename branch. No HA sync is included.
-Git history retains its historical names.
-Live HA/browser behavior remains unverified; ask the user for a hard refresh
-before continuing when runtime validation requires one.
+Validation is performed by the repository's GitHub Actions workflow. No HA
+sync is included in repository changes, and live HA/browser behavior still
+requires a hard refresh and supervised validation when runtime work is needed.
 
 Continue work from the saved HEROS project at the new local path.
 

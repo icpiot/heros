@@ -785,10 +785,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             try:
                 notify_create(
                     hass,
-                    f"ByteWatt integration is unloading with {count} unsaved setting "
+                    f"HEROS is unloading with {count} unsaved setting "
                     f"change(s) staged. These have been discarded.",
-                    title="ByteWatt: pending changes lost",
-                    notification_id=f"bytewatt_pending_lost_{entry.entry_id}",
+                    title="HEROS: pending changes lost",
+                    notification_id=f"heros_pending_lost_{entry.entry_id}",
                 )
             except (AttributeError, TypeError) as ex:
                 _LOGGER.debug("Could not create pending-lost notification: %s", ex)
@@ -1047,15 +1047,15 @@ def _resolve_entry_id(hass: HomeAssistant, call: ServiceCall) -> str | None:
     if requested:
         if requested not in entries:
             raise HomeAssistantError(
-                f"Unknown ByteWatt entry_id {requested!r}. Configured entries: {entries}"
+                f"Unknown HEROS entry_id {requested!r}. Configured entries: {entries}"
             )
         return requested
     if len(entries) == 1:
         return entries[0]
     if not entries:
-        raise HomeAssistantError("No ByteWatt integration is configured")
+        raise HomeAssistantError("No HEROS integration is configured")
     raise HomeAssistantError(
-        f"Multiple ByteWatt integrations are configured — pass entry_id to "
+        f"Multiple HEROS integrations are configured — pass entry_id to "
         f"disambiguate. Available: {entries}"
     )
 
@@ -1650,7 +1650,7 @@ def _register_services(hass: HomeAssistant) -> None:
     # ---------- Maintenance ----------
 
     async def handle_force_reconnect(call: ServiceCall) -> None:
-        _LOGGER.warning("Manual reconnect triggered for ByteWatt integration")
+        _LOGGER.warning("Manual reconnect triggered for HEROS")
         target_entry = call.data.get(ATTR_ENTRY_ID)
         reconnected = False
         for entry_id, entry_data in hass.data[DOMAIN].items():
@@ -1666,7 +1666,7 @@ def _register_services(hass: HomeAssistant) -> None:
             except Exception as err:  # noqa: BLE001 — surface in notification
                 _LOGGER.error("Failed to recover entry %s: %s", entry_id, err)
         if not reconnected:
-            _LOGGER.error("No active ByteWatt integrations found to reconnect")
+            _LOGGER.error("No active HEROS integrations found to reconnect")
 
     async def handle_health_check(call: ServiceCall) -> None:
         results = {}
@@ -1678,7 +1678,7 @@ def _register_services(hass: HomeAssistant) -> None:
             if coordinator:
                 results[entry_id] = await coordinator.run_health_check()
         if not results:
-            _LOGGER.error("No ByteWatt integrations found for health check")
+            _LOGGER.error("No HEROS integrations found for health check")
             return
         summary_lines = []
         for entry_id, result in results.items():
@@ -1695,7 +1695,7 @@ def _register_services(hass: HomeAssistant) -> None:
                 hass,
                 "\n".join(summary_lines),
                 title="HEROS Health Check Results",
-                notification_id="bytewatt_health_check",
+                notification_id="heros_health_check",
             )
         except (AttributeError, TypeError) as ex:
             _LOGGER.error("Could not create health check notification: %s", ex)
@@ -1722,7 +1722,7 @@ def _register_services(hass: HomeAssistant) -> None:
             except (AttributeError, TypeError) as ex:
                 _LOGGER.error("Could not create diagnostics notification: %s", ex)
         else:
-            _LOGGER.error("No ByteWatt integrations found to toggle diagnostics")
+            _LOGGER.error("No HEROS integrations found to toggle diagnostics")
 
     async def handle_set_panel_theme(call: ServiceCall) -> None:
         entry_id = _resolve_registered_entry_id(hass, call)

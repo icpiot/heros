@@ -1,2 +1,2 @@
-"""Button platform for Byte-Watt integration."""
+"""Button platform for HEROS integration."""
 from .pending import async_setup_entry  # noqa: F401
