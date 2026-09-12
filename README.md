@@ -367,5 +367,5 @@ Open an issue at https://github.com/icpiot/heros/issues.
 
 ## Credits
 
-Originally built with the Home Assistant community and Claude AI. Subsequent
+Originally built with the Home Assistant community. Subsequent
 contributors are credited in the commit history.
