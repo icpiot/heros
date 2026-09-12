@@ -1,6 +1,6 @@
-# Byte-Watt Battery Monitor
+# HEROS — Home Energy Reporting & Optimisation System
 
-Monitor and control your Byte-Watt / Neovolt battery system through Home Assistant.
+Monitor, report on, and optimise battery, solar, grid, and household energy data through Home Assistant.
 
 Requires Home Assistant **2024.11.0** or later.
 
@@ -8,10 +8,10 @@ Requires Home Assistant **2024.11.0** or later.
 ## Integration is installed
 
 **To configure:** Settings → Devices & Services → Add Integration → search for
-"Byte-Watt Battery Monitor" and follow the prompts.
+**HEROS** and follow the prompts.
 
-If you have more than one inverter on your account you'll be asked to pick the
-Host inverter (used for Grid Feed-in and cycle strategy control).
+If your provider account has more than one inverter, you'll be asked to choose
+the Host inverter used for applicable control and reporting functions.
 {% endif %}
 
 ## Features
@@ -19,13 +19,13 @@ Host inverter (used for Grid Feed-in and cycle strategy control).
 - **Real-time monitoring** — SOC, grid / house / PV / battery power
 - **Today's + cumulative energy** — generation, feed-in, grid import, charge / discharge
 - **Battery control** — charge / discharge windows, minimum SOC, charge cap,
-  per-slot charge & discharge power, grid charging switch
-- **Grid Feed-in Control** — enable / disable, cutoff SOC, Time Period 1
-- **Staged-edit workflow** — UI changes accumulate and are pushed in one shot
-  via the **Submit Settings** button (mirrors the portal's Save UX and avoids
-  rate-limit failures on rapid sequential writes)
-- **Multi-inverter** — pick the Host during setup; change later via Configure
-- **Automatic recovery** — heartbeat, circuit breaker, scheduled daily reconnect
+  per-slot charge & discharge power, grid charging controls
+- **Grid Feed-in Control** — enable / disable, cutoff SOC, configurable periods
+- **Reporting** — provider-aware daily snapshots and report views
+- **Solar forecast support** — mapped forecast values can be captured with report history
+- **Staged-edit workflow** — settings changes can be accumulated and submitted together
+- **Multi-inverter support** — select the Host during setup and change it later
+- **Automatic recovery** — heartbeat monitoring, circuit breaker, and reconnect handling
 
 ## Available services
 
@@ -40,7 +40,8 @@ Grid feed-in: `heros.set_grid_feedin_enabled`,
 Maintenance: `heros.force_reconnect`, `heros.health_check`,
 `heros.toggle_diagnostics`
 
-All services accept an optional `entry_id` field (required only when you have
-multiple Byte-Watt accounts configured).
+All services accept an optional `entry_id` field. With a single configured
+provider account it can usually be omitted; with multiple accounts it is
+required where HEROS needs to know which config entry to target.
 
-[Full documentation on GitHub](https://github.com/candreacchio/neovoltBattery_HomeAssistantPlugin)
+[Full HEROS documentation on GitHub](https://github.com/icpiot/heros)
