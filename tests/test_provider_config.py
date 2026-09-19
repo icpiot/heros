@@ -50,19 +50,26 @@ def test_bytewatt_login_keeps_polling_interval():
     assert CONF_SCAN_INTERVAL in {key.schema for key in schema.schema}
 
 
-def test_foxess_v2_setup_does_not_request_external_forecast_entities():
+def test_foxess_v2_setup_offers_optional_forecast_step():
     source = inspect.getsource(ByteWattConfigFlow.async_step_provider_login)
     foxess_branch = source.split("if provider == PROVIDER_FOXESS_V2:", 1)[1].split(
         "client = ByteWattClient", 1
     )[0]
-    assert "self._user_input[CONF_FORECAST_PROVIDER] = FORECAST_PROVIDER_NONE" in foxess_branch
-    assert "return await self.async_step_forecast_setup()" not in foxess_branch
+    assert "return await self.async_step_forecast_setup()" in foxess_branch
 
 
-def test_foxess_v2_runtime_forwards_sensors_only():
+def test_no_forecast_setup_does_not_render_blank_entity_mappings():
+    """A no-forecast installation must submit without invalid entity selectors."""
+    source = inspect.getsource(ByteWattConfigFlow.async_step_forecast_setup)
+
+    assert "CONF_FORECAST_PROVIDER" in source
+    assert "EntitySelector" not in source
+    assert "return self._create_entry()" in source
+
+def test_foxess_v2_runtime_forwards_sensors_and_selector():
     import custom_components.heros as integration
 
-    assert integration.FOXESS_V2_PLATFORMS == ["sensor"]
+    assert integration.FOXESS_V2_PLATFORMS == ["sensor", "select"]
     source = inspect.getsource(integration._async_setup_foxess_v2_entry)
     assert "async_forward_entry_setups(entry, FOXESS_V2_PLATFORMS)" in source
 
@@ -89,3 +96,26 @@ def test_foxess_v2_options_do_not_expose_polling_interval():
     assert "ByteWattOptionsFlowHandler" in source
     source = inspect.getsource(__import__("custom_components.heros.config_flow", fromlist=["ByteWattOptionsFlowHandler"]).ByteWattOptionsFlowHandler.async_step_init)
     assert "!= PROVIDER_FOXESS_V2" in source
+
+
+def test_entry_unload_keeps_the_sidebar_panel_registered_across_reloads():
+    import custom_components.heros as integration
+
+    assert "async_remove_panel" not in inspect.getsource(integration)
+
+def test_foxess_v2_debug_payload_sanitizer_redacts_identifiers_and_tokens():
+    import custom_components.heros as integration
+
+    sanitized = integration._sanitize_foxess_v2_debug({
+        "token": "synthetic-token",
+        "accessToken": "synthetic-access-token",
+        "plantID": "synthetic-plant",
+        "device": {"id": "synthetic-device", "serialNumber": "synthetic-sn", "value": 12},
+        "rows": [{"batteryId": "synthetic-battery", "currentPower": {"value": 1.2}}],
+    })
+    assert sanitized["token"] == "[redacted]"
+    assert sanitized["accessToken"] == "[redacted]"
+    assert sanitized["plantID"] == "[redacted]"
+    assert sanitized["device"] == {"id": "[redacted]", "serialNumber": "[redacted]", "value": 12}
+    assert sanitized["rows"][0]["batteryId"] == "[redacted]"
+    assert sanitized["rows"][0]["currentPower"] == {"value": 1.2}

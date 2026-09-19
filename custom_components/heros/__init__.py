@@ -8,9 +8,9 @@ from typing import Any, Optional
 
 import voluptuous as vol
 
+from homeassistant.components import websocket_api
 from homeassistant.components.frontend import (
     async_register_built_in_panel,
-    async_remove_panel,
 )
 from homeassistant.components.persistent_notification import (
     async_create as notify_create,
@@ -26,13 +26,19 @@ from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
 from .api.foxess_v2 import DEFAULT_POLL_INTERVAL as FOXESS_V2_POLL_INTERVAL
-from .api.foxess_v2 import FoxESSV2Error, async_create_foxess_v2_client
+from .api.foxess_v2 import (
+    FOXESS_V2_DEBUG_COMMANDS,
+    FoxESSV2Error,
+    async_create_foxess_v2_client,
+)
 from .coordinator import ByteWattDataUpdateCoordinator
 from .forecast_history import async_test_forecast_history_source, forecast_history_source_from_config
 from .policy_charge import PolicyChargeSchedule
 from .policy_charge_store import PolicyChargeScheduleStore
 from .pricing import PricingRateGroup, PricingRateRecord, PricingRule
 from .pricing_store import PricingScheduleStore
+from .roi import InstallationCostEntry, RepaymentScheduleEntry, RoiSettings, VppRateEntry
+from .roi_store import RoiSettingsStore
 from .reporting import ByteWattReportHistory, build_forecast_snapshot, build_reporting_payload
 from .settings_manager import SettingsManager, SettingsValidationError
 from .topology import DiscoveredInverter
@@ -47,6 +53,8 @@ from .const import (
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_FORECAST_PROVIDER,
+    CONF_SOLAR_INSTALLATION_DATE,
+    CONF_BATTERY_INSTALLATION_DATE,
     CONF_FORECAST_GENERATION_TODAY_ENTITY,
     CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
     CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY,
@@ -140,6 +148,13 @@ from .const import (
     SERVICE_SET_BATTERY_MAPPING,
     SERVICE_SET_HERO_MAPPING,
     SERVICE_POLICY_CHARGE_SAVE,
+    SERVICE_ROI_SAVE_SETTINGS,
+    SERVICE_ROI_UPSERT_REPAYMENT,
+    SERVICE_ROI_REMOVE_REPAYMENT,
+    SERVICE_ROI_UPSERT_VPP_RATE,
+    SERVICE_ROI_REMOVE_VPP_RATE,
+    SERVICE_ROI_UPSERT_INSTALLATION_COST,
+    SERVICE_ROI_REMOVE_INSTALLATION_COST,
     ATTR_FEEDIN_ENABLED,
     ATTR_FEEDIN_CUTOFF_SOC,
     ATTR_FEEDIN_SLOT,
@@ -171,6 +186,9 @@ from .const import (
     ATTR_CONTROLLED_LOAD_RATE,
     ATTR_ADDITIONAL_CHARGE,
     ATTR_DAILY_CONNECTION_CHARGE,
+    ATTR_DYNAMIC_IMPORT_PRICE_ENTITY,
+    ATTR_DYNAMIC_NEXT_IMPORT_PRICE_ENTITY,
+    ATTR_DYNAMIC_EXPORT_PRICE_ENTITY,
     ATTR_OTHER_CHARGES,
     ATTR_HOLIDAY_ONLY,
     ATTR_DAYS_OF_WEEK,
@@ -183,6 +201,17 @@ from .const import (
     ATTR_POLICY_NAME,
     ATTR_IMMEDIATE_CUTOFF_SOC,
     ATTR_ROWS,
+    ATTR_SOLAR_INSTALLATION_COST,
+    ATTR_BATTERY_INSTALLATION_COST,
+    ATTR_CURRENCY,
+    ATTR_REPAYMENT_ID,
+    ATTR_REPAYMENT_AMOUNT,
+    ATTR_REPAYMENT_FREQUENCY,
+    ATTR_VPP_RATE_ID,
+    ATTR_VPP_CENTS_PER_KWH,
+    ATTR_INSTALLATION_COST_ID,
+    ATTR_INSTALLATION_DESCRIPTION,
+    ATTR_INSTALLATION_AMOUNT,
     signal_pricing_changed,
     signal_policy_charge_changed,
     CONF_HOST_SYSTEM_ID,
@@ -198,17 +227,17 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
-FOXESS_V2_PLATFORMS = ["sensor"]
+FOXESS_V2_PLATFORMS = ["sensor", "select"]
 
-PANEL_COMPONENT_NAME = "heros-panel"
+PANEL_COMPONENT_NAME = "heros-panel-716"
 PANEL_FRONTEND_URL_PATH = "heros"
-PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=484"
+PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=716"
 PANEL_CONFIG = {
     "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
     "theme": "cyberpunk",
     "entity_prefix": "heros",
-    "settings_target": "select.house_heros_settings_target",
+    "settings_target": "select.heros_settings_target",
     "theme_art_url": "",
     "theme_art_size": "cover",
     "theme_art_position": "center center",
@@ -268,6 +297,27 @@ PANEL_PROVIDER_LABELS = {
     PROVIDER_FOXESS_V2: "FoxESS_v2",
     PROVIDER_FOXESS_MODBUS: "FoxESS_Modbus",
 }
+FOXESS_V2_DEBUG_WS_TYPE = "heros/foxess_v2_debug_query"
+FOXESS_V2_REDACTED_KEYS = {
+    "account",
+    "accesstoken",
+    "authorization",
+    "batteryid",
+    "deviceid",
+    "email",
+    "id",
+    "inverterid",
+    "mac",
+    "password",
+    "phone",
+    "plantid",
+    "refreshedtoken",
+    "serialnumber",
+    "sessiontoken",
+    "sn",
+    "token",
+    "userid",
+}
 
 # Services are domain-level; registered once via hass.services.has_service() guard.
 
@@ -290,6 +340,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         _register_battery_mapping_service(hass)
     if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
         _register_hero_mapping_service(hass)
+    _register_foxess_v2_debug_websocket(hass)
     return True
 
 
@@ -311,6 +362,8 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
                 str(entry.data.get(CONF_PROVIDER, "Configured provider")).title(),
             ),
             CONF_FORECAST_PROVIDER: entry.data.get(CONF_FORECAST_PROVIDER, "none"),
+            CONF_SOLAR_INSTALLATION_DATE: (entry.options or {}).get(CONF_SOLAR_INSTALLATION_DATE, entry.data.get(CONF_SOLAR_INSTALLATION_DATE, "2026-09-06")),
+            CONF_BATTERY_INSTALLATION_DATE: (entry.options or {}).get(CONF_BATTERY_INSTALLATION_DATE, entry.data.get(CONF_BATTERY_INSTALLATION_DATE, "2026-09-06")),
             CONF_FORECAST_GENERATION_TODAY_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TODAY_ENTITY, ""),
             CONF_FORECAST_GENERATION_TOMORROW_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
             CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY: entry.data.get(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, ""),
@@ -332,7 +385,10 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
             CONF_FORECAST_HISTORY_KWP: entry.data.get(CONF_FORECAST_HISTORY_KWP, ""),
             CONF_FORECAST_HISTORY_DAMPING: entry.data.get(CONF_FORECAST_HISTORY_DAMPING, ""),
             CONF_FORECAST_HISTORY_HORIZON: entry.data.get(CONF_FORECAST_HISTORY_HORIZON, ""),
-            CONF_BATTERY_PROVIDER: entry.data.get(CONF_BATTERY_PROVIDER, "bytewatt_web"),
+            CONF_BATTERY_PROVIDER: entry.data.get(
+                CONF_BATTERY_PROVIDER,
+                entry.data.get(CONF_PROVIDER, "bytewatt_web"),
+            ),
             CONF_BATTERY_POWER_ENTITY: entry.data.get(CONF_BATTERY_POWER_ENTITY, ""),
             CONF_BATTERY_TEMPERATURE_ENTITY: entry.data.get(CONF_BATTERY_TEMPERATURE_ENTITY, ""),
             CONF_BATTERY_VOLTAGE_ENTITY: entry.data.get(CONF_BATTERY_VOLTAGE_ENTITY, ""),
@@ -360,20 +416,12 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     domain_data["frontend_panel_registered"] = True
 
 
-def _unregister_frontend_panel(hass: HomeAssistant) -> None:
-    """Remove the sidebar panel and module when no entries remain."""
-    domain_data = hass.data.get(DOMAIN, {})
-    if not domain_data.get("frontend_panel_registered"):
-        return
-    if any(isinstance(value, dict) and value.get("coordinator") for value in domain_data.values()):
-        return
-
-    async_remove_panel(hass, PANEL_FRONTEND_URL_PATH, warn_if_unknown=False)
-    domain_data.pop("frontend_panel_registered", None)
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up HEROS from a config entry."""
+    # Config-entry reloads are the normal development workflow for this
+    # integration. Register the read-only debug command here as well as at
+    # global setup so it remains available after that reload path.
+    _register_foxess_v2_debug_websocket(hass)
     provider = entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT)
     if provider == PROVIDER_FOXESS_V2:
         return await _async_setup_foxess_v2_entry(hass, entry)
@@ -487,6 +535,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _register_battery_mapping_service(hass)
         if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
             _register_hero_mapping_service(hass)
+        if not hass.services.has_service(DOMAIN, "ensure_report_history"):
+            _register_history_service(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -588,10 +638,14 @@ async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) 
         "options": dict(entry.options or {}),
     }
     _register_frontend_panel(hass, entry)
+    if not hass.services.has_service(DOMAIN, SERVICE_FORCE_RECONNECT):
+        _register_services(hass)
     await coordinator.async_config_entry_first_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, FOXESS_V2_PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     entry.async_on_unload(lambda: client.session.clear_credentials())
+    if not hass.services.has_service(DOMAIN, "ensure_report_history"):
+        _register_history_service(hass)
     return True
 
 
@@ -678,7 +732,10 @@ async def _ensure_report_history_range(
         battery_data = await client.get_battery_data(
             station_id=station_id or None,
             report_date=day,
-            include_realtime=day == today_date and not force,
+            # Fox exposes the current day through its five-minute history
+            # endpoint; using its live snapshot here collapses the chart to
+            # one synthetic 00:00 point. Bytewatt retains live-day behavior.
+            include_realtime=day == today_date and entry_data.get("provider") != PROVIDER_FOXESS_V2,
             sys_sn=history_sys_sn,
         )
         reporting = build_reporting_payload(
@@ -814,7 +871,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
-        _unregister_frontend_panel(hass)
     return unload_ok
 
 
@@ -1020,6 +1076,107 @@ def _check_host_inverter_repair_issue(
 # Services — registered once at domain level, accept optional entry_id
 # ---------------------------------------------------------------------------
 
+def _sanitize_foxess_v2_debug(value: Any) -> Any:
+    """Redact identifiers and secrets before returning provider debug payloads."""
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            normalized = str(key).lower().replace("_", "").replace("-", "")
+            if normalized in FOXESS_V2_REDACTED_KEYS or normalized.endswith("token"):
+                sanitized[str(key)] = "[redacted]"
+            else:
+                sanitized[str(key)] = _sanitize_foxess_v2_debug(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_foxess_v2_debug(item) for item in value]
+    return value
+
+
+def _entry_id_from_message(hass: HomeAssistant, msg: dict[str, Any]) -> str:
+    requested = str(msg.get(ATTR_ENTRY_ID) or "").strip()
+    entries = _configured_entry_ids(hass)
+    if requested:
+        if requested not in entries:
+            raise HomeAssistantError(f"Unknown HEROS entry_id {requested!r}. Configured entries: {entries}")
+        return requested
+    if len(entries) == 1:
+        return entries[0]
+    if not entries:
+        raise HomeAssistantError("No HEROS integration is configured")
+    raise HomeAssistantError(f"Multiple HEROS integrations are configured; pass entry_id. Available: {entries}")
+
+
+def _register_foxess_v2_debug_websocket(hass: HomeAssistant) -> None:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("foxess_v2_debug_websocket_registered"):
+        return
+
+    @websocket_api.websocket_command({
+        vol.Required("type"): FOXESS_V2_DEBUG_WS_TYPE,
+        vol.Required("command"): vol.In(sorted(FOXESS_V2_DEBUG_COMMANDS)),
+        vol.Optional(ATTR_ENTRY_ID): cv.string,
+    })
+    @websocket_api.async_response
+    async def handle_foxess_v2_debug_query(
+        hass: HomeAssistant,
+        connection: websocket_api.ActiveConnection,
+        msg: dict[str, Any],
+    ) -> None:
+        """Run an explicitly selected, read-only diagnostic command."""
+        try:
+            if not connection.user.is_admin:
+                raise HomeAssistantError("Administrator permission is required")
+            entry_id = _entry_id_from_message(hass, msg)
+            entry_data = hass.data[DOMAIN][entry_id]
+            command = str(msg["command"])
+            client = entry_data.get("client")
+            coordinator = entry_data.get("coordinator")
+            if command == "connection_status":
+                result = {
+                    "command": command,
+                    "provider": entry_data.get("provider", "unknown"),
+                    "client_available": client is not None,
+                    "coordinator_available": coordinator is not None,
+                    "last_updated": (getattr(coordinator, "data", None) or {}).get(
+                        "last_updated", "unknown"
+                    ),
+                }
+            else:
+                if entry_data.get("provider") != PROVIDER_FOXESS_V2:
+                    raise HomeAssistantError("Selected HEROS entry is not a FoxESS_v2 entry")
+                if client is None or not hasattr(client, "debug_query"):
+                    raise HomeAssistantError("FoxESS_v2 debug client is unavailable")
+                if command == "refresh_telemetry":
+                    if coordinator is None:
+                        raise HomeAssistantError("FoxESS_v2 coordinator is unavailable")
+                    await coordinator.async_request_refresh()
+                    result = {
+                        "command": command,
+                        "telemetry": getattr(coordinator, "data", {}),
+                    }
+                else:
+                    result = await client.debug_query(command)
+        except Exception as err:
+            # Returning a result avoids Home Assistant replacing an integration
+            # diagnostic with its unhelpful generic WebSocket error.
+            # Diagnostic commands are read-only and their exception text is
+            # needed to distinguish a local handler failure from FoxESS API
+            # authentication or device-discovery failures.
+            message = str(err) or type(err).__name__
+            connection.send_result(msg["id"], {
+                "error": {"type": type(err).__name__, "message": message},
+            })
+            return
+        connection.send_result(msg["id"], {
+            "entry_id": entry_id,
+            "command": command,
+            "result": _sanitize_foxess_v2_debug(result),
+        })
+
+    websocket_api.async_register_command(hass, handle_foxess_v2_debug_query)
+    domain_data["foxess_v2_debug_websocket_registered"] = True
+
+
 def _configured_entry_ids(hass: HomeAssistant) -> list[str]:
     """Return only real config-entry IDs stored under hass.data[DOMAIN]."""
     return [
@@ -1100,6 +1257,31 @@ def _pricing_store_for(hass: HomeAssistant, call: ServiceCall) -> tuple[PricingS
     return store, entry_id
 
 
+def _roi_store_for(hass: HomeAssistant, call: ServiceCall) -> tuple[RoiSettingsStore, str]:
+    """Return the ROI store, allowing only an existing retained ROI file."""
+    requested = str(call.data.get(ATTR_ENTRY_ID) or "").strip()
+    entry_ids = _configured_entry_ids(hass)
+    if requested:
+        entry_id = requested
+    elif len(entry_ids) == 1:
+        entry_id = entry_ids[0]
+    elif not entry_ids:
+        raise HomeAssistantError("No HEROS entry is configured")
+    else:
+        raise HomeAssistantError("entry_id is required when more than one HEROS entry is configured")
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    entry_data = domain_data.get(entry_id)
+    if not isinstance(entry_data, dict):
+        entry_data = {}
+        domain_data[entry_id] = entry_data
+    store = entry_data.get("roi_store")
+    if store is None:
+        candidate = RoiSettingsStore(hass, entry_id)
+        if not candidate.file.exists() and entry_id not in entry_ids:
+            raise HomeAssistantError(f"Unknown HEROS entry_id {entry_id!r}")
+        store = candidate
+        entry_data["roi_store"] = store
+    return store, entry_id
 def _policy_charge_store_for(
     hass: HomeAssistant, call: ServiceCall
 ) -> tuple[PolicyChargeScheduleStore, str]:
@@ -1478,6 +1660,38 @@ async def _submit_battery_service(
     return True
 
 
+def _register_history_service(hass: HomeAssistant) -> None:
+    """Register report-history backfill even when core services already exist."""
+    async def handle(call: ServiceCall) -> None:
+        target_entry = call.data.get(ATTR_ENTRY_ID)
+        scope_key = str(call.data.get("scope_key") or "all").strip() or "all"
+        start_date = str(call.data.get("start_date") or "").strip()
+        end_date = str(call.data.get("end_date") or "").strip()
+        force = bool(call.data.get("force", False))
+        if not start_date or not end_date:
+            raise HomeAssistantError("start_date and end_date are required")
+        target_entry_ids = [
+            entry_id for entry_id, entry_data in hass.data[DOMAIN].items()
+            if isinstance(entry_data, dict) and entry_data.get("coordinator")
+            and (not target_entry or entry_id == target_entry)
+        ]
+        if not target_entry_ids:
+            raise HomeAssistantError("No HEROS entries are loaded")
+        for entry_id in target_entry_ids:
+            await _ensure_report_history_range(
+                hass, entry_id, scope_key=scope_key, start_date=start_date,
+                end_date=end_date, force=force,
+            )
+
+    schema = vol.Schema({
+        vol.Required("scope_key"): cv.string,
+        vol.Required("start_date"): cv.string,
+        vol.Required("end_date"): cv.string,
+        vol.Optional("force", default=False): cv.boolean,
+        vol.Optional(ATTR_ENTRY_ID): cv.string,
+    })
+    hass.services.async_register(DOMAIN, "ensure_report_history", handle, schema=schema)
+
 def _register_services(hass: HomeAssistant) -> None:
     """Register all domain-level services."""
 
@@ -1804,6 +2018,57 @@ def _register_services(hass: HomeAssistant) -> None:
         await store.async_remove_rule(rule_id)
         _notify_pricing_changed(hass, entry_id)
 
+    async def handle_roi_save_settings(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        existing = await store.async_settings()
+        await store.async_save(RoiSettings(
+            solar_installation_cost=call.data.get(ATTR_SOLAR_INSTALLATION_COST, existing.solar_installation_cost),
+            battery_installation_cost=call.data.get(ATTR_BATTERY_INSTALLATION_COST, existing.battery_installation_cost),
+            currency=call.data.get(ATTR_CURRENCY, existing.currency),
+            repayments=existing.repayments,
+            vpp_rates=existing.vpp_rates,
+            installation_costs=existing.installation_costs,
+        ))
+
+    async def handle_roi_upsert_repayment(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        await store.async_upsert_repayment(RepaymentScheduleEntry(
+            entry_id=call.data.get(ATTR_REPAYMENT_ID) or "",
+            effective_start_date=call.data.get(ATTR_EFFECTIVE_START_DATE),
+            amount=call.data.get(ATTR_REPAYMENT_AMOUNT),
+            frequency=call.data.get(ATTR_REPAYMENT_FREQUENCY) or "weekly",
+            notes=call.data.get(ATTR_NOTES) or "",
+        ))
+
+    async def handle_roi_remove_repayment(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        await store.async_remove_repayment(str(call.data.get(ATTR_REPAYMENT_ID) or ""))
+
+    async def handle_roi_upsert_vpp_rate(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        await store.async_upsert_vpp_rate(VppRateEntry(
+            entry_id=call.data.get(ATTR_VPP_RATE_ID) or "",
+            provider=call.data.get(ATTR_PROVIDER),
+            effective_start_date=call.data.get(ATTR_EFFECTIVE_START_DATE),
+            cents_per_kwh=call.data.get(ATTR_VPP_CENTS_PER_KWH),
+        ))
+
+    async def handle_roi_remove_vpp_rate(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        await store.async_remove_vpp_rate(str(call.data.get(ATTR_VPP_RATE_ID) or ""))
+
+    async def handle_roi_upsert_installation_cost(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        await store.async_upsert_installation_cost(InstallationCostEntry(
+            entry_id=call.data.get(ATTR_INSTALLATION_COST_ID) or "",
+            effective_start_date=call.data.get(ATTR_EFFECTIVE_START_DATE),
+            description=call.data.get(ATTR_INSTALLATION_DESCRIPTION),
+            amount=call.data.get(ATTR_INSTALLATION_AMOUNT),
+        ))
+
+    async def handle_roi_remove_installation_cost(call: ServiceCall) -> None:
+        store, _ = _roi_store_for(hass, call)
+        await store.async_remove_installation_cost(str(call.data.get(ATTR_INSTALLATION_COST_ID) or ""))
     async def handle_pricing_upsert_group(call: ServiceCall) -> None:
         store, entry_id = _pricing_store_for(hass, call)
         try:
@@ -1815,6 +2080,9 @@ def _register_services(hass: HomeAssistant) -> None:
                 "effective_start_date": call.data.get(ATTR_EFFECTIVE_START_DATE),
                 "pricing_type": call.data.get(ATTR_PRICING_TYPE) or "dynamic",
                 "daily_connection_charge": call.data.get(ATTR_DAILY_CONNECTION_CHARGE),
+                "dynamic_import_price_entity": call.data.get(ATTR_DYNAMIC_IMPORT_PRICE_ENTITY) or "",
+                "dynamic_next_import_price_entity": call.data.get(ATTR_DYNAMIC_NEXT_IMPORT_PRICE_ENTITY) or "",
+                "dynamic_export_price_entity": call.data.get(ATTR_DYNAMIC_EXPORT_PRICE_ENTITY) or "",
                 "other_charges": call.data.get(ATTR_OTHER_CHARGES) or "",
                 "notes": call.data.get(ATTR_NOTES) or "",
             })
@@ -2012,6 +2280,9 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
         vol.Optional(ATTR_PRICING_TYPE, default="dynamic"): vol.In(["fixed", "dynamic"]),
         vol.Optional(ATTR_DAILY_CONNECTION_CHARGE): vol.Coerce(float),
+        vol.Optional(ATTR_DYNAMIC_IMPORT_PRICE_ENTITY, default=""): cv.string,
+        vol.Optional(ATTR_DYNAMIC_NEXT_IMPORT_PRICE_ENTITY, default=""): cv.string,
+        vol.Optional(ATTR_DYNAMIC_EXPORT_PRICE_ENTITY, default=""): cv.string,
         vol.Optional(ATTR_OTHER_CHARGES, default=""): cv.string,
         vol.Optional(ATTR_NOTES, default=""): cv.string,
         **_entry_id_opt,
@@ -2151,6 +2422,58 @@ def _register_services(hass: HomeAssistant) -> None:
         schema=_policy_charge_save_schema,
     )
     hass.services.async_register(
+        DOMAIN, SERVICE_ROI_SAVE_SETTINGS, handle_roi_save_settings,
+        schema=vol.Schema({
+            vol.Optional(ATTR_SOLAR_INSTALLATION_COST): vol.Coerce(float),
+            vol.Optional(ATTR_BATTERY_INSTALLATION_COST): vol.Coerce(float),
+            vol.Optional(ATTR_CURRENCY, default="AUD"): cv.string,
+            **_entry_id_opt,
+        }),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ROI_UPSERT_REPAYMENT, handle_roi_upsert_repayment,
+        schema=vol.Schema({
+            vol.Optional(ATTR_REPAYMENT_ID): cv.string,
+            vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
+            vol.Required(ATTR_REPAYMENT_AMOUNT): vol.Coerce(float),
+            vol.Optional(ATTR_REPAYMENT_FREQUENCY, default="weekly"): vol.In(["weekly", "fortnightly", "monthly", "yearly"]),
+            vol.Optional(ATTR_NOTES, default=""): cv.string,
+            **_entry_id_opt,
+        }),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ROI_REMOVE_REPAYMENT, handle_roi_remove_repayment,
+        schema=vol.Schema({vol.Required(ATTR_REPAYMENT_ID): cv.string, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ROI_UPSERT_VPP_RATE, handle_roi_upsert_vpp_rate,
+        schema=vol.Schema({
+            vol.Optional(ATTR_VPP_RATE_ID): cv.string,
+            vol.Required(ATTR_PROVIDER): cv.string,
+            vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
+            vol.Required(ATTR_VPP_CENTS_PER_KWH): vol.Coerce(float),
+            **_entry_id_opt,
+        }),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ROI_REMOVE_VPP_RATE, handle_roi_remove_vpp_rate,
+        schema=vol.Schema({vol.Required(ATTR_VPP_RATE_ID): cv.string, **_entry_id_opt}),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ROI_UPSERT_INSTALLATION_COST, handle_roi_upsert_installation_cost,
+        schema=vol.Schema({
+            vol.Optional(ATTR_INSTALLATION_COST_ID): cv.string,
+            vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
+            vol.Required(ATTR_INSTALLATION_DESCRIPTION): cv.string,
+            vol.Required(ATTR_INSTALLATION_AMOUNT): vol.Coerce(float),
+            **_entry_id_opt,
+        }),
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ROI_REMOVE_INSTALLATION_COST, handle_roi_remove_installation_cost,
+        schema=vol.Schema({vol.Required(ATTR_INSTALLATION_COST_ID): cv.string, **_entry_id_opt}),
+    )
+    hass.services.async_register(
         DOMAIN, SERVICE_PRICING_UPSERT_GROUP, handle_pricing_upsert_group,
         schema=_pricing_group_schema,
     )
@@ -2174,3 +2497,26 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, "ensure_report_history", handle_ensure_report_history,
         schema=_history_schema,
     )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

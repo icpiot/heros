@@ -13,7 +13,9 @@
           "username": "Username",
           "password": "Password",
           "foxess_v2_wasm_path": "FoxESS V2 signature.wasm path",
-          "scan_interval": "Scan interval (seconds)"
+          "scan_interval": "Scan interval (seconds)",
+          "solar_installation_date": "Solar / inverter installation date",
+          "battery_installation_date": "Battery installation date"
         }
       },
       "select_inverter": {
@@ -28,6 +30,16 @@
         "description": "Found {count} inverters on your account. Pick the Host inverter to use for Grid Feed-in and cycle strategy settings.",
         "data": {
           "host_system_id": "Host inverter"
+        }
+      },
+      "reconfigure_login": {
+        "title": "Update FoxESS V2 Credentials",
+        "data": {
+          "username": "FoxESS Cloud username",
+          "password": "FoxESS Cloud password",
+          "history_backfill_years": "History backfill years",
+          "solar_installation_date": "Solar / inverter installation date",
+          "battery_installation_date": "Battery installation date"
         }
       },
       "forecast_setup": {
@@ -59,7 +71,8 @@
         "no_inverters": "No inverters were found on this account.",
         "provider_coming_soon": "Selected provider is not implemented yet.",
         "provider_missing": "Provider selection is required.",
-        "reconfigure_successful": "Host inverter selection updated."
+        "reconfigure_successful": "Host inverter selection updated.",
+        "credentials_updated": "FoxESS credentials updated."
     }
   },
   "options": {
@@ -67,7 +80,9 @@
       "init": {
         "title": "HEROS Options",
         "data": {
-          "scan_interval": "Scan interval (seconds)"
+          "scan_interval": "Scan interval (seconds)",
+          "solar_installation_date": "Solar / inverter installation date",
+          "battery_installation_date": "Battery installation date"
         }
       }
     }

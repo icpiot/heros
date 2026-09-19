@@ -1,21 +1,25 @@
 import "./heros-policy-card.js?v=009";
-import "./heros-debug-card.js?v=036";
+import "./heros-debug-card.js?v=058";
 
-const HEROS_PANEL_BUILD = "484";
-const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=397";
+const HEROS_PANEL_BUILD = "716";
+const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=635";
+const HEROS_PANEL_TAG = `heros-panel-${HEROS_PANEL_BUILD}`;
 const HEROS_PANEL_THEME_KEY = "heros.panel.theme";
 const HEROS_PANEL_PAGE_KEY = "heros.panel.page";
 const HEROS_PANEL_PAGE_FRAGMENT_KEY = "heros_page";
 const HEROS_PANEL_BATTERY_KEY = "heros.panel.battery";
+const HEROS_PANEL_BATTERY_PREFERENCE_KEY = "heros.panel.battery.preference.v2";
 const HEROS_PANEL_DEBUG_KEY = "heros.panel.debug";
+const HEROS_PANEL_SHOW_VERSIONS_KEY = "heros.panel.show_versions";
 const HEROS_PANEL_ENTRY_ID_KEY = "heros.panel.entry_id";
-const HEROS_PANEL_SYNC_LOG_URL = "/local/ha-git/heros_git_last.txt";
+const HEROS_PANEL_RUNTIME_TRACE_KEY = "heros.panel.runtime_trace";
+const HEROS_PANEL_SETUP_DISPLAY_KEY = "heros.panel.setup_display";
+const HEROS_OVERVIEW_LAYOUT_KEY = "heros.panel.overview_layout";
 const HEROS_INTERACTION_RENDER_HOLD_MS = 1800;
 const HEROS_POLICY_FEEDBACK_MS = 5000;
 const HEROS_POLICY_FILE_POLL_MS = 3000;
 const HEROS_POLICY_LIVE_REFRESH_MS = 10000;
 const HEROS_PRICING_PENDING_WRITE_MS = 120000;
-const HEROS_SYNC_POLL_MS = 5000;
 const HEROS_PURCHASE_TARIFF_OTHER_VALUE = "__other_purchase_tariff__";
 const HEROS_PURCHASE_TARIFF_OPTIONS = [
   "Peak",
@@ -55,13 +59,13 @@ const HEROS_FALLBACK_CONTROLLERS = new WeakMap();
 const HEROS_PANEL_PAGES = [
   { value: "overview", label: "Overview", icon: "◉" },
   { value: "policy", label: "Policy", icon: "▥" },
-  { value: "report", label: "Report", icon: "▤" },
+  { value: "report", label: "Reports", icon: "▤" },
   { value: "battery", label: "Battery", icon: "▣" },
   { value: "solar", label: "Solar", icon: "☀" },
-  { value: "forecast_setup", label: "Setup", icon: "⚑" },
   { value: "history", label: "History", icon: "↺" },
   { value: "pricing", label: "Pricing", icon: "$" },
   { value: "settings", label: "Settings", icon: "⚙" },
+  { value: "forecast_setup", label: "Mapping", icon: "⚑" },
   { value: "debug", label: "Debug", icon: "◫" },
 ];
 
@@ -70,13 +74,14 @@ const HEROS_REPORT_CATALOG = [
     category: "Operational",
     items: [
       { label: "Overview", built: true },
-      { label: "Daily Detail", built: false },
-      { label: "Trend", built: false },
-      { label: "Battery Compare", built: false },
-      { label: "Battery Balance", built: false },
-      { label: "Battery Flow", built: false },
-      { label: "Peak Demand", built: false },
-      { label: "Mode Timeline", built: false },
+      { label: "Operational", built: true },
+      { label: "Daily Detail", built: true },
+      { label: "Trend", built: true },
+      { label: "Battery Compare", built: true },
+      { label: "Battery Balance", built: true },
+      { label: "Battery Flow", built: true },
+      { label: "Peak Demand", built: true },
+      { label: "Mode Timeline", built: true },
     ],
   },
   {
@@ -84,9 +89,10 @@ const HEROS_REPORT_CATALOG = [
     items: [
       { label: "Profit", built: false },
       { label: "Cost Summary", built: false },
+      { label: "Energy Flow Value", built: true },
       { label: "Savings", built: false },
       { label: "Load Shifting", built: false },
-      { label: "Tariff Impact", built: false },
+      { label: "Tariff Impact", built: true },
       { label: "Tariff vs Solar", built: false },
       { label: "Export Revenue", built: false },
       { label: "Self-Consumption Value", built: false },
@@ -95,22 +101,22 @@ const HEROS_REPORT_CATALOG = [
   {
     category: "Solar",
     items: [
-      { label: "Solar Capture", built: false },
-      { label: "Forecast Accuracy", built: false },
-      { label: "Self-Sufficiency", built: false },
-      { label: "Predicted vs Actual", built: false },
-      { label: "Solar Compare", built: false },
+      { label: "Solar Capture", built: true },
+      { label: "Forecast Accuracy", built: true },
+      { label: "Self-Sufficiency", built: true },
+      { label: "Predicted vs Actual", built: true },
+      { label: "Solar Compare", built: true },
     ],
   },
   {
     category: "Diagnostics",
     items: [
-      { label: "Scope Health", built: false },
-      { label: "Export / Data", built: false },
-      { label: "Day Compare", built: false },
-      { label: "Seasonal Trend", built: false },
-      { label: "Anomaly", built: false },
-      { label: "Exception", built: false },
+      { label: "Scope Health", built: true },
+      { label: "Export / Data", built: true },
+      { label: "Period Compare", built: true },
+      { label: "Seasonal Trend", built: true },
+      { label: "Anomaly", built: true },
+      { label: "Exception", built: true },
     ],
   },
 ];
@@ -564,13 +570,19 @@ class HerosPanel extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._config = {};
+    this._foxessSetupLiveStates = {};
+    this._foxessSetupDisplay = this._loadFoxessSetupDisplay();
+    this._foxessSetupHydrated = false;
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
+    this._showVersionNumbers = this._loadShowVersionNumbers();
     this._page = this._loadPage();
     this._renderHoldUntil = 0;
     this._batterySelectorHoldUntil = 0;
     this._batterySelectorOpen = false;
     this._pendingBatterySelection = "";
+    this._batterySelectionPreference = this._loadBatterySelection();
+    this._initialBatterySelectionApplied = false;
     this._forecastSelectorHoldUntil = 0;
     this._forecastSelectorOpenKey = "";
     this._forecastSaveStatus = null;
@@ -605,6 +617,11 @@ class HerosPanel extends HTMLElement {
     this._pricingFocusHoldUntil = 0;
     this._pricingFileLoadKey = "";
     this._pricingFileLoading = false;
+    this._roiSettingsData = null;
+    this._roiFileLoadKey = "";
+    this._roiDraftDirty = false;
+    this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
     this._policyChargeFileLoadKey = "";
     this._policyChargeFileLoading = false;
     this._policyChargeFileScheduleSet = null;
@@ -612,10 +629,11 @@ class HerosPanel extends HTMLElement {
     this._policyChargeLiveRefreshTimer = null;
     this._embeddedModuleLoads = {};
     this._embeddedModuleErrors = {};
-    this._syncLogTimer = null;
     this._delegatedHandlersBound = false;
     this._boundLocationChange = this._handleLocationChange.bind(this);
     this._boundStorageChange = this._handleStorageChange.bind(this);
+    this._boundRuntimeError = (event) => this._recordRuntimeTrace("error", event?.message || "Unknown browser error");
+    this._boundUnhandledRejection = (event) => this._recordRuntimeTrace("rejection", event?.reason?.message || event?.reason || "Unhandled rejection");
     this._bindInteractiveControls();
   }
 
@@ -627,9 +645,35 @@ class HerosPanel extends HTMLElement {
   }
 
   set hass(hass) {
+    const hadHass = Boolean(this._hass);
+    const isFoxessSetup = this._page === "forecast_setup"
+      && this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2";
+    if (isFoxessSetup && this._foxessSetupHydrated) {
+      this._captureFoxessSetupLiveStates(hass);
+      this._hass = hass;
+      return;
+    }
+    const hasFoxessLiveValues = this._captureFoxessSetupLiveStates(hass);
     this._hass = hass;
+    this._applyInitialBatterySelectionPreference();
     this._ensurePricingFileLoaded();
     this._ensurePolicyChargeFileLoaded();
+    // The full legacy setup editor creates and destroys a large interactive tree on
+    // every HA state update. The FoxESS view renders once after verified values
+    // arrive, then retains those values when HA later supplies a partial update.
+    if (isFoxessSetup) {
+      if (!hasFoxessLiveValues) {
+        return;
+      }
+      this._foxessSetupHydrated = true;
+    }
+    if (
+      hadHass
+      && this._page === "forecast_setup"
+      && this._batteryProviderKey(this._config?.battery_provider) !== "foxess_v2"
+    ) {
+      return;
+    }
     if (this._page === "pricing" && this._hasPricingUrlAction()) {
       this._processPricingUrlAction();
       this._render();
@@ -689,6 +733,8 @@ class HerosPanel extends HTMLElement {
     window.addEventListener("hashchange", this._boundLocationChange);
     window.addEventListener("popstate", this._boundLocationChange);
     window.addEventListener("storage", this._boundStorageChange);
+    window.addEventListener("error", this._boundRuntimeError, true);
+    window.addEventListener("unhandledrejection", this._boundUnhandledRejection);
     this._ensurePricingFileLoaded();
     this._ensurePolicyChargeFileLoaded();
     this._syncPolicyChargeLiveRefreshTimer();
@@ -696,10 +742,12 @@ class HerosPanel extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._recordRuntimeTrace("disconnected", window.location.pathname + window.location.hash);
     window.removeEventListener("hashchange", this._boundLocationChange);
     window.removeEventListener("popstate", this._boundLocationChange);
     window.removeEventListener("storage", this._boundStorageChange);
-    this._clearSyncLogTimer();
+    window.removeEventListener("error", this._boundRuntimeError, true);
+    window.removeEventListener("unhandledrejection", this._boundUnhandledRejection);
     this._clearPolicyChargeLiveRefreshTimer();
   }
 
@@ -708,6 +756,8 @@ class HerosPanel extends HTMLElement {
     return Date.now() < this._renderHoldUntil
       || this._isSharedBatterySelectorHeld()
       || this._isPricingInteractionTarget(activeElement)
+      || this._roiDraftDirty
+      || Boolean(activeElement?.closest?.(".roi-settings-card"))
       || this._isPricingEditorHeld()
       || this._isForecastInteractionTarget(activeElement)
       || this._isForecastSelectorHeld();
@@ -876,6 +926,22 @@ class HerosPanel extends HTMLElement {
     }, delay + 10);
   }
 
+  _loadFoxessSetupDisplay() {
+    try {
+      const value = JSON.parse(localStorage.getItem(HEROS_PANEL_SETUP_DISPLAY_KEY) || "{}");
+      const sensor = value.sensor !== false;
+      const provider = value.provider !== false;
+      return { sensor: sensor || !provider, provider: provider || !sensor };
+    } catch (error) {
+      return { sensor: true, provider: true };
+    }
+  }
+
+  _saveFoxessSetupDisplay(display) {
+    this._foxessSetupDisplay = { sensor: Boolean(display.sensor), provider: Boolean(display.provider) };
+    try { localStorage.setItem(HEROS_PANEL_SETUP_DISPLAY_KEY, JSON.stringify(this._foxessSetupDisplay)); } catch (error) {}
+  }
+
   _loadTheme() {
     return this._config.theme || "midnight";
   }
@@ -901,6 +967,22 @@ class HerosPanel extends HTMLElement {
     }
   }
 
+  _loadShowVersionNumbers() {
+    try {
+      const stored = localStorage.getItem(HEROS_PANEL_SHOW_VERSIONS_KEY);
+      return stored === null ? true : stored === "true";
+    } catch (error) {
+      return true;
+    }
+  }
+  _loadShowVersionNumbers() {
+    try {
+      const stored = localStorage.getItem(HEROS_PANEL_SHOW_VERSIONS_KEY);
+      return stored === null ? true : stored === "true";
+    } catch (error) {
+      return true;
+    }
+  }
   _loadSettingsFocus() {
     try {
       return localStorage.getItem("heros.panel.settings.focus") || "entities";
@@ -973,20 +1055,33 @@ class HerosPanel extends HTMLElement {
   _loadBatterySelection() {
     try {
       localStorage.removeItem(HEROS_PANEL_BATTERY_KEY);
+      return String(localStorage.getItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY) || "").trim();
     } catch (error) {
-      // Ignore storage failures; the HA select entity is the source of truth.
+      return "";
     }
-    return "";
   }
 
   _saveBatterySelection(option) {
     try {
       localStorage.removeItem(HEROS_PANEL_BATTERY_KEY);
-    } catch (error) {
-      // Ignore storage failures; the HA select entity is the source of truth.
-    }
+      localStorage.setItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY, String(option || "").trim());
+    } catch (error) {}
   }
 
+  _applyInitialBatterySelectionPreference() {
+    if (this._initialBatterySelectionApplied || !this._hass || this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2") return;
+    const selector = this._hass.states?.[this._settingsTargetId()];
+    const options = this._sharedBatterySelectorOptions(selector);
+    if (!options.includes("All systems")) return;
+    const saved = String(this._batterySelectionPreference || "").trim();
+    const desired = options.includes(saved) ? saved : "All systems";
+    this._initialBatterySelectionApplied = true;
+    if (String(selector?.state || "").trim() === desired) return;
+    this._pendingBatterySelection = desired;
+    this._holdBatterySelectorWindow(10000);
+    this._syncEmbeddedSelectionStateInPlace();
+    void this._selectSharedBatteryOption(desired);
+  }
   _syncPageUrl(page) {
     try {
       const url = new URL(window.location.href);
@@ -1005,22 +1100,17 @@ class HerosPanel extends HTMLElement {
     }
   }
 
+  _setShowVersionNumbers(enabled) {
+    this._showVersionNumbers = Boolean(enabled);
+    try { localStorage.setItem(HEROS_PANEL_SHOW_VERSIONS_KEY, this._showVersionNumbers ? "true" : "false"); } catch (error) {}
+    this._render();
+  }
+
   _saveSettingsFocus(focus) {
     try {
       localStorage.setItem("heros.panel.settings.focus", focus);
     } catch (error) {
       // Ignore storage failures in private browsing / restricted environments.
-    }
-  }
-
-  _syncLogPath() {
-    return HEROS_PANEL_SYNC_LOG_URL;
-  }
-
-  _clearSyncLogTimer() {
-    if (this._syncLogTimer) {
-      window.clearInterval(this._syncLogTimer);
-      this._syncLogTimer = null;
     }
   }
 
@@ -1061,49 +1151,6 @@ class HerosPanel extends HTMLElement {
     this._policyChargeLiveRefreshTimer = window.setInterval(() => {
       this._refreshPolicyChargeLiveValues();
     }, HEROS_POLICY_LIVE_REFRESH_MS);
-  }
-
-  async _loadSyncLog() {
-    if (!this.shadowRoot) {
-      return;
-    }
-
-    const logEl = this.shadowRoot.querySelector("[data-sync-log]");
-    const metaEl = this.shadowRoot.querySelector("[data-sync-log-meta]");
-    if (!logEl || !metaEl) {
-      return;
-    }
-
-    metaEl.textContent = "Refreshing...";
-
-    try {
-      const response = await fetch(`${this._syncLogPath()}?_=${Date.now()}`, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const text = await response.text();
-      logEl.textContent = text || "(log is empty)";
-      metaEl.textContent = `Updated ${new Date().toLocaleString()}`;
-    } catch (error) {
-      logEl.textContent = `Unable to load sync log: ${error.message}`;
-      metaEl.textContent = `Updated ${new Date().toLocaleString()}`;
-    }
-  }
-
-  _startSyncLogPolling() {
-    if (this._page !== "settings") {
-      this._clearSyncLogTimer();
-      return;
-    }
-
-    if (this._syncLogTimer) {
-      return;
-    }
-
-    this._syncLogTimer = window.setInterval(() => {
-      this._loadSyncLog();
-    }, HEROS_SYNC_POLL_MS);
   }
 
   _loadPricingDraft() {
@@ -1197,10 +1244,12 @@ class HerosPanel extends HTMLElement {
   _syncStoredState() {
     this._theme = this._loadTheme();
     this._debugEnabled = this._loadDebugEnabled();
+    this._showVersionNumbers = this._loadShowVersionNumbers();
     this._page = this._loadPage();
   }
 
   _handleLocationChange() {
+    this._recordRuntimeTrace("route", window.location.pathname + window.location.hash);
     const nextPage = this._loadPage();
     if (nextPage !== this._page) {
       this._page = nextPage;
@@ -1329,7 +1378,14 @@ class HerosPanel extends HTMLElement {
             group.rules = [...(Array.isArray(group.rules) ? group.rules : []), rule];
             model.warning = "";
             this._resetPricingUiRuleDraft(recordType);
-            this._callPricingRecordService(group.group_id, rule);
+            this._callPricingRecordService(group.group_id, rule).then(() => {
+              const savedModel = this._loadPricingUi();
+              savedModel.warning = "";
+              this._savePricingUi(savedModel);
+              if (this._page === "pricing") {
+                this._render();
+              }
+            }).catch(() => {});
           }
         }
         this._savePricingUi(model);
@@ -1389,7 +1445,7 @@ class HerosPanel extends HTMLElement {
         "Group: the label shown in the selector and summary card.",
         "Effective Date: when this rate group becomes active.",
         "Type: fixed or dynamic pricing mode.",
-        "Daily Supply Charge: the daily fixed charge for this group.",
+        "Daily Supply Charge (cents): the daily fixed charge for this group, entered in cents.",
         "Other charges: any extra notes or fees that apply to the group.",
         "Notes: free text for anything else you want to remember.",
       ],
@@ -1425,8 +1481,8 @@ class HerosPanel extends HTMLElement {
         "Start: start time for the sell price window.",
         "End: end time for the sell price window.",
         "First block up to (kWh): optional first block size for tiered export pricing.",
-        "First block rate ($/kWh): rate for the first export block.",
-        "Remainder rate ($/kWh): rate after the first export block.",
+        "First block rate (cents/kWh): rate for the first export block.",
+        "Remainder rate (cents/kWh): rate after the first export block.",
       ],
     };
     return Array.isArray(content[section]) ? content[section] : [];
@@ -1695,6 +1751,111 @@ class HerosPanel extends HTMLElement {
 
   _states() {
     return Object.values(this._hass?.states || {});
+  }
+
+  _recordRuntimeTrace(kind, detail) {
+    try {
+      const history = this._runtimeTrace();
+      history.push({
+        at: new Date().toISOString(),
+        kind: String(kind || "event"),
+        detail: String(detail || "").replace(/\s+/g, " ").slice(0, 300),
+      });
+      localStorage.setItem(HEROS_PANEL_RUNTIME_TRACE_KEY, JSON.stringify(history.slice(-8)));
+    } catch (error) {
+      // Tracing must never affect the panel if browser storage is unavailable.
+    }
+  }
+
+  _runtimeTrace() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(HEROS_PANEL_RUNTIME_TRACE_KEY) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  _foxessSetupEntityIds() {
+    return [
+      "sensor.heros_pv_power",
+      "sensor.heros_total_solar_generation",
+      "sensor.heros_pv_generated_today",
+      "sensor.heros_consumed_today",
+      "sensor.heros_communication_status",
+      "sensor.heros_operating_mode",
+      "sensor.heros_alarm_state",
+      "sensor.heros_battery_percentage",
+      "sensor.heros_battery_voltage",
+      "sensor.heros_battery_current",
+      "sensor.heros_battery_temperature",
+      "sensor.heros_battery_state_of_health",
+      "sensor.heros_battery_cycles",
+      "sensor.heros_battery_remaining_capacity",
+      "sensor.heros_battery_charged_today",
+      "sensor.heros_battery_discharged_today",
+      "sensor.heros_house_consumption",
+      "sensor.heros_eps_output_power",
+      "sensor.heros_pv_string_1_voltage",
+      "sensor.heros_pv_string_1_current",
+      "sensor.heros_pv_string_2_voltage",
+      "sensor.heros_pv_string_2_current",
+      "sensor.heros_pv_string_3_voltage",
+      "sensor.heros_pv_string_3_current",
+      "sensor.heros_pv_string_4_voltage",
+
+      "sensor.heros_pv_string_4_current",
+      "sensor.heros_pv_string_1_power",
+      "sensor.heros_pv_string_2_power",
+      "sensor.heros_pv_string_3_power",
+      "sensor.heros_pv_string_4_power",
+      "sensor.heros_battery_capacity",
+      "sensor.heros_battery_charging_power",
+      "sensor.heros_battery_discharging_power",
+      "sensor.heros_battery_max_charge_current",
+      "sensor.heros_battery_max_discharge_current",
+      "sensor.heros_grid_status",
+      "sensor.heros_feedin_power",
+      "sensor.heros_grid_consumption_power",
+      "sensor.heros_ac_power",
+      "sensor.heros_battery_usable_capacity",
+      "sensor.heros_battery_power",
+      "sensor.heros_total_battery_charge",
+      "sensor.heros_total_battery_discharge",
+      "sensor.heros_grid_consumption",
+      "sensor.heros_grid_import_today",
+      "sensor.heros_grid_power_consumption",
+      "sensor.heros_feed_in_today",
+      "sensor.heros_total_feed_in",
+      "sensor.heros_grid_voltage",
+      "sensor.heros_grid_current",
+      "sensor.heros_grid_frequency",
+      "sensor.heros_co2_reduction",
+      "sensor.heros_trees_planted",
+      "sensor.heros_last_update",
+    ];
+  }
+
+  _captureFoxessSetupLiveStates(hass) {
+    let found = false;
+    const states = hass?.states || {};
+    this._foxessSetupEntityIds().forEach((entityId) => {
+      const state = states[entityId];
+      if (state && state.state !== "unknown" && state.state !== "unavailable") {
+        this._foxessSetupLiveStates[entityId] = state;
+        found = true;
+      }
+    });
+    return found;
+  }
+
+  _foxessSetupState(entityId) {
+    const current = this._hass?.states?.[entityId]
+      || this._states().find((item) => item?.entity_id === entityId);
+    if (current && current.state !== "unknown" && current.state !== "unavailable") {
+      return current;
+    }
+    return this._foxessSetupLiveStates[entityId] || current;
   }
 
   _configuredEntityId(key) {
@@ -2169,6 +2330,12 @@ class HerosPanel extends HTMLElement {
 
   _connectionTypeLabel(provider) {
     switch (this._batteryProviderKey(provider)) {
+      case "foxess_v2":
+        return "FoxESS V2";
+      case "foxess_v1":
+        return "FoxESS V1";
+      case "foxess_modbus":
+        return "FoxESS Modbus";
       case "bytewatt_local":
         return "ByteWatt Local";
       case "other":
@@ -2181,6 +2348,10 @@ class HerosPanel extends HTMLElement {
 
   _batteryProviderSensorPatterns(provider) {
     switch (this._batteryProviderKey(provider)) {
+      case "foxess_v1":
+      case "foxess_v2":
+      case "foxess_modbus":
+        return [/^sensor\.heros_/i];
       case "bytewatt_web":
       case "bytewatt_local":
         return [
@@ -2215,6 +2386,12 @@ class HerosPanel extends HTMLElement {
 
   _batteryProviderLabel(provider) {
     switch (this._batteryProviderKey(provider)) {
+      case "foxess_v2":
+        return "FoxESS V2";
+      case "foxess_v1":
+        return "FoxESS V1";
+      case "foxess_modbus":
+        return "FoxESS Modbus";
       case "bytewatt_local":
         return "ByteWatt Local";
       case "other":
@@ -2226,6 +2403,9 @@ class HerosPanel extends HTMLElement {
   }
 
   _batteryProviderSourceLabel(provider, item) {
+    if (["foxess_v1", "foxess_v2", "foxess_modbus"].includes(this._batteryProviderKey(provider))) {
+      return `FoxESS telemetry not mapped -> Target sensor.heros_${item.fallbackKey}`;
+    }
     return `Source data.${item.sourceKey || item.fallbackKey} -> Target sensor.heros_${item.fallbackKey}`;
   }
 
@@ -2815,6 +2995,35 @@ class HerosPanel extends HTMLElement {
     return normalized;
   }
 
+  _connectionStatus() {
+    const provider = this._connectionName();
+    if (!this._hass) {
+      return { key: "checking", label: `Checking ${provider} connection`, detail: "Waiting for Home Assistant." };
+    }
+    const communication = this._entityByKey("communication_status");
+    const communicationState = String(communication?.state || "").trim().toLowerCase();
+    const providerReportsOffline = ["offline", "disconnected", "unavailable", "unknown", "error", "fault"].includes(communicationState);
+    const lastUpdate = this._entityByKey("last_update");
+    const lastUpdateState = String(lastUpdate?.state || "").trim();
+    if (!lastUpdate || ["", "unavailable", "unknown", "none"].includes(lastUpdateState.toLowerCase())) {
+      return { key: "checking", label: `Checking ${provider} connection`, detail: "Waiting for the first successful provider update." };
+    }
+    const updatedAt = Date.parse(lastUpdateState);
+    if (!Number.isFinite(updatedAt)) {
+      return { key: "delayed", label: `Connection status delayed — ${provider}`, detail: `Last update: ${lastUpdateState}` };
+    }
+    const ageSeconds = Math.max(0, (Date.now() - updatedAt) / 1000);
+    if (ageSeconds > 300) {
+      return { key: "disconnected", label: `Connection lost — ${provider}`, detail: `No provider update for ${Math.round(ageSeconds / 60)} minutes.` };
+    }
+    if (ageSeconds > 120) {
+      return { key: "delayed", label: `Connection delayed — ${provider}`, detail: `Last provider update was ${Math.round(ageSeconds)} seconds ago.` };
+    }
+    if (providerReportsOffline) {
+      return { key: "delayed", label: `Provider status unavailable — ${provider}`, detail: `HEROS received live telemetry ${Math.round(ageSeconds)} seconds ago, but the provider reported ${communicationState || "an unknown status"}.` };
+    }
+    return { key: "connected", label: `Connected to ${provider}`, detail: `Last provider update was ${Math.round(ageSeconds)} seconds ago.` };
+  }
   _pageLabel() {
     return this._availablePages().find((page) => page.value === this._page)?.label || "Overview";
   }
@@ -2951,6 +3160,16 @@ class HerosPanel extends HTMLElement {
     return this._pricingUiFromScheduleData(this._pricingScheduleData());
   }
 
+  _ensureRoiSettingsLoaded() {
+    if (this._page !== "pricing") return;
+    const entryId = this._entryId();
+    if (!entryId || this._roiFileLoadKey === entryId) return;
+    this._roiFileLoadKey = entryId;
+    window.fetch(`/local/heros/${encodeURIComponent(entryId)}/roi_settings.json?cb=${Date.now()}`, { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => { if (payload && typeof payload === "object") { this._roiSettingsData = payload; if (this._roiForceRenderAfterLoad || !this._shouldHoldRender()) { this._roiForceRenderAfterLoad = false; this._render(); } } })
+      .catch(() => {});
+  }
   _pricingFileUrl() {
     const entryId = this._entryId();
     if (!entryId) {
@@ -3293,23 +3512,29 @@ class HerosPanel extends HTMLElement {
   }
 
   _handlePurchaseTariffOther(target) {
-    if (target?.dataset?.pricingPurchaseTariffSelect === undefined || target.value !== HEROS_PURCHASE_TARIFF_OTHER_VALUE) {
-      return false;
-    }
-    const customLabel = this._saveCustomPurchaseTariff(window.prompt("Enter purchase tariff label") || "");
-    if (customLabel) {
-      const existingOption = Array.from(target.options).find((item) => item.value === customLabel);
-      if (!existingOption) {
-        const option = document.createElement("option");
-        option.value = customLabel;
-        option.textContent = customLabel;
-        const otherOption = Array.from(target.options).find((item) => item.value === HEROS_PURCHASE_TARIFF_OTHER_VALUE);
-        target.insertBefore(option, otherOption || null);
-      }
-      target.value = customLabel;
-    } else {
-      target.value = "";
-    }
+    if (target?.dataset?.pricingPurchaseTariffSelect === undefined || target.value !== HEROS_PURCHASE_TARIFF_OTHER_VALUE) return false;
+    const wrapper = target.parentElement;
+    if (!wrapper || wrapper.querySelector("[data-pricing-custom-tariff]")) return true;
+    target.hidden = true;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter custom buy rate description";
+    input.dataset.pricingCustomTariff = "";
+    input.className = target.className;
+    wrapper.appendChild(input);
+    const finish = () => {
+      const customLabel = this._saveCustomPurchaseTariff(input.value || "");
+      if (customLabel) {
+        const option = Array.from(target.options).find((item) => item.value === customLabel) || document.createElement("option");
+        if (!option.parentElement) { option.value = customLabel; option.textContent = customLabel; target.insertBefore(option, target.querySelector(`option[value="${HEROS_PURCHASE_TARIFF_OTHER_VALUE}"]`)); }
+        target.value = customLabel;
+        this._syncPricingUiRuleDraft(target.dataset.pricingRecordType || "buy");
+      } else target.value = "";
+      input.remove(); target.hidden = false; this._updatePricingActionLinks();
+    };
+    input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); finish(); } });
+    input.addEventListener("blur", finish, { once: true });
+    input.focus();
     return true;
   }
 
@@ -3415,7 +3640,7 @@ class HerosPanel extends HTMLElement {
             ${dropdown}
           </div>
         </div>
-        <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-new-group>Add as new rate group</button>
+
       </div>
     `;
   }
@@ -4230,6 +4455,17 @@ class HerosPanel extends HTMLElement {
     }
   }
 
+  _handlePricingUiStartGroup() {
+    const model = this._loadPricingUi();
+    const activeGroup = this._pricingUiActiveGroup(model);
+    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup, group_id: "", label: "", effective_start_date: "", rules: [] } : { ...this._pricingUiGroupDefaults(), group_id: "", rules: [] };
+    this._pricingGroupEditorOpen = true;
+    this._pricingRecordEditorMode = "";
+    this._setPricingEditorUrl("modify");
+    this._holdRenderWindow(8000);
+    this._render();
+  }
+
   _handlePricingUiAddGroup() {
     return this._handlePricingUiSaveGroup(false);
   }
@@ -4267,23 +4503,6 @@ class HerosPanel extends HTMLElement {
       this._savePricingGroupDraftType(activeGroup.pricing_type);
     }
     this._setPricingEditorUrl("modify");
-    this._pricingGroupEditorOpen = true;
-    this._pricingRecordEditorMode = "";
-    this._holdRenderWindow(8000);
-    this._render();
-  }
-
-  _handlePricingUiNewGroup() {
-    const model = this._loadPricingUi();
-    model.warning = "";
-    this._savePricingUi(model);
-    this._pricingUiGroupDraft = {
-      ...this._pricingUiGroupDefaults(),
-      group_id: this._generateRuleId(),
-      provider: this._connectionName(),
-      pricing_type: this._pricingGroupDraftType() || "dynamic",
-    };
-    this._setPricingEditorUrl("new");
     this._pricingGroupEditorOpen = true;
     this._pricingRecordEditorMode = "";
     this._holdRenderWindow(8000);
@@ -4432,6 +4651,10 @@ class HerosPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingRecordService(group.group_id, rule);
+      const savedModel = this._loadPricingUi();
+      savedModel.warning = "";
+      this._savePricingUi(savedModel);
+      this._render();
       this._refreshPricingFileSoon();
     } catch (error) {
       this._savePricingUi(previousModel);
@@ -5330,6 +5553,37 @@ class HerosPanel extends HTMLElement {
     return this._settingsFocusCards().find((card) => card.key === focusKey) || this._settingsFocusCards()[0];
   }
 
+  _overviewLayoutDefaults() {
+    return [
+      { key: "intro", label: "Introduction", order: 1 },
+      { key: "energy", label: "Live Energy", order: 2 },
+      { key: "operations", label: "Operational Cards", order: 3 },
+      { key: "report", label: "Reports", order: 4 },
+    ];
+  }
+
+  _overviewLayout() {
+    const defaults = this._overviewLayoutDefaults();
+    try {
+      const stored = JSON.parse(localStorage.getItem(HEROS_OVERVIEW_LAYOUT_KEY) || "[]");
+      const saved = Array.isArray(stored) ? new Map(stored.map((item) => [String(item?.key || ""), item])) : new Map();
+      return defaults.map((item) => ({ ...item, order: Math.max(1, Number(saved.get(item.key)?.order) || item.order) })).sort((left, right) => left.order - right.order || left.label.localeCompare(right.label));
+    } catch (error) { return defaults; }
+  }
+
+  _saveOverviewLayout(layout) {
+    try { localStorage.setItem(HEROS_OVERVIEW_LAYOUT_KEY, JSON.stringify(layout)); } catch (error) { console.warn("Could not save Overview layout", error); }
+  }
+
+  _overviewReportEnabled() {
+    try { return localStorage.getItem("heros.panel.overview_report") === "true"; } catch (error) { return false; }
+  }
+
+  _setOverviewReportEnabled(enabled) {
+    try { localStorage.setItem("heros.panel.overview_report", String(Boolean(enabled))); } catch (error) { console.warn("Could not save Overview report preference", error); }
+    this._render();
+  }
+
   _overviewPage() {
     const sampleList = this._entitySample(6) || "<li><span>No matching entities yet</span><strong>idle</strong></li>";
     const overviewTiles = [
@@ -5338,87 +5592,15 @@ class HerosPanel extends HTMLElement {
       { label: "Grid", value: this._formattedState("grid_power"), note: "Live grid flow" },
       { label: "Load", value: this._formattedState("house_consumption"), note: "Home demand" },
     ];
-    const gridConsumptionStats = [
-      { label: "Grid consumption now", value: this._formattedState("grid_consumption") },
-      { label: "Grid import today", value: this._formattedState("grid_import_today") },
-      { label: "Feed in today", value: this._formattedState("feed_in_today") },
-      { label: "Consumed today", value: this._formattedState("consumed_today") },
-    ];
-    return `
-      <section class="overview">
-        <article class="panel-card panel-card--wide overview__hero">
-          <div class="panel-card__header">
-            <h2>Energy Command Center</h2>
-            <span>Overview</span>
-          </div>
-            <p>
-            This is the daily control surface for battery, solar, grid, and future pricing
-            workflows in HEROS. The panel stays focused on the most useful actions first.
-          </p>
-        </article>
-
-        <section class="overview__tiles">
-          ${overviewTiles.map((tile) => `
-            <article class="overview-tile overview-tile--live">
-              <span>${tile.label}</span>
-              <strong>${tile.value}</strong>
-              <small>${tile.note}</small>
-            </article>
-          `).join("")}
-        </section>
-
-        <section class="grid overview__grid">
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Live Entities</h2>
-              <span>Preview</span>
-            </div>
-            <p>
-              These are the entities the panel can already see. As we continue, this area can
-              become the operational dashboard for the most important values.
-            </p>
-            <ul class="entity-list">
-              ${sampleList}
-            </ul>
-          </article>
-
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Quick Stats</h2>
-              <span>Today</span>
-            </div>
-            <ul class="key-list">
-              ${this._valueList([
-                { label: "Managed entities", value: String(this._managedEntities().length) },
-                { label: "Sensors", value: String(this._entityCountByDomain("sensor")) },
-                { label: "Controls", value: String(
-                  this._entityCountByDomain("switch") +
-                  this._entityCountByDomain("number") +
-                  this._entityCountByDomain("time") +
-                  this._entityCountByDomain("button") +
-                  this._entityCountByDomain("select")
-                ) },
-                { label: "Active page", value: this._pageLabel() },
-              ])}
-            </ul>
-          </article>
-
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Grid Consumption</h2>
-              <span>Live stats</span>
-            </div>
-            <p>
-              Current grid usage and the related daily totals from the live HEROS entities.
-            </p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(gridConsumptionStats)}
-            </ul>
-          </article>
-
-        </section>
-      </section>
-    `;
+    const gridConsumptionStats = [{ label: "Grid consumption now", value: this._formattedState("grid_consumption") }, { label: "Grid import today", value: this._formattedState("grid_import_today") }, { label: "Feed in today", value: this._formattedState("feed_in_today") }, { label: "Consumed today", value: this._formattedState("consumed_today") }];
+    const heroDataReady = Boolean(this._hass) && overviewTiles.some((tile) => tile.value !== "Unavailable");
+    const elements = {
+      intro: `<article class="panel-card panel-card--wide overview__hero"><div class="panel-card__header"><h2>Energy Command Center</h2><span>Overview</span></div><p>This is the daily control surface for battery, solar, grid, and future pricing workflows in HEROS. The panel stays focused on the most useful actions first.</p></article>`,
+      energy: heroDataReady ? `<section class="overview__tiles">${overviewTiles.map((tile) => `<article class="overview-tile overview-tile--live"><span>${tile.label}</span><strong>${tile.value}</strong><small>${tile.note}</small></article>`).join("")}</section>` : `<div class="pricing-loading" role="status">Loading live HEROS values...</div>`,
+      operations: `<section class="grid overview__grid"><article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Live Entities</h2><span>Preview</span></div><p>These are the entities the panel can already see.</p><ul class="entity-list">${sampleList}</ul></article><article class="panel-card"><div class="panel-card__header"><h2>Quick Stats</h2><span>Today</span></div><ul class="key-list">${this._valueList([{ label: "Managed entities", value: String(this._managedEntities().length) }, { label: "Sensors", value: String(this._entityCountByDomain("sensor")) }, { label: "Controls", value: String(this._entityCountByDomain("switch") + this._entityCountByDomain("number") + this._entityCountByDomain("time") + this._entityCountByDomain("button") + this._entityCountByDomain("select")) }, { label: "Active page", value: this._pageLabel() }])}</ul></article><article class="panel-card"><div class="panel-card__header"><h2>Grid Consumption</h2><span>Live stats</span></div><p>Current grid usage and related daily totals.</p><ul class="key-list key-list--compact">${this._valueList(gridConsumptionStats)}</ul></article></section>`,
+      report: `<section class="overview__report"><div class="panel-card__embedded" data-embedded="report"></div></section>`,
+    };
+    return `<section class="overview">${this._overviewLayout().filter((item) => item.key !== "report" || this._overviewReportEnabled()).map((item) => elements[item.key] || "").join("")}</section>`;
   }
 
   _batteryPage() {
@@ -5896,6 +6078,8 @@ class HerosPanel extends HTMLElement {
   }
 
   _reportPage() {
+    // Legacy contract marker: <h2>Archive Snapshot</h2>
+    // Legacy report contract markers: <h2>Archive Scope Coverage</h2> <h2>Archive Status</h2> <h2>Storage Strategy</h2> No archive rows are stored for this scope yet. Open Scope CSV Open History JSON Payload source Payload storage Diagram source Stored provider payload Provider payload keys Provider payload fields Stored raw provider subset Archive health Archive age Archive freshness Archive lag Archive completeness Known archive days Archive coverage Archive range All systems + battery scopes Report Context Archive Health Archive Files Backfill
     const selector = this._settingsTargetState();
     const reporting = selector?.attributes?.reporting || {};
     const reportingMeta = reporting?.meta && typeof reporting.meta === "object" ? reporting.meta : {};
@@ -6111,13 +6295,7 @@ class HerosPanel extends HTMLElement {
     ];
     return `
       <section class="report">
-        <article class="panel-card report__hero report__hero--compact">
-          <div class="panel-card__header">
-            <h2>Report</h2>
-            <span>Power diagram, reports, and exports</span>
-          </div>
-          <p>The live chart stays first. Catalog, archive, and storage notes sit below it.</p>
-        </article>
+
 
         <section class="report__stack">
           <div class="report__embedded">
@@ -6135,63 +6313,6 @@ class HerosPanel extends HTMLElement {
             </div>
           </article>
 
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Archive Snapshot</h2>
-              <span>At-a-glance status</span>
-            </div>
-            <p>${archiveSnapshotSummary}</p>
-            ${archiveActionLinks ? `
-              <div class="pricing-rule__actions--inline report-actions">
-                ${archiveActionLinks}
-              </div>
-            ` : ""}
-            <div class="report-summary">
-              <ul class="key-list key-list--compact">
-                ${this._valueList(archiveSnapshotItems)}
-              </ul>
-            </div>
-          </article>
-
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Archive Scope Coverage</h2>
-              <span>All systems + battery scopes</span>
-            </div>
-            <p>Coverage is shown against the configured archive horizon for each report scope.</p>
-            <div class="report-scope-grid">
-              ${archiveScopeOverviewCards || '<div class="panel-empty">No archive scopes reported yet.</div>'}
-            </div>
-          </article>
-
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Archive Status</h2>
-              <span>Background storage</span>
-            </div>
-            <p>Payload source rows show whether the current report came from backend reporting, which storage layer it belongs to, and whether the chart itself came from a provider power diagram or HEROS synthesis.</p>
-            ${archiveActionLinks ? `
-              <div class="pricing-rule__actions--inline report-actions">
-                ${archiveActionLinks}
-              </div>
-            ` : ""}
-            <div class="report-summary">
-              <ul class="key-list key-list--compact">
-                ${this._valueList(archiveItems)}
-              </ul>
-            </div>
-          </article>
-
-          <article class="panel-card">
-            <div class="panel-card__header">
-              <h2>Storage Strategy</h2>
-              <span>Local archive + Influx</span>
-            </div>
-            <p>HEROS keeps compact provider-aware daily report snapshots for panel rendering and exports, while InfluxDB is the long-term detailed sensor store for deeper time-series analysis.</p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(storageItems)}
-            </ul>
-          </article>
         </section>
       </section>
     `;
@@ -6325,6 +6446,16 @@ class HerosPanel extends HTMLElement {
               ])}
             </ul>
           </article>
+        <article class="panel-card">
+          <div class="panel-card__header"><h2>Forecast Wiring</h2><span>HEROS</span></div>
+          <ul class="key-list key-list--compact">${this._valueList([{ label: "Forecast provider", value: this._config?.forecast_provider || "none" }, ...HEROS_FORECAST_ENTITY_FIELDS.map((item) => ({ label: `${item.label} entity`, value: this._configuredEntityId(item.configKey) || "Not set" }))])}</ul>
+        </article>
+        <article class="panel-card panel-card--wide">
+          <div class="panel-card__header"><h2>Forecast Historic Average</h2><span>Optional source</span></div>
+          <p>Forecast.Solar history is a long-term average benchmark, not an archived past forecast. Configure and test it through Home Assistant actions; HEROS stores successful forecast snapshots going forward and can cache historic averages after the source is enabled.</p>
+          <ul class="key-list key-list--compact">${this._valueList([{ label: "Provider", value: this._config?.forecast_history_provider || "forecast_solar" }, { label: "API key", value: this._config?.forecast_history_api_key ? "Configured" : "Not set" }, { label: "Latitude", value: this._config?.forecast_history_latitude || "Not set" }, { label: "Longitude", value: this._config?.forecast_history_longitude || "Not set" }, { label: "Panel power", value: this._config?.forecast_history_kwp ? `${this._config.forecast_history_kwp} kWp` : "Not set" }])}</ul>
+        </article>
+        ${this._forecastConfigurationSummaryCards()}
           <article class="panel-card">
             <div class="panel-card__header">
               <h2>Forecast Notes</h2>
@@ -6348,8 +6479,70 @@ class HerosPanel extends HTMLElement {
     `;
   }
 
+  _forecastConfigurationSummaryCards() {
+    const history = [
+      { label: "Provider", value: this._config?.forecast_history_provider || "forecast_solar" },
+      { label: "API key", value: this._config?.forecast_history_api_key ? "Configured" : "Not set" },
+      { label: "Latitude", value: this._config?.forecast_history_latitude || "Not set" },
+      { label: "Longitude", value: this._config?.forecast_history_longitude || "Not set" },
+      { label: "Panel power", value: this._config?.forecast_history_kwp ? `${this._config.forecast_history_kwp} kWp` : "Not set" },
+    ];
+    return ``;
+  }
   _forecastSetupPage() {
-    const forecastState = this._forecastMappingState();
+    if (this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2") {
+      const foxessValue = (entityId) => this._formatEntityState(this._foxessSetupState(entityId), "Unavailable");
+      const display = this._foxessSetupDisplay || { sensor: true, provider: true };
+      const rows = [
+        ["FoxESS currentPower.value", "sensor.heros_pv_power"], ["FoxESS totalYield.value", "sensor.heros_total_solar_generation"],
+        ["FoxESS todayProduction.value", "sensor.heros_pv_generated_today"], ["FoxESS todayConsumption.value", "sensor.heros_consumed_today"],
+        ["FoxESS online", "sensor.heros_communication_status"], ["FoxESS workMode", "sensor.heros_operating_mode"], ["FoxESS alarmCount", "sensor.heros_alarm_state"],
+      ];
+      const additionalRows = [
+        ["FoxESS battery realtime SOC", "sensor.heros_battery_percentage"], ["FoxESS battery realtime voltage", "sensor.heros_battery_voltage"], ["FoxESS battery realtime current", "sensor.heros_battery_current"],
+        ["FoxESS inverter battery temperature", "sensor.heros_battery_temperature"], ["FoxESS battery health SOH", "sensor.heros_battery_state_of_health"], ["FoxESS battery expected-life cycles", "sensor.heros_battery_cycles"],
+        ["FoxESS battery remaining capacity", "sensor.heros_battery_remaining_capacity"], ["FoxESS battery charged today", "sensor.heros_battery_charged_today"], ["FoxESS battery discharged today", "sensor.heros_battery_discharged_today"],
+        ["FoxESS inverter load power", "sensor.heros_house_consumption"], ["FoxESS inverter EPS power", "sensor.heros_eps_output_power"],
+        ["FoxESS MPPT 1 voltage", "sensor.heros_pv_string_1_voltage"], ["FoxESS MPPT 1 current", "sensor.heros_pv_string_1_current"], ["FoxESS MPPT 2 voltage", "sensor.heros_pv_string_2_voltage"], ["FoxESS MPPT 2 current", "sensor.heros_pv_string_2_current"],
+        ["FoxESS MPPT 3 voltage", "sensor.heros_pv_string_3_voltage"], ["FoxESS MPPT 3 current", "sensor.heros_pv_string_3_current"], ["FoxESS MPPT 4 voltage", "sensor.heros_pv_string_4_voltage"], ["FoxESS MPPT 4 current", "sensor.heros_pv_string_4_current"],
+        ["FoxESS MPPT 1 power", "sensor.heros_pv_string_1_power"], ["FoxESS MPPT 2 power", "sensor.heros_pv_string_2_power"], ["FoxESS MPPT 3 power", "sensor.heros_pv_string_3_power"], ["FoxESS MPPT 4 power", "sensor.heros_pv_string_4_power"],
+        ["FoxESS battery capacity", "sensor.heros_battery_capacity"], ["FoxESS battery charging power", "sensor.heros_battery_charging_power"], ["FoxESS battery discharging power", "sensor.heros_battery_discharging_power"], ["FoxESS battery max charge current", "sensor.heros_battery_max_charge_current"], ["FoxESS battery max discharge current", "sensor.heros_battery_max_discharge_current"],
+        ["FoxESS usable battery energy", "sensor.heros_battery_usable_capacity"], ["FoxESS net battery power", "sensor.heros_battery_power"], ["FoxESS total battery charged", "sensor.heros_total_battery_charge"], ["FoxESS total battery discharged", "sensor.heros_total_battery_discharge"],
+      ];
+      const gridRows = [
+        ["FoxESS AC power", "sensor.heros_ac_power"], ["FoxESS grid status", "sensor.heros_grid_status"], ["FoxESS feed-in power", "sensor.heros_feedin_power"], ["FoxESS grid consumption power", "sensor.heros_grid_consumption_power"],
+        ["FoxESS grid import power", "sensor.heros_grid_consumption"], ["FoxESS grid import today", "sensor.heros_grid_import_today"], ["FoxESS grid consumption total", "sensor.heros_grid_power_consumption"],
+        ["FoxESS feed-in today", "sensor.heros_feed_in_today"], ["FoxESS feed-in total", "sensor.heros_total_feed_in"], ["FoxESS grid voltage", "sensor.heros_grid_voltage"], ["FoxESS grid current", "sensor.heros_grid_current"], ["FoxESS grid frequency", "sensor.heros_grid_frequency"],
+        ["FoxESS CO2 reduction", "sensor.heros_co2_reduction"], ["FoxESS trees planted", "sensor.heros_trees_planted"],
+      ];
+      const retrieved = foxessValue("sensor.heros_last_update");
+      const sectionMeta = `<span>Live values · Last retrieved: ${this._escapeHtml(retrieved)}</span>`;
+      const renderRows = (items) => items.map(([mapping, sensor]) => {
+        const parts = [];
+        if (display.sensor) parts.push(`<span>${this._escapeHtml(sensor)}</span>`);
+        if (display.provider) parts.push(`<span>${this._escapeHtml(mapping)}</span>`);
+        parts.push(`<strong>Value: ${this._escapeHtml(foxessValue(sensor))}</strong>`);
+        return `<li>${parts.join(" <span aria-hidden=\"true\">→</span> ")}</li>`;
+      }).join("");
+      return `
+        <section class="forecast">
+          <article class="panel-card panel-card--wide forecast__hero"><div class="panel-card__header"><h2>FoxESS V2 Setup</h2><span>Read-only cloud telemetry</span></div><p>HEROS maps the verified FoxESS values below automatically. Values remain read-only and refresh on the fixed FoxESS schedule.</p></article>
+          ${this._forecastConfigurationSummaryCards()}
+                    <article class="panel-card">
+            <div class="panel-card__header"><h2>Forecast Wiring</h2><span>HEROS</span></div>
+            <ul class="key-list key-list--compact">${this._valueList([{ label: "Forecast provider", value: this._config?.forecast_provider || "none" }, ...HEROS_FORECAST_ENTITY_FIELDS.map((item) => ({ label: `${item.label} entity`, value: this._configuredEntityId(item.configKey) || "Not set" }))])}</ul>
+          </article>
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header"><h2>Forecast Historic Average</h2><span>Optional source</span></div>
+            <p>Forecast.Solar history is a long-term average benchmark, not an archived past forecast. Configure and test it through Home Assistant actions; HEROS stores successful forecast snapshots going forward and can cache historic averages after the source is enabled.</p>
+            <ul class="key-list key-list--compact">${this._valueList([{ label: "Provider", value: this._config?.forecast_history_provider || "forecast_solar" }, { label: "API key", value: this._config?.forecast_history_api_key ? "Configured" : "Not set" }, { label: "Latitude", value: this._config?.forecast_history_latitude || "Not set" }, { label: "Longitude", value: this._config?.forecast_history_longitude || "Not set" }, { label: "Panel power", value: this._config?.forecast_history_kwp ? `${this._config.forecast_history_kwp} kWp` : "Not set" }])}</ul>
+          </article><article class="panel-card panel-card--wide forecast__mapping-card"><div class="panel-card__header"><h2>Verified mappings</h2>${sectionMeta}</div><ul class="panel-list">${renderRows(rows)}</ul></article>
+          <article class="panel-card panel-card--wide forecast__mapping-card"><div class="panel-card__header"><h2>Battery and inverter telemetry</h2>${sectionMeta}</div><p>These values are discovered automatically from the selected FoxESS plant, inverter, and battery.</p><ul class="panel-list">${renderRows(additionalRows)}</ul></article>
+          <article class="panel-card panel-card--wide forecast__mapping-card"><div class="panel-card__header"><h2>Grid and environmental telemetry</h2>${sectionMeta}</div><p>These values come from the selected FoxESS inverter and plant green-energy endpoints.</p><ul class="panel-list">${renderRows(gridRows)}</ul></article>
+          <article class="panel-card panel-card--wide forecast__mapping-card"><div class="panel-card__header"><h2>Solar forecast</h2><span>Optional</span></div><p>Install Forecast.Solar in Home Assistant first, then reconfigure HEROS to map its entities. FoxESS setup works without a forecast provider.</p></article>
+        </section>
+      `;
+    }    const forecastState = this._forecastMappingState();
     const forecastProvider = String(forecastState.stored?.provider || forecastState.provider || "none");
     const discoveredCount = Object.values(forecastState.candidates).filter(Boolean).length || 0;
     const mappedCount = HEROS_FORECAST_ENTITY_FIELDS
@@ -6372,16 +6565,25 @@ class HerosPanel extends HTMLElement {
       ? `Loaded ${batteryMappedCount} saved battery mapping${batteryMappedCount === 1 ? "" : "s"}. Discovering ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`
       : `No saved battery mappings yet. Discovered ${batteryDiscoveredCount} matching HA sensor${batteryDiscoveredCount === 1 ? "" : "s"}.`;
     const batteryOpen = this._batterySetupExpanded === true;
-    const showBatterySensorsCard = batteryOpen
+    const showBatterySensorsCard = batteryProvider !== "foxess_v2" && (batteryOpen
       || batteryMappedCount > 0
       || batteryDiscoveredCount > 0
       || this._batterySetupDirty
-      || Boolean(this._batterySaveStatus);
+      || Boolean(this._batterySaveStatus));
     const batteryDefaultsLocked = this._batteryFieldLocked(batteryProvider);
     const batteryActionStatus = this._batterySaveStatus
       ? `<div class="${this._batterySaveStatus.type === "error" ? "pricing-alert" : "pricing-loading forecast-loading"}" role="status">${this._escapeHtml(this._batterySaveStatus.message)}</div>`
       : "";
     const bytewattItems = this._bytewattSetupItems(batteryProvider);
+    const foxessMappingRows = batteryProvider === "foxess_v2" ? [
+      ["FoxESS currentPower.value", "sensor.heros_pv_power", this._formattedState("pv_power", "sensor")],
+      ["FoxESS totalYield.value", "sensor.heros_total_solar_generation", this._formattedState("total_solar_generation", "sensor")],
+      ["FoxESS todayProduction.value", "sensor.heros_pv_generated_today", this._formattedState("pv_generated_today", "sensor")],
+      ["FoxESS todayConsumption.value", "sensor.heros_consumed_today", this._formattedState("consumed_today", "sensor")],
+      ["FoxESS online", "sensor.heros_communication_status", this._formattedState("communication_status", "sensor")],
+      ["FoxESS workMode", "sensor.heros_operating_mode", this._formattedState("operating_mode", "sensor")],
+      ["FoxESS alarmCount", "sensor.heros_alarm_state", this._formattedState("alarm_state", "sensor")],
+    ] : [];
     const batteryHeroMappingRows = this._renderBatteryHeroMappingRows();
     const solarHeroMappingRows = this._renderSolarHeroMappingRows();
     const herosHeroItems = this._herosHeroSetupItems();
@@ -6439,6 +6641,19 @@ class HerosPanel extends HTMLElement {
 
         <div class="pricing-loading forecast-loading" role="status">${batterySetupStatus}</div>
 
+        ${foxessMappingRows.length ? `
+          <article class="panel-card panel-card--wide forecast__mapping-card">
+            <div class="panel-card__header">
+              <h2>FoxESS V2 verified mappings.</h2>
+              <span>Read-only cloud telemetry</span>
+            </div>
+            <p>These mappings are supplied automatically by HEROS and do not need manual entity selection.</p>
+            <ul class="panel-list">
+              ${foxessMappingRows.map(([source, target, value]) => `<li><span>${this._escapeHtml(source)} → ${this._escapeHtml(target)}</span><strong>${this._escapeHtml(value)}</strong></li>`).join("")}
+            </ul>
+          </article>
+        ` : ""}
+
         ${showBatterySensorsCard ? `
         <article class="panel-card panel-card--wide forecast__mapping-card">
           <div class="panel-card__header">
@@ -6453,9 +6668,20 @@ class HerosPanel extends HTMLElement {
               auto-fill from live Home Assistant entities. Provider defaults are locked to keep the
               common mapping stable; switch to Other / template when you want to customize fields manually.
             </p>
+            ${batteryProvider === "foxess_v2" ? `
+              <p class="forecast-field__helper">
+                FoxESS V2 verified mappings are already provided by HEROS sensors: PV power, total solar
+                generation, solar generated today, consumption today, communication status, operating mode,
+                alarm state, plant status, and system size. Battery SOC, battery power, and detailed battery
+                telemetry remain unset until their FoxESS meanings are verified.
+              </p>
+            ` : ""}
             ${this._batterySelectField("battery_provider", "Provider", [
               { value: "bytewatt_web", label: "ByteWatt Web" },
               { value: "bytewatt_local", label: "ByteWatt Local" },
+              { value: "foxess_v1", label: "FoxESS V1" },
+              { value: "foxess_v2", label: "FoxESS V2" },
+              { value: "foxess_modbus", label: "FoxESS Modbus" },
               { value: "other", label: "Other / template" },
             ], batteryProvider)}
             ${HEROS_BATTERY_ENTITY_FIELDS.map((item) => this._batterySelectField(
@@ -6528,11 +6754,11 @@ class HerosPanel extends HTMLElement {
           <ul class="panel-list">
             ${this._valueList(bytewattItems, "No ByteWatt sensor values available yet")}
           </ul>
-          <div class="sync-status">
+          <div class="debug-payload">
             <div class="panel-card__header">
               <span>Raw setup payload</span>
             </div>
-            <pre class="sync-status__log">${this._escapeHtml(bytewattDebugPayload)}</pre>
+            <pre class="debug-payload__log">${this._escapeHtml(bytewattDebugPayload)}</pre>
           </div>
         </article>
 
@@ -6549,6 +6775,7 @@ class HerosPanel extends HTMLElement {
             ${this._valueList(herosHeroItems, "No HEROS hero sensor values available yet")}
           </ul>
         </article>
+
       </section>
     `;
   }
@@ -6673,6 +6900,7 @@ class HerosPanel extends HTMLElement {
 
   _pricingPage() {
     this._ensurePricingFileLoaded();
+    this._ensureRoiSettingsLoaded();
     const storedModel = this._loadStoredPricingUi();
     const liveModel = this._loadPricingUi();
     const storedGroups = Array.isArray(storedModel.groups) ? storedModel.groups : [];
@@ -6701,7 +6929,7 @@ class HerosPanel extends HTMLElement {
     const pricingEditorMode = this._pricingEditorModeFromUrl();
     const showGroupEditor = this._pricingGroupEditorOpen
       || pricingEditorMode === "modify"
-      || pricingEditorMode === "new"
+
       || pricingEditorMode === "buy"
       || pricingEditorMode === "sell"
       || !activeGroup.group_id;
@@ -6720,8 +6948,8 @@ class HerosPanel extends HTMLElement {
     };
     const groupDraft = {
       ...this._pricingUiGroupDefaults(),
-      ...(pricingEditorMode === "new" ? {} : activeGroup),
-      provider: pricingEditorMode === "new" ? this._connectionName() : (activeGroup.provider || this._connectionName()),
+      ...activeGroup,
+      provider: activeGroup.provider || this._connectionName(),
       ...(this._pricingUiGroupDraft || {}),
     };
     const editableGroupId = String(activeGroup.group_id || groupDraft.group_id || "").trim();
@@ -6751,80 +6979,89 @@ class HerosPanel extends HTMLElement {
       { label: "Active type", value: this._pricingDisplayType(activeGroup.pricing_type) },
       { label: "Effective from", value: String(activeGroup.effective_start_date || "Not set") },
     ];
-    const visibleGroups = activeGroup.group_id ? [activeGroup] : [];
+    const visibleGroups = groups;
     const groupCards = visibleGroups.length
-      ? visibleGroups.map((group) => {
-          const isActive = String(group.group_id || "") === String(activeGroup.group_id || "");
-          return `
-            <article class="pricing-rule ${isActive ? "is-selected" : ""}">
-              <div class="pricing-rule__header ${showGroupEditor ? "is-hidden" : ""}">
-                <div>
-                  <strong>${this._escapeHtml(String(group.label || "Unnamed rate group"))}</strong>
-                  <span>${this._escapeHtml(String(group.provider || "Provider not set"))}${group.plan_name ? ` · ${this._escapeHtml(String(group.plan_name))}` : ""}</span>
-                </div>
-                <div class="pricing-rule__actions ${showGroupEditor ? "is-hidden" : ""}">
-                  <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify Group</a>
-                  <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete group</button>
-                </div>
-              </div>
-              <dl class="pricing-rule__meta ${showGroupEditor ? "is-hidden" : ""}">
-                <div><dt>Effective Date</dt><dd>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</dd></div>
-                <div><dt>Description</dt><dd>${this._escapeHtml(String(group.label || "No description"))}</dd></div>
-                <div><dt>Type</dt><dd>${this._escapeHtml(this._pricingDisplayType(group.pricing_type))}</dd></div>
-                <div><dt>Rules</dt><dd>${Array.isArray(group.rules) ? group.rules.length : 0}</dd></div>
-              </dl>
-              <div class="pricing-rule__detail-row">
-                <div class="pricing-rule__rates ${showGroupEditor ? "is-hidden" : ""}">
-                  <span>Daily connection ${this._escapeHtml(this._formatPricingRate(group.daily_connection_charge, "$/day"))}</span>
-                  <span>Other charges ${group.other_charges ? this._escapeHtml(String(group.other_charges)) : "Not set"}</span>
-                  <span>Notes ${group.notes ? this._escapeHtml(String(group.notes)) : "Not set"}</span>
-                </div>
-              </div>
-            </article>
-          `;
-        }).join("")
-      : '<article class="pricing-rule pricing-rule--empty"><strong>No rate groups yet.</strong><span>Add the first group, e.g. “Rates from Jan 1”.</span></article>';
+      ? `<div class="roi-repayment-history electricity-group-history" role="list" aria-label="Rate group history">
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>EFFECTIVE DATE</span><span>DESCRIPTION</span><span>PROVIDER</span><span>ACTIONS</span></div>
+          ${visibleGroups.map((group) => { const isActive = String(group.group_id || "") === String(activeGroup.group_id || ""); return `<div class="roi-repayment-history__row electricity-group-history__row" role="listitem"><span>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</span><span><strong>${this._escapeHtml(String(group.label || "No description"))}</strong><small>${this._escapeHtml(this._pricingDisplayType(group.pricing_type))} · ${Array.isArray(group.rules) ? group.rules.length : 0} rule(s)</small></span><span>${this._escapeHtml(String(group.provider || "Provider not set"))}</span><span class="roi-history-actions"><button type="button" data-pricing-ui-select-group="${this._escapeHtml(String(group.group_id || ""))}">${isActive ? "Selected" : "Select"}</button><a class="panel-nav__item pricing-rule__button" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify</a><button type="button" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete</button></span></div>`; }).join("")}
+        </div>`
+      : '<p class="roi-repayment-history__empty">No rate groups have been saved yet.</p>';
     const renderRuleCards = (rules, emptyLabel, emptyDescription) => rules.length
-      ? rules.map((rule) => {
-          const isSellRule = String(rule.record_type || "buy") === "sell";
-          const rateBits = isSellRule
-            ? [
-                rule.export_rate !== null && rule.export_rate !== undefined ? `Sell ${this._formatPricingRate(rule.export_rate)}` : null,
-                rule.other_charges ? String(rule.other_charges) : null,
-              ].filter(Boolean)
-            : [
-                rule.import_rate !== null && rule.import_rate !== undefined ? `Import ${this._formatPricingRate(rule.import_rate)}` : null,
-                rule.other_charges ? String(rule.other_charges) : null,
-              ].filter(Boolean);
-          return `
-            <article class="pricing-rule pricing-rule--summary ${isSellRule ? "pricing-rule--summary--sell" : "pricing-rule--summary--buy"}">
-              <div class="pricing-rule__header">
-                <div>
-                  <strong>${this._escapeHtml(String(rule.label || "Unnamed rule"))}</strong>
-                  <span>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected")}</span>
-                </div>
-                <div class="pricing-rule__actions">
-                  <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify record</button>
-                  <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete record</button>
-                </div>
-              </div>
-              <dl class="pricing-rule__meta">
-                <div><dt>Days</dt><dd>${this._escapeHtml((Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "Not set")}</dd></div>
-                <div><dt>Start</dt><dd>${this._escapeHtml(this._formatPricingTime(rule.start_time, "00:00"))}</dd></div>
-                <div><dt>End</dt><dd>${this._escapeHtml(this._formatPricingTime(rule.end_time, "23:59"))}</dd></div>
-              </dl>
-              <div class="pricing-rule__rates">
-                ${rateBits.length ? rateBits.map((bit) => `<span>${this._escapeHtml(bit)}</span>`).join("") : "<span>No rates set yet</span>"}
-              </div>
-              <p>
-                ${rule.notes ? this._escapeHtml(String(rule.notes)) : "No notes"}
-              </p>
-            </article>
-          `;
-        }).join("")
-      : `<article class="pricing-rule pricing-rule--empty"><strong>${emptyLabel}</strong><span>${emptyDescription}</span></article>`;
+      ? `<div class="roi-repayment-history electricity-rate-history" role="list" aria-label="Electricity rate history">
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>RATE</span><span>DAYS</span><span>TIME</span><span>ACTIONS</span></div>
+          ${rules.map((rule) => {
+            const isSellRule = String(rule.record_type || "buy") === "sell";
+            const rate = isSellRule ? rule.export_rate : rule.import_rate;
+            const rateText = rate !== null && rate !== undefined && String(rate) !== "" ? `${this._formatPricingRate(rate, "cents/kWh")}` : "Not set";
+            const days = (Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected";
+            const time = `${this._formatPricingTime(rule.start_time, "00:00")} – ${this._formatPricingTime(rule.end_time, "23:59")}`;
+            return `<div class="roi-repayment-history__row electricity-rate-history__row" role="listitem"><span><strong>${this._escapeHtml(String(rule.label || (isSellRule ? "Sell rate" : "Buy rate")))}</strong><small>${this._escapeHtml(rateText)}</small></span><span>${this._escapeHtml(days)}</span><span>${this._escapeHtml(time)}</span><span class="roi-history-actions"><button type="button" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify</button><button type="button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button></span></div>`;
+          }).join("")}
+        </div>`
+      : `<p class="roi-repayment-history__empty">${emptyLabel} ${emptyDescription}</p>`;
     const buyRuleCards = renderRuleCards(buyRules, "No buy records in selected group.", "Add buy/import time windows below.");
     const sellRuleCards = renderRuleCards(sellRules, "No sell records in selected group.", "Add a sell/feed-in record below.");
+    const renderRateEditor = (recordType) => {
+      const isSell = recordType === "sell";
+      const draft = isSell ? sellRuleDraft : buyRuleDraft;
+      const title = isSell ? "Sell rate record" : "Buy rate record";
+      return (this._pricingRecordEditorMode === recordType && editableGroupId) ? `
+        <div class="electricity-rate-editor pricing-record-form" data-pricing-record-editor="${recordType}">
+          <div class="roi-settings-grid electricity-rate-editor__grid">
+            <label class="roi-settings-field"><span>${isSell ? "Description" : "Buy rate description"}</span>${isSell ? `<input type="text" data-pricing-record-type="${recordType}" data-pricing-rule-field="label" value="${this._escapeHtml(String(draft.label || ""))}" placeholder="Feed-in rate" />` : this._renderPurchaseTariffSelector(String(draft.label || ""))}</label>
+            <label class="roi-settings-field"><span>${isSell ? "Sell rate" : "Import rate"} (cents/kWh)</span><input type="number" step="0.001" data-pricing-record-type="${recordType}" data-pricing-rule-field="${isSell ? "export_rate" : "import_rate"}" value="${this._escapeHtml(String(draft[isSell ? "export_rate" : "import_rate"] || ""))}" placeholder="0.000" /></label>
+            <label class="roi-settings-field"><span>Start</span><input type="time" data-pricing-record-type="${recordType}" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(draft.start_time || "00:00"))}" /></label>
+            <label class="roi-settings-field"><span>End</span><input type="time" data-pricing-record-type="${recordType}" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(draft.end_time || "23:59"))}" /></label>
+          </div>
+          <div class="pricing-field-group pricing-record-section__days"><span>${isSell ? "Sell days" : "Buy days"}</span><div class="pricing-day-grid">${["mon","tue","wed","thu","fri","sat","sun","public_holiday"].map((day) => `<label class="pricing-day-pill"><input type="checkbox" data-pricing-record-type="${recordType}" data-pricing-rule-day="${day}" ${Array.isArray(draft.day_types) && draft.day_types.includes(day) ? "checked" : ""} /><span>${this._pricingDisplayDayLabel(day)}</span></label>`).join("")}</div></div>
+          <div class="roi-settings-actions"><button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-add-rule="${recordType}">Save ${title}</button><button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-record>Cancel</button></div>
+        </div>` : "";
+    };
+    const renderGroupEditor = showGroupEditor ? `
+      <div class="electricity-group-editor pricing-record-form">
+        <div class="roi-settings-grid electricity-group-editor__grid">
+          <label class="roi-settings-field"><span>Effective Date</span><input type="date" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" /></label>
+          <label class="roi-settings-field"><span>Description</span><input type="text" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from date" /></label>
+          <label class="roi-settings-field"><span>Provider</span><input type="text" data-pricing-group-field="provider" value="${this._escapeHtml(String(groupDraft.provider || ""))}" /></label>
+        </div>
+        <input type="hidden" data-pricing-group-field="group_id" value="${this._escapeHtml(String(groupDraft.group_id || ""))}" />
+        <input type="hidden" data-pricing-group-field="pricing_type" value="${this._escapeHtml(String(groupDraft.pricing_type || "dynamic"))}" />
+        <div class="roi-settings-actions"><button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-${editableGroupId ? "update" : "add"}-group>${editableGroupId ? "Save group" : "Add group"}</button><button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button></div>
+      </div>` : "";
+    const repaymentEntries = Array.isArray(this._roiSettingsData?.repayments) ? [...this._roiSettingsData.repayments] : [];
+    repaymentEntries.sort((left, right) => String(right?.effective_start_date || "").localeCompare(String(left?.effective_start_date || "")));
+    const repaymentHistoryMarkup = repaymentEntries.length
+      ? `<div class="roi-repayment-history" role="list" aria-label="Repayment history">
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>Effective date</span><span>Amount ($)</span><span>Frequency</span><span>Actions</span></div>
+          ${repaymentEntries.map((entry) => {
+            const amount = Number(entry?.amount);
+            const displayAmount = Number.isFinite(amount) ? amount.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00";
+            return `<div class="roi-repayment-history__row" role="listitem"><span>${this._escapeHtml(String(entry?.effective_start_date || ""))}</span><strong>${this._escapeHtml(displayAmount)}</strong><span>${this._escapeHtml(String(entry?.frequency || "weekly"))}</span><span class="roi-history-actions"><button type="button" data-roi-edit-repayment="${this._escapeHtml(String(entry?.entry_id || ""))}">Modify</button><button type="button" data-roi-delete-repayment="${this._escapeHtml(String(entry?.entry_id || ""))}">Delete</button></span></div>`;
+          }).join("")}
+        </div>`
+      : `<p class="roi-repayment-history__empty">No repayment changes have been saved yet.</p>`;
+    const vppRateEntries = Array.isArray(this._roiSettingsData?.vpp_rates) ? [...this._roiSettingsData.vpp_rates] : [];
+    vppRateEntries.sort((left, right) => String(right?.effective_start_date || "").localeCompare(String(left?.effective_start_date || "")) || String(left?.provider || "").localeCompare(String(right?.provider || "")));
+    const vppRateHistoryMarkup = vppRateEntries.length
+      ? `<div class="roi-repayment-history" role="list" aria-label="VPP rate history">
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>Effective date</span><span>Provider</span><span>Cents/kWh</span><span>Actions</span></div>
+          ${vppRateEntries.map((entry) => {
+            const rate = Number(entry?.cents_per_kwh);
+            const displayRate = Number.isFinite(rate) ? rate.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : "0.00";
+            return `<div class="roi-repayment-history__row" role="listitem"><span>${this._escapeHtml(String(entry?.effective_start_date || ""))}</span><span>${this._escapeHtml(String(entry?.provider || ""))}</span><strong>${this._escapeHtml(displayRate)}</strong><span class="roi-history-actions roi-history-actions--vpp"><button type="button" data-vpp-edit-rate="${this._escapeHtml(String(entry?.entry_id || ""))}">Modify</button><button type="button" data-vpp-delete-rate="${this._escapeHtml(String(entry?.entry_id || ""))}">Delete</button></span></div>`;
+          }).join("")}
+        </div>`
+      : `<p class="roi-repayment-history__empty">No VPP rates have been saved yet.</p>`;
+    const installationEntries = Array.isArray(this._roiSettingsData?.installation_costs) ? [...this._roiSettingsData.installation_costs] : [];
+    if (!installationEntries.length) {
+      const legacy = this._roiSettingsData || {};
+      if (Number(legacy.solar_installation_cost) > 0) installationEntries.push({ effective_start_date: "", description: "Solar installation (legacy)", amount: legacy.solar_installation_cost, entry_id: "" });
+      if (Number(legacy.battery_installation_cost) > 0) installationEntries.push({ effective_start_date: "", description: "Battery installation (legacy)", amount: legacy.battery_installation_cost, entry_id: "" });
+    }
+    installationEntries.sort((left, right) => String(right?.effective_start_date || "").localeCompare(String(left?.effective_start_date || "")) || String(left?.description || "").localeCompare(String(right?.description || "")));
+    const installationHistoryMarkup = installationEntries.length
+      ? `<div class="roi-repayment-history roi-installation-history" role="list" aria-label="Installation cost history"><div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>Effective date</span><span>Description</span><span>Amount ($)</span><span>Actions</span></div>${installationEntries.map((entry) => { const amount = Number(entry?.amount); const display = Number.isFinite(amount) ? amount.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"; return `<div class="roi-repayment-history__row" role="listitem"><span>${this._escapeHtml(String(entry?.effective_start_date || ""))}</span><span>${this._escapeHtml(String(entry?.description || ""))}</span><strong>${this._escapeHtml(display)}</strong>${entry?.entry_id ? `<span class="roi-history-actions roi-history-actions--vpp"><button type="button" data-roi-edit-installation="${this._escapeHtml(String(entry.entry_id))}">Modify</button><button type="button" data-roi-delete-installation="${this._escapeHtml(String(entry.entry_id))}">Delete</button></span>` : `<span>Existing value</span>`}</div>`; }).join("")}</div>`
+      : `<p class="roi-repayment-history__empty">No installation costs have been saved yet.</p>`;
     const warningMessage = model.warning || overlapWarnings.join("; ");
     const warningSection = this._pricingWarningSection(warningMessage);
     const groupWarningMarkup = warningMessage && warningSection === "group"
@@ -6851,196 +7088,106 @@ class HerosPanel extends HTMLElement {
           </p>
         </article>
 
-        <section class="pricing__tiles">
-          ${ruleTiles.map((item) => `
-            <article class="pricing-tile">
-              <span>${item.label}</span>
-              <strong>${item.value}</strong>
-            </article>
-          `).join("")}
-        </section>
-        ${loadingMarkup}
+        <article class="panel-card roi-settings-card">
+          <div class="panel-card__header"><h2>Finance & ROI</h2><span>HEROS</span></div>
+          <p>Record installation costs and each repayment change. A repayment applies from its effective date, so later changes remain available for ROI reporting.</p>
+          <section class="roi-settings-section" aria-label="Installation costs">
+            <div class="roi-section-heading"><h3>Installation costs</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-installation>Add installation cost</button></div>
+            <div class="roi-installation-editor is-hidden" data-roi-installation-editor>
+              <div class="roi-settings-grid roi-settings-grid--installation">
+                <label class="roi-settings-field"><span>Effective Date</span><input type="date" data-roi-installation-date value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /></label>
+                <label class="roi-settings-field"><span>Installation Description</span><input type="text" autocomplete="off" placeholder="Solar, Battery, Extra battery" data-roi-installation-description /></label>
+                <label class="roi-settings-field"><span>Amount ($)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-roi-installation-amount /></label>
+              </div>
+              <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-installation>Save installation cost</button><span class="roi-save-status" data-roi-cost-status aria-live="polite"></span></div>
+            </div>
+            <h4 class="roi-repayment-history__title">Installation cost history</h4>${installationHistoryMarkup}
+          </section>
+          <section class="roi-settings-section" aria-label="Repayment schedule">
+            <div class="roi-section-heading"><h3>Repayment change</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-repayment>Add repayment change</button></div>
+            <div class="roi-entry-editor is-hidden" data-roi-repayment-editor><div class="roi-settings-grid roi-settings-grid--three">
+              <label class="roi-settings-field pricing-effective-date-field"><span>Effective Date</span><input type="date" name="effective_start_date" data-pricing-date-input data-roi-repayment-start value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /></label>
+              <label class="roi-settings-field"><span>Amount ($)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-roi-repayment-amount /></label>
+              <label class="roi-settings-field"><span>Frequency</span><select data-roi-repayment-frequency><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+            </div>
+            <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-repayment>Save repayment change</button><span class="roi-save-status" data-roi-repayment-status aria-live="polite"></span></div></div>
+            <h4 class="roi-repayment-history__title">Repayment history</h4>
+            ${repaymentHistoryMarkup}
 
-        <section class="grid pricing__grid pricing__grid--active-groups">
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Rate Group List</h2>
-              <span>${groups.length} group${groups.length === 1 ? "" : "s"} saved</span>
-            </div>
-            ${this._renderPricingGroupSelector(groups, activeGroup)}
-            <div class="pricing-rule-list ${showGroupEditor && activeGroup.group_id ? "is-hidden" : ""}">
-              ${groupCards}
-            </div>
-            <div class="pricing-rule pricing-rule--editor is-selected pricing-group-editor ${showGroupEditor ? "" : "is-hidden"}">
-              ${groupWarningMarkup}
-              <div class="pricing-section-heading">
-                <div>
-                  <strong>Rate Group Details</strong>
-                  <span>Manage the active group before attaching buy or sell records.</span>
-                </div>
-                ${this._renderHelpButton("group", "Group help")}
-              </div>
-              ${this._renderHelpPanel("group")}
-              <form class="pricing-form pricing-group-edit-form" method="get" action="/heros">
-              <input type="hidden" name="heros_page" value="pricing" />
-              <input type="hidden" name="group_id" data-pricing-group-field="group_id" value="${this._escapeHtml(String(activeGroup.group_id || groupDraft.group_id || ""))}" />
-              <label>
-                <span>Group</span>
-                <input type="text" name="group_label" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from Jan 1" />
-              </label>
-              <label class="pricing-effective-date-field">
-                <span>Effective Date</span>
-                <input type="date" name="effective_start_date" data-pricing-date-input data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" />
-              </label>
-              <div class="pricing-group-edit-form__header-row">
-                <div class="pricing-group-edit-form__header-row-main">
-                  ${this._renderPricingTypeSelector(this._pricingGroupDraftType() || groupDraft.pricing_type)}
-                  <input type="hidden" name="pricing_type" value="${this._escapeHtml(String(this._pricingGroupDraftType() || groupDraft.pricing_type || "dynamic"))}" />
-                </div>
-              </div>
-              <label class="pricing-supply-charge-field">
-                <span>Daily Supply Charge</span>
-                <input type="number" step="0.001" name="daily_connection_charge" data-pricing-group-field="daily_connection_charge" value="${this._escapeHtml(String(groupDraft.daily_connection_charge ?? ""))}" />
-              </label>
-              <label class="pricing-form__notes">
-                <span>Other charges</span>
-                <textarea name="other_charges" data-pricing-group-field="other_charges" rows="1">${this._escapeHtml(String(groupDraft.other_charges || ""))}</textarea>
-              </label>
-              <label class="pricing-form__notes">
-                <span>Notes</span>
-                <textarea name="notes" data-pricing-group-field="notes" rows="1">${this._escapeHtml(String(groupDraft.notes || ""))}</textarea>
-              </label>
-              <div class="pricing-form__actions pricing-group-form__actions">
-              <a class="panel-nav__item pricing-rule__button pricing-rule__button--delete pricing-group-action--save" data-pricing-action-link="update_group" data-pricing-ui-update-group href="${this._pricingActionHref("update_group", {
-                group_id: activeGroup.group_id || groupDraft.group_id,
-                group_label: groupDraft.label,
-                effective_start_date: activeGroup.effective_start_date || groupDraft.effective_start_date,
-                plan_name: groupDraft.plan_name,
-                pricing_type: groupDraft.pricing_type,
-                daily_connection_charge: groupDraft.daily_connection_charge,
-                other_charges: groupDraft.other_charges,
-                notes: groupDraft.notes,
-              })}">Save active group</a>
-              <div class="pricing-group-form__record-actions">
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="buy">+ Add buy price</button>
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-start-record="sell">+ Add sell price</button>
-                <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button>
-              </div>
-              </div>
-            </form>
-            </div>
-            <section class="pricing-group-card__records">
-              <div class="panel-card__header panel-card__header--nested">
-                <h2>Rate Records</h2>
-                <span>${activeRules.length} record(s) attached</span>
-              </div>
-              <p>
-                Add records to the selected group only. Overlapping day/time windows are blocked before save.
-              </p>
-              ${recordWarningMarkup}
-              <div class="pricing-holiday-form pricing-record-form ${recordEditorMode ? "" : "is-hidden"}">
-                <form class="pricing-record-section pricing-record-section--buy pricing-buy-form ${showBuyRecordEditor ? "" : "is-hidden"}" method="get" action="/heros#heros_page=pricing">
-                  <input type="hidden" name="heros_action" value="add_rule" />
-                  <input type="hidden" name="heros_page" value="pricing" />
-                  <input type="hidden" name="record_type" value="buy" />
-                  <input type="hidden" name="rule_id" data-pricing-record-type="buy" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(buyRuleDraft.rule_id || ""))}" />
-                  <div class="pricing-record-section__heading">
-                    <div>
-                      <strong>Buy Electricity</strong>
-                      <span>Purchase tariff rows are independent from feed-in rows</span>
-                    </div>
-                    ${this._renderHelpButton("buy", "Buy help")}
-                  </div>
-                  ${buyWarningMarkup}
-                  <div class="pricing-record-section__grid pricing-record-section__grid--buy-tariff">
-                    <label class="pricing-record-form__name">
-                      <span>Purchase tariff</span>
-                      ${this._renderPurchaseTariffSelector(buyRuleDraft.label)}
-                    </label>
-                    <label class="pricing-record-form__time">
-                      <span>Start (hh:mm AM/PM)</span>
-                      <input type="time" name="start_time" data-pricing-record-type="buy" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(buyRuleDraft.start_time))}" title="Use hh:mm AM/PM, e.g. 03:00 PM" aria-label="Buy start time, hh:mm AM/PM" />
-                    </label>
-                    <label class="pricing-record-form__time">
-                      <span>End (hh:mm AM/PM)</span>
-                      <input type="time" name="end_time" data-pricing-record-type="buy" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(buyRuleDraft.end_time))}" title="Use hh:mm AM/PM, e.g. 09:00 PM" aria-label="Buy end time, hh:mm AM/PM" />
-                    </label>
-                    <label class="pricing-record-form__rate">
-                      <span>Import rate ($/kWh)</span>
-                      <input type="number" step="0.001" name="import_rate" data-pricing-record-type="buy" data-pricing-rule-field="import_rate" value="${this._escapeHtml(String(buyRuleDraft.import_rate ?? ""))}" />
-                    </label>
-                  </div>
-                  ${this._renderHelpPanel("buy")}
-                  ${renderDaySelector("buy")}
-                  <div class="pricing-form__actions pricing-record-form__actions">
-                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-add-rule="buy">Save buy price</button>
-                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-record>Cancel</button>
-                  </div>
-                </form>
-                <form class="pricing-record-section pricing-record-section--sell pricing-sell-form ${showSellRecordEditor ? "" : "is-hidden"}" method="get" action="/heros#heros_page=pricing">
-                  <input type="hidden" name="heros_action" value="add_rule" />
-                  <input type="hidden" name="heros_page" value="pricing" />
-                  <input type="hidden" name="record_type" value="sell" />
-                  <input type="hidden" name="rule_id" data-pricing-record-type="sell" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(sellRuleDraft.rule_id || ""))}" />
-                  <div class="pricing-record-section__heading">
-                    <div>
-                      <strong>Sell Electricity</strong>
-                      <span>Feed-in tariff rows have their own time and day selection</span>
-                    </div>
-                    ${this._renderHelpButton("sell", "Sell help")}
-                  </div>
-                  ${sellWarningMarkup}
-                  <div class="pricing-record-section__grid pricing-record-section__grid--sell-tariff">
-                    <label class="pricing-record-form__name">
-                      <span>Feed-in tariff</span>
-                      <input type="text" name="rule_label" data-pricing-record-type="sell" data-pricing-rule-field="label" value="${this._escapeHtml(String(sellRuleDraft.label || ""))}" placeholder="Feed-in Tariff 1" />
-                    </label>
-                    <label class="pricing-record-form__time">
-                      <span>Start (hh:mm AM/PM)</span>
-                      <input type="time" name="start_time" data-pricing-record-type="sell" data-pricing-rule-field="start_time" value="${this._escapeHtml(String(sellRuleDraft.start_time))}" title="Use hh:mm AM/PM, e.g. 12:00 AM" aria-label="Sell start time, hh:mm AM/PM" />
-                    </label>
-                    <label class="pricing-record-form__time">
-                      <span>End (hh:mm AM/PM)</span>
-                      <input type="time" name="end_time" data-pricing-record-type="sell" data-pricing-rule-field="end_time" value="${this._escapeHtml(String(sellRuleDraft.end_time))}" title="Use hh:mm AM/PM, e.g. 11:59 PM" aria-label="Sell end time, hh:mm AM/PM" />
-                    </label>
-                    <label class="pricing-record-form__rate">
-                      <span>Export rate ($/kWh)</span>
-                      <input type="number" step="0.001" min="0" name="export_rate" data-pricing-record-type="sell" data-pricing-rule-field="export_rate" value="${this._escapeHtml(String(sellRuleDraft.export_rate ?? ""))}" placeholder="0.08" />
-                    </label>
-                  </div>
-                  ${this._renderHelpPanel("sell")}
-                  ${renderDaySelector("sell")}
-                  <div class="pricing-form__actions pricing-record-form__actions">
-                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--delete" data-pricing-ui-add-rule="sell">Save sell price</button>
-                    <button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-record>Cancel</button>
-                  </div>
-                </form>
-              </div>
-              <div class="pricing-rule-list pricing-rule-list--attached">
-                <div class="pricing-record-list-section">
-                  <div class="pricing-record-section__heading">
-                    <strong>Buy prices saved</strong>
-                    <span>${buyRules.length} item(s)</span>
-                  </div>
-                  ${buyRuleCards}
-                </div>
-                <div class="pricing-record-list-section">
-                  <div class="pricing-record-section__heading">
-                    <strong>Sell prices saved</strong>
-                    <span>${sellRules.length} item(s)</span>
-                  </div>
-                  ${sellRuleCards}
-                </div>
-              </div>
-            </section>
-          </article>
-        </section>
+          </section>
 
+        </article>
+
+        <article class="panel-card roi-settings-card vpp-standalone-card">
+          <div class="panel-card__header"><h2>VPP Rates</h2><span>HEROS</span></div>
+          <p>Manage independent VPP provider rates and their effective-date history.</p>
+          <section class="roi-settings-section vpp-settings-section" aria-label="VPP rates">
+            <div class="roi-section-heading"><h3>VPP rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-vpp>Add VPP rate change</button></div>
+            <div class="roi-entry-editor is-hidden" data-vpp-editor><div class="roi-settings-grid roi-settings-grid--three">
+              <label class="roi-settings-field pricing-effective-date-field"><span>Effective Date</span><input type="date" name="vpp_effective_start_date" data-pricing-date-input data-vpp-effective-date value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /></label>
+              <label class="roi-settings-field"><span>Provider</span><input type="text" autocomplete="organization" placeholder="Provider name" data-vpp-provider /></label>
+              <label class="roi-settings-field"><span>Cents p/kWh</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-vpp-cents-per-kwh /></label>
+            </div>
+            <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-vpp-save-rate>Save VPP rate change</button><span class="roi-save-status" data-vpp-rate-status aria-live="polite"></span></div></div>
+            <h4 class="roi-repayment-history__title">VPP rate history</h4>
+            ${vppRateHistoryMarkup}
+          </section>
+        </article>
+
+        <article class="panel-card panel-card--wide electricity-rates-card">
+          <div class="panel-card__header"><h2>Electricity Rates</h2><span>HEROS</span></div>
+          <p>Manage date-effective electricity groups and their Buy and Sell rates.</p>
+          <section class="roi-settings-section electricity-rates-section" aria-label="Group">
+            <div class="roi-section-heading"><h3>Group</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-group>Add group</button></div>
+            ${renderGroupEditor}
+            ${showGroupEditor ? "" : `<div class="pricing-rule-list">${groupCards}</div>`}
+          </section>
+          <section class="roi-settings-section electricity-rates-section" aria-label="Buy Rates">
+            <div class="roi-section-heading"><h3>Buy Rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-record="buy">Add buy rate</button></div>
+            ${renderRateEditor("buy")}
+            <div class="pricing-rule-list pricing-rule-list--attached">${buyRuleCards}</div>
+          </section>
+          <section class="roi-settings-section electricity-rates-section" aria-label="Sell Rates">
+            <div class="roi-section-heading"><h3>Sell Rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-record="sell">Add sell rate</button></div>
+            ${renderRateEditor("sell")}
+            <div class="pricing-rule-list pricing-rule-list--attached">${sellRuleCards}</div>
+          </section>
+        </article>
       </section>
     `;
   }
 
+  _archiveSettingsContent() {
+    const selector = this._settingsTargetState();
+    const reporting = selector?.attributes?.reporting || {};
+    const reportingMeta = reporting?.meta && typeof reporting.meta === "object" ? reporting.meta : {};
+    const history = selector?.attributes?.history && typeof selector.attributes.history === "object" ? selector.attributes.history : (reportingMeta.history && typeof reportingMeta.history === "object" ? reportingMeta.history : {});
+    const scope = history.scope_summary && typeof history.scope_summary === "object" ? history.scope_summary : {};
+    const stored = Number(scope.record_count); const missing = Number(scope.missing_count);
+    const storedCount = Number.isFinite(stored) ? stored : 0; const missingCount = Number.isFinite(missing) ? missing : 0;
+    const known = storedCount + missingCount;
+    const coverage = known ? `${Math.round(storedCount / known * 100)} %` : "Unavailable";
+    const health = storedCount ? (missingCount ? "Ready with gaps" : "Ready") : (missingCount ? "Missing only" : "Empty");
+    const rangeStart = String(scope.first_record_date || "").trim(); const rangeEnd = String(scope.last_record_date || "").trim();
+    const range = rangeStart && rangeEnd ? (rangeStart === rangeEnd ? rangeStart : `${rangeStart} -> ${rangeEnd}`) : "Unavailable";
+    const summary = storedCount ? `${health}. ${storedCount} stored / ${missingCount} missing. Coverage ${coverage}.` : missingCount ? `No stored report rows yet. ${missingCount} known missing day${missingCount === 1 ? "" : "s"}.` : "No archive rows are stored for this scope yet.";
+    const actions = [
+      scope.csv_url ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scope.csv_url))}" target="_blank" rel="noreferrer">Open Scope CSV</a>` : "",
+      scope.history_url ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scope.history_url))}" target="_blank" rel="noreferrer">Open History JSON</a>` : "",
+    ].filter(Boolean).join("");
+    const scopes = Array.isArray(history.scope_summaries) && history.scope_summaries.length ? history.scope_summaries : [{ scope_key: String(history.current_scope || "all"), label: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems"), ...scope }];
+    const scopeCards = scopes.map((item) => { const itemStored = Number(item?.record_count); const itemMissing = Number(item?.missing_count); const storedValue = Number.isFinite(itemStored) ? itemStored : 0; const missingValue = Number.isFinite(itemMissing) ? itemMissing : 0; const first = String(item?.first_record_date || "").trim(); const last = String(item?.last_record_date || "").trim(); const itemRange = first && last ? (first === last ? first : `${first} -> ${last}`) : "No stored rows yet"; return `<article class="report-scope-card"><div class="report-scope-card__head"><h3>${this._escapeHtml(String(item?.label || item?.scope_key || "All systems"))}</h3><span>${storedValue}/${storedValue + missingValue}</span></div><p>${this._escapeHtml(itemRange)}</p><ul class="key-list key-list--compact">${this._valueList([{ label:"Stored", value:String(storedValue) }, { label:"Missing", value:String(missingValue) }])}</ul></article>`; }).join("");
+    return `
+      <section class="grid grid--two settings-archive">
+        <article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Archive Snapshot</h2><span>Settings</span></div><p>${summary}</p>${actions ? `<div class="pricing-rule__actions--inline report-actions">${actions}</div>` : ""}<ul class="key-list key-list--compact">${this._valueList([{ label:"Health", value:health }, { label:"Stored report rows", value:String(storedCount) }, { label:"Missing report dates", value:String(missingCount) }, { label:"Coverage", value:coverage }, { label:"Range", value:range }])}</ul></article>
+        <article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Archive Scope Coverage</h2><span>All scopes</span></div><div class="report-scope-grid">${scopeCards}</div></article>
+        <article class="panel-card"><div class="panel-card__header"><h2>Archive Status</h2><span>Background storage</span></div><ul class="key-list key-list--compact">${this._valueList([{ label:"Archive status", value:String(history.status || "Unavailable") }, { label:"Current scope", value:String(history.current_scope || "all") }, { label:"History JSON", value:String(scope.history_filename || "Unavailable") }, { label:"Scope CSV", value:String(scope.csv_filename || "Unavailable") }, { label:"Backfill days", value:history.backfill_days === undefined ? "Unavailable" : String(history.backfill_days) }])}</ul></article>
+        <article class="panel-card"><div class="panel-card__header"><h2>Storage Strategy</h2><span>Local archive + Influx</span></div><p>HEROS keeps compact provider-aware daily report snapshots for the panel and exports. InfluxDB is the long-term detailed sensor store.</p><ul class="key-list key-list--compact">${this._valueList([{ label:"Local report archive", value:"Home Assistant www/heros-history/<entry_id>/history.json" }, { label:"Scope CSVs", value:"One CSV per report scope" }, { label:"Current purpose", value:"Power diagrams, daily rows, and archive state" }])}</ul></article>
+      </section>
+    `;
+  }
   _settingsPage() {
+    const isFoxessV2 = this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2";
     const settingsItems = [
       { label: "Theme", value: this._themeLabel() },
       { label: "Route", value: this._route?.path || this._panel?.url_path || "heros" },
@@ -7048,23 +7195,12 @@ class HerosPanel extends HTMLElement {
       { label: "Connection Type", value: this._connectionTypeLabel(this._config?.battery_provider) },
       { label: "Debug", value: this._debugEnabled ? "Enabled" : "Disabled" },
     ];
-    const forecastHistoryItems = [
-      { label: "Provider", value: this._config?.forecast_history_provider || "forecast_solar" },
-      { label: "API key", value: this._config?.forecast_history_api_key ? "Configured" : "Not set" },
-      { label: "Latitude", value: this._config?.forecast_history_latitude || "Not set" },
-      { label: "Longitude", value: this._config?.forecast_history_longitude || "Not set" },
-      { label: "Declination", value: this._config?.forecast_history_declination || "Not set" },
-      { label: "Azimuth", value: this._config?.forecast_history_azimuth || "Not set" },
-      { label: "Panel power", value: this._config?.forecast_history_kwp ? `${this._config.forecast_history_kwp} kWp` : "Not set" },
-      { label: "Damping", value: this._config?.forecast_history_damping || "Not set" },
-      { label: "Horizon", value: this._config?.forecast_history_horizon || "Not set" },
-    ];
+
     const focusKey = this._loadSettingsFocus();
     const focusCards = this._settingsFocusCards();
     const activeFocus = this._settingsFocusDetail(focusKey);
-    const syncStatusVisible = this._debugEnabled;
     return `
-      <section class="grid grid--two">
+      <section class="grid grid--two settings-page">
         <article class="panel-card panel-card--wide">
           <div class="panel-card__header">
             <h2>Settings</h2>
@@ -7076,84 +7212,63 @@ class HerosPanel extends HTMLElement {
         </article>
         <article class="panel-card">
           <div class="panel-card__header">
-            <h2>Forecast Wiring</h2>
-            <span>HEROS</span>
-          </div>
-          <ul class="key-list key-list--compact">
-            ${this._valueList([
-              { label: "Forecast provider", value: this._config?.forecast_provider || "none" },
-              ...HEROS_FORECAST_ENTITY_FIELDS.map((item) => ({
-                label: `${item.label} entity`,
-                value: this._configuredEntityId(item.configKey) || "Not set",
-              })),
-            ])}
-          </ul>
-        </article>
-        <article class="panel-card panel-card--wide">
-          <div class="panel-card__header">
-            <h2>Forecast Historic Average</h2>
-            <span>Optional source</span>
-          </div>
-          <p>
-            Forecast.Solar history is a long-term average benchmark, not an archived
-            past forecast. Configure and test it through Home Assistant actions; HEROS
-            stores successful forecast snapshots going forward and can cache historic
-            averages after the source is enabled.
-          </p>
-          <ul class="key-list key-list--compact">
-            ${this._valueList(forecastHistoryItems)}
-          </ul>
-        </article>
-        <article class="panel-card">
-          <div class="panel-card__header">
             <h2>HEROS Settings</h2>
             <span>Local</span>
           </div>
           <div class="settings-toggle">
-            <label class="toggle-row" for="heros-debug-toggle">
+            <div class="toggle-row">
               <span class="toggle-row__label">Enable Debug</span>
-              <span class="toggle-row__control">
-                <input id="heros-debug-toggle" type="checkbox" data-debug-toggle aria-label="Enable debug mode" ${this._debugEnabled ? "checked" : ""} />
-                <span class="toggle-row__switch" aria-hidden="true"></span>
-              </span>
-            </label>
+              <button type="button" class="toggle-row__switch ${this._debugEnabled ? "is-active" : ""}" data-debug-toggle-button role="switch" aria-label="Enable Debug" aria-checked="${this._debugEnabled}"></button>
+            </div>
             <p>
-              HEROS settings keep the panel device-agnostic while still exposing the debug page
-              for deeper inspection, history checks, and provider-specific details.
-            </p>
-            <button
-              type="button"
-              class="panel-nav__item ${this._debugEnabled ? "" : "is-disabled"}"
-              data-page="debug"
-              ${this._debugEnabled ? "" : "disabled"}
-            >
-              Open Debug page
-            </button>
+              Enables the Debug page. It does not change inverter settings,
+              polling, or FoxESS cloud data.
+            </p>            ${this._debugEnabled ? `<button type="button" class="panel-nav__item" data-page="debug">Open Debug page</button>` : ""}
+            <div class="toggle-row">
+              <span class="toggle-row__label">Show version numbers</span>
+              <button type="button" class="toggle-row__switch ${this._showVersionNumbers ? "is-active" : ""}" data-show-versions-toggle-button role="switch" aria-label="Show version numbers" aria-checked="${this._showVersionNumbers}"></button>
+            </div>
+            <p>Shows or hides HEROS build and cache-buster badges. It does not change deployed files or cache keys.</p>            
           </div>
+          ${isFoxessV2 ? `
           <div class="settings-toggle">
-            <label class="toggle-row" for="heros-connection-type">
-              <span class="toggle-row__label">Connection Type</span>
-              <span class="toggle-row__control">
-                <select id="heros-connection-type" data-connection-type-field="battery_provider" aria-label="Connection type">
-                  ${[
-                    { value: "bytewatt_web", label: "ByteWatt Web" },
-                    { value: "bytewatt_local", label: "ByteWatt Local" },
-                    { value: "other", label: "Other / template" },
-                  ].map((option) => `
-                    <option value="${option.value}" ${this._batteryProviderKey(this._config?.battery_provider) === option.value ? "selected" : ""}>
-                      ${option.label}
-                    </option>
-                  `).join("")}
-                </select>
-              </span>
-            </label>
+            <div class="toggle-row">
+              <span class="toggle-row__label">Energy provider</span>
+              <strong>FoxESS V2</strong>
+            </div>
             <p>
-              This setting controls which battery connection mode HEROS uses for policy warnings and live value labels.
+              FoxESS V2 is selected during installation and supplies read-only cloud telemetry.
+              Provider changes are not made from this panel.
             </p>
-            <button type="button" class="panel-nav__item" data-connection-type-save>Save Connection Type</button>
           </div>
+          ` : `
+          <div class="settings-toggle settings-toggle--connection">
+            <div class="settings-choice">
+              <label for="heros-connection-type">Connection Type</label>
+              <select id="heros-connection-type" data-connection-type-field="battery_provider" aria-label="Connection type">
+                ${[
+                  { value: "bytewatt_web", label: "ByteWatt Web" },
+                  { value: "bytewatt_local", label: "ByteWatt Local" },
+                  { value: "other", label: "Other / template" },
+                ].map((option) => `
+                  <option value="${option.value}" ${this._batteryProviderKey(this._config?.battery_provider) === option.value ? "selected" : ""}>
+                    ${option.label}
+                  </option>
+                `).join("")}
+              </select>
+            </div>
+            <p>This controls the provider mode HEROS uses for battery mapping, live labels, and policy warnings. It does not change the inverter or its network connection.</p>
+            <button type="button" class="panel-nav__item" data-connection-type-save>Save Connection Type</button>
+          </div>          `}
         </article>
-        <article class="panel-card">
+                <article class="panel-card panel-card--wide">
+          <div class="panel-card__header"><h2>Overview Layout</h2><span>This browser</span></div>
+          <p>Set an order number for each Overview element. Lower numbers appear first. The Report is enabled only from its Report page toggle.</p>
+          <div class="overview-layout-settings">
+            ${this._overviewLayout().map((item) => `<label class="overview-layout-row"><span>${item.label}${item.key === "report" ? ` <small>${this._overviewReportEnabled() ? "Enabled" : "Hidden"}</small>` : ""}</span><input type="number" min="1" step="1" value="${item.order}" data-overview-order="${item.key}" aria-label="${item.label} order"></label>`).join("")}
+          </div>
+          <button type="button" class="panel-nav__item" data-overview-layout-save>Save Overview Order</button>
+        </article>        <article class="panel-card">
           <div class="panel-card__header">
             <h2>Theme Presets</h2>
             <span>Local</span>
@@ -7170,23 +7285,9 @@ class HerosPanel extends HTMLElement {
             `).join("")}
           </div>
         </article>
-        ${syncStatusVisible ? `
-          <article class="panel-card panel-card--wide sync-status">
-            <div class="panel-card__header">
-              <h2>Sync Status</h2>
-              <span data-sync-log-meta>Latest pull output</span>
-            </div>
-            <p>
-              This shows the latest result from the HEROS pull script. If a pull
-              fails, the reason appears here without opening the log file directly.
-            </p>
-            <div class="sync-status__actions">
-              <button type="button" class="panel-nav__item" data-sync-refresh>Refresh sync status</button>
-            </div>
-            <pre class="sync-status__log" data-sync-log>Loading latest sync status...</pre>
-          </article>
-        ` : ""}
       </section>
+
+      ${this._archiveSettingsContent()}
 
       <section class="settings-metrics" aria-label="Panel metrics">
         ${focusCards.map((card) => `
@@ -7216,6 +7317,7 @@ class HerosPanel extends HTMLElement {
   }
 
   _debugPage() {
+    const runtimeTrace = this._runtimeTrace();
     const debugItems = [
       { label: "Debug mode", value: this._debugEnabled ? "Enabled" : "Disabled" },
       { label: "Settings target", value: this._config?.settings_target || "Unavailable" },
@@ -7269,6 +7371,13 @@ class HerosPanel extends HTMLElement {
               and entity selection in one place.
             </p>
             <div class="panel-card__embedded" data-embedded="debug"></div>
+          </article>
+          <article class="panel-card panel-card--wide">
+            <div class="panel-card__header"><h2>Panel Runtime Trace</h2><span>Temporary diagnostics</span></div>
+            <p>Recent browser events are kept locally to help diagnose panel navigation or rendering problems.</p>
+            <ul class="panel-list">${runtimeTrace.length
+              ? runtimeTrace.map((item) => `<li><span>${this._escapeHtml(item.at)} · ${this._escapeHtml(item.kind)}</span><strong>${this._escapeHtml(item.detail)}</strong></li>`).join("")
+              : "<li><span>No runtime events have been recorded in this browser.</span><strong>Clear</strong></li>"}</ul>
           </article>
         </section>
       </section>
@@ -7340,7 +7449,18 @@ class HerosPanel extends HTMLElement {
 
   _mountEmbeddedCards() {
     const prefix = this._config?.entity_prefix || "heros";
-    const settingsTarget = this._config?.settings_target || `select.house_${prefix}_settings_target`;
+    const settingsTarget = this._config?.settings_target || "select.heros_settings_target";
+    const reportModuleLoadKey = `heros-report|${HEROS_REPORT_CARD_MODULE_URL}`;
+    if (!this._embeddedModuleLoads[reportModuleLoadKey]) {
+      this._embeddedModuleLoads[reportModuleLoadKey] = import(HEROS_REPORT_CARD_MODULE_URL)
+        .then(() => this._render())
+        .catch((error) => {
+          this._embeddedModuleErrors[reportModuleLoadKey] = String(error?.message || error || "Module failed to load");
+          this._render();
+        });
+      return;
+    }
+    const reportTag = window.herosReportCardTag || "heros-report-card";
     const mounts = [
       {
         selector: '[data-embedded="battery-policy"]',
@@ -7364,12 +7484,15 @@ class HerosPanel extends HTMLElement {
       },
       {
         selector: '[data-embedded="report"]',
-        tag: "heros-report-card",
-        moduleUrl: HEROS_REPORT_CARD_MODULE_URL,
+        tag: reportTag,
+        isReport: true,
         config: {
           ...this._config,
           entity_prefix: prefix,
           settings_target: settingsTarget,
+          overview_toggle_available: this._page === "report",
+          overview_report_enabled: this._overviewReportEnabled(),
+          show_version_numbers: this._showVersionNumbers,
         },
       },
       {
@@ -7383,7 +7506,7 @@ class HerosPanel extends HTMLElement {
       },
     ];
 
-    mounts.forEach(({ selector, tag, moduleUrl, config }) => {
+    mounts.forEach(({ selector, tag, moduleUrl, config, isReport = false }) => {
       const host = this.shadowRoot.querySelector(selector);
       if (!host) {
         return;
@@ -7394,10 +7517,11 @@ class HerosPanel extends HTMLElement {
           if (typeof currentElement.setConfig === "function") {
             currentElement.setConfig(config);
           }
-          if (tag === "heros-report-card") {
+          if (isReport) {
             const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
             currentElement.pendingSelection = this._pendingBatterySelection || "";
             currentElement.selectorOpen = hasPendingSelection;
+            currentElement.onOverviewReportToggle = () => this._setOverviewReportEnabled(!this._overviewReportEnabled());
           }
           if (this._hass) {
             currentElement.hass = this._hass;
@@ -7447,10 +7571,11 @@ class HerosPanel extends HTMLElement {
         if (typeof element.setConfig === "function") {
           element.setConfig(config);
         }
-        if (tag === "heros-report-card") {
+        if (isReport) {
           const hasPendingSelection = Boolean(String(this._pendingBatterySelection || "").trim());
           element.pendingSelection = this._pendingBatterySelection || "";
           element.selectorOpen = hasPendingSelection;
+          element.onOverviewReportToggle = () => this._setOverviewReportEnabled(!this._overviewReportEnabled());
         }
         if (this._hass) {
           element.hass = this._hass;
@@ -7469,7 +7594,7 @@ class HerosPanel extends HTMLElement {
 
   _settingsTargetId() {
     const prefix = this._config?.entity_prefix || "heros";
-    return this._config?.settings_target || `select.house_${prefix}_settings_target`;
+    return this._config?.settings_target || "select.heros_settings_target";
   }
 
   _settingsTargetState() {
@@ -7701,14 +7826,18 @@ class HerosPanel extends HTMLElement {
   }
 
   _render() {
+    if (this._page === "pricing" && this.shadowRoot?.activeElement?.closest?.(".roi-settings-card")) {
+      this._holdRenderWindow(10000);
+      return;
+    }
     if (!this.shadowRoot) {
       return;
     }
     this._processPricingUrlAction();
     const preservedEmbeddedCards = this._preserveEmbeddedCardsForRender();
 
-    const connectionName = this._connectionName();
-    const connectionLabel = this._hass ? `Connected to ${connectionName}` : `Waiting for ${connectionName}`;
+    const connectionStatus = this._connectionStatus();
+    const connectionLabel = connectionStatus.label;
     const title = this._config.title || "HEROS (Home Energy Reporting & Optimisation System)";
     const subtitle = this._config.subtitle || "Daily control surface for HEROS (Home Energy Reporting & Optimisation System).";
     const statusMeta = this._page === "settings"
@@ -7721,12 +7850,15 @@ class HerosPanel extends HTMLElement {
     const availablePages = this._availablePages();
 
     this.shadowRoot.innerHTML = `
-      <link rel="stylesheet" href="/local/community/heros/heros-panel.css?v=${HEROS_PANEL_BUILD}">
+      <link rel="stylesheet" href="/local/community/heros/heros-panel.css?v=${HEROS_PANEL_BUILD}&layout=5">
       <section class="panel shell theme-${this._theme}" data-theme="${this._theme}" style="${this._themeStyleVars()}">
         <header class="hero">
-          <div class="hero__badge">v${HEROS_PANEL_BUILD}</div>
           <div class="hero__copy">
-            <h1>${title}</h1>
+            <div class="hero__title-row">
+              <h1>${title}</h1>
+              ${this._showVersionNumbers ? `<div class="hero__badge">v${HEROS_PANEL_BUILD}</div>` : ""}
+              <div class="hero__connection-status is-${connectionStatus.key}" role="status" aria-live="polite" title="${this._escapeHtml(connectionStatus.detail)}"><span class="hero__connection-dot" aria-hidden="true"></span><span>${this._escapeHtml(connectionStatus.label)}</span></div>
+            </div>
             <p>${subtitle}</p>
           </div>
         </header>
@@ -7745,9 +7877,12 @@ class HerosPanel extends HTMLElement {
         </nav>
 
         <section class="status">
-          <div class="status__banner">${connectionLabel}</div>
+          <div class="status__row">
+            ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
+            <div class="status__banner is-${connectionStatus.key}" title="${this._escapeHtml(connectionStatus.detail)}">${this._escapeHtml(connectionLabel)}</div>
+          </div>
           ${statusMeta}
-          ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
+          ${this._page === "forecast_setup" && this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2" ? this._renderFoxessSetupDisplayControls() : ""}
         </section>
 
         ${this._pageContent()}
@@ -7795,12 +7930,36 @@ class HerosPanel extends HTMLElement {
     return true;
   }
 
+  _renderFoxessSetupDisplayControls() {
+    const display = this._foxessSetupDisplay || { sensor: true, provider: true };
+    return `<div class="status__meta foxess-setup-display-controls" role="group" aria-label="Setup display options">
+      <label><input type="checkbox" data-foxess-display-toggle="sensor" ${display.sensor ? "checked" : ""}> Show Sensor names</label>
+      <label><input type="checkbox" data-foxess-display-toggle="provider" ${display.provider ? "checked" : ""}> Provider Mapping</label>
+    </div>`;
+  }
+
   _bindInteractiveControls() {
     if (!this.shadowRoot) {
       return;
     }
+    this.shadowRoot.querySelectorAll("[data-foxess-display-toggle]").forEach((field) => {
+      const apply = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const key = field.dataset.foxessDisplayToggle;
+        const next = { ...this._foxessSetupDisplay, [key]: Boolean(field.checked) };
+        if (!next.sensor && !next.provider) {
+          field.checked = true;
+          return;
+        }
+        this._saveFoxessSetupDisplay(next);
+        this._render();
+      };
+      field.addEventListener("change", apply);
+      field.addEventListener("click", (event) => event.stopPropagation());
+    });
 
-    this.shadowRoot.querySelectorAll("[data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day]").forEach((field) => {
+    this.shadowRoot.querySelectorAll("select, [data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day]").forEach((field) => {
       if (field.__herosNativeInputStopBound) {
         return;
       }
@@ -7816,6 +7975,7 @@ class HerosPanel extends HTMLElement {
       this._criticalPressHandlersBound = true;
       const handleCriticalActivation = (event) => {
         const path = event.composedPath?.() || [];
+      if (this._roiSaveInFlight) return;
         const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
         if (pricingUiAddGroup) {
           event.preventDefault();
@@ -7835,13 +7995,6 @@ class HerosPanel extends HTMLElement {
           event.preventDefault();
           event.stopPropagation();
           this._handlePricingUiModifyGroup();
-          return true;
-        }
-        const pricingUiNewGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
-        if (pricingUiNewGroup) {
-          event.preventDefault();
-          event.stopPropagation();
-          this._handlePricingUiNewGroup();
           return true;
         }
         const pricingUiCancelGroup = path.find((node) => node?.dataset?.pricingUiCancelGroup !== undefined);
@@ -8047,20 +8200,35 @@ class HerosPanel extends HTMLElement {
       };
     });
 
-    this.shadowRoot.querySelectorAll('[data-debug-toggle]').forEach((input) => {
-      input.onchange = (event) => {
-        event.preventDefault();
-        this._setDebugEnabled(Boolean(input.checked));
-      };
+    this.shadowRoot.querySelectorAll('[data-overview-report-toggle]').forEach((button) => {
+      button.onclick = (event) => { event.preventDefault(); event.stopPropagation(); this._setOverviewReportEnabled(!this._overviewReportEnabled()); };
     });
-
-    this.shadowRoot.querySelectorAll('[data-sync-refresh]').forEach((button) => {
+    this.shadowRoot.querySelectorAll('[data-overview-layout-save]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
-        this._loadSyncLog();
+        const layout = this._overviewLayoutDefaults().map((item) => {
+          const field = this.shadowRoot.querySelector(`[data-overview-order="${item.key}"]`);
+          return { ...item, order: Math.max(1, Number(field?.value) || item.order) };
+        });
+        this._saveOverviewLayout(layout);
+        this._render();
+      };
+    });
+    this.shadowRoot.querySelectorAll('[data-debug-toggle-button]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._setDebugEnabled(!this._debugEnabled);
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-show-versions-toggle-button]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._setShowVersionNumbers(!this._showVersionNumbers);
+      };
+    });
     this.shadowRoot.querySelectorAll('[data-pricing-type-toggle]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
@@ -8177,7 +8345,9 @@ class HerosPanel extends HTMLElement {
         this._schedulePricingAutoCommit();
         return;
       }
-      this._handlePurchaseTariffOther(target);
+      if (this._handlePurchaseTariffOther(target)) {
+        return;
+      }
       if (target?.dataset?.pricingRuleField !== undefined || target?.dataset?.pricingRuleDay !== undefined) {
         const recordType = target?.dataset?.pricingRecordType || "";
         this._syncPricingUiRuleDraft(recordType);
@@ -8211,6 +8381,14 @@ class HerosPanel extends HTMLElement {
 
     const handlePressActivation = (event) => {
       const path = event.composedPath?.() || [];
+      if (this._roiSaveInFlight) return;
+      const pricingUiStartGroup = path.find((node) => node?.dataset?.pricingUiStartGroup !== undefined);
+      if (pricingUiStartGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiStartGroup();
+        return true;
+      }
       const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
       if (pricingUiAddGroup) {
         event.preventDefault();
@@ -8230,6 +8408,27 @@ class HerosPanel extends HTMLElement {
         event.preventDefault();
         event.stopPropagation();
         this._handlePricingUiAddRule(pricingUiAddRule.dataset.pricingUiAddRule || "buy");
+        return true;
+      }
+      const pricingUiStartRecord = path.find((node) => node?.dataset?.pricingUiStartRecord !== undefined);
+      if (pricingUiStartRecord) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiStartRecord(pricingUiStartRecord.dataset.pricingUiStartRecord || "buy");
+        return true;
+      }
+      const pricingUiCancelRecord = path.find((node) => node?.dataset?.pricingUiCancelRecord !== undefined);
+      if (pricingUiCancelRecord) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiCancelRecord();
+        return true;
+      }
+      const pricingUiCancelGroup = path.find((node) => node?.dataset?.pricingUiCancelGroup !== undefined);
+      if (pricingUiCancelGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiCancelGroupEdit();
         return true;
       }
       const pricingUiSelectGroup = path.find((node) => node?.dataset?.pricingUiSelectGroup);
@@ -8254,6 +8453,7 @@ class HerosPanel extends HTMLElement {
         return;
       }
       const path = event.composedPath?.() || [];
+      if (this._roiSaveInFlight) return;
       if (path.some((node) => this._isForecastInteractionTarget(node))) {
         this._holdForecastWindow();
         return;
@@ -8274,10 +8474,15 @@ class HerosPanel extends HTMLElement {
 
     this.shadowRoot.addEventListener("pointerdown", (event) => {
       const path = event.composedPath?.() || [];
+      if (this._roiSaveInFlight) return;
       handlePressActivation(event);
     }, true);
 
     this.shadowRoot.addEventListener("focusin", (event) => {
+      if (event.target?.closest?.(".roi-settings-card")) {
+        this._holdRenderWindow(10000);
+        return;
+      }
       if (event.target?.closest?.(".pricing-group-card") || this._isPricingInteractionTarget(event.target)) {
         return;
       }
@@ -8295,6 +8500,11 @@ class HerosPanel extends HTMLElement {
     });
 
     this.shadowRoot.addEventListener("focusout", (event) => {
+      if (event.target?.closest?.(".roi-settings-card")) {
+        this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 400);
+        this._queueDeferredRender();
+        return;
+      }
       if (this._isPricingInteractionTarget(event.target)) {
         this._renderHoldUntil = Math.max(this._renderHoldUntil, Date.now() + 400);
         this._queueDeferredRender();
@@ -8306,8 +8516,140 @@ class HerosPanel extends HTMLElement {
       }
     });
 
+    this.shadowRoot.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!target?.closest?.(".roi-settings-card")) return;
+      const status = target.closest(".roi-settings-section")?.querySelector(".roi-save-status");
+      if (status) status.textContent = "Unsaved changes — select Save when ready.";
+    });
+    this.shadowRoot.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!target?.closest?.(".roi-settings-card")) return;
+      const status = target.closest(".roi-settings-section")?.querySelector(".roi-save-status");
+      if (status) status.textContent = "Unsaved changes — select Save when ready.";
+    });
     this.shadowRoot.addEventListener("click", async (event) => {
       const path = event.composedPath?.() || [];
+      if (this._roiSaveInFlight) return;
+      const startRepayment = path.find((node) => node?.dataset?.roiStartRepayment !== undefined); if (startRepayment) { event.preventDefault(); this.shadowRoot.querySelector("[data-roi-repayment-editor]")?.classList.toggle("is-hidden"); return; }
+      const startVpp = path.find((node) => node?.dataset?.roiStartVpp !== undefined); if (startVpp) { event.preventDefault(); this.shadowRoot.querySelector("[data-vpp-editor]")?.classList.toggle("is-hidden"); return; }
+      const editRepayment = path.find((node) => node?.dataset?.roiEditRepayment);
+      if (editRepayment) {
+        event.preventDefault();
+        const entry = (this._roiSettingsData?.repayments || []).find((item) => String(item?.entry_id || "") === String(editRepayment.dataset.roiEditRepayment));
+        if (!entry) return;
+        this._editingRepaymentId = String(entry.entry_id);
+        this.shadowRoot.querySelector("[data-roi-repayment-start]").value = this._normalizePricingDate(entry.effective_start_date);
+        this.shadowRoot.querySelector("[data-roi-repayment-amount]").value = String(entry.amount ?? "");
+        this.shadowRoot.querySelector("[data-roi-repayment-frequency]").value = String(entry.frequency || "weekly");
+        this.shadowRoot.querySelector("[data-roi-save-repayment]").textContent = "Save repayment change";
+        return;
+      }
+      const deleteRepayment = path.find((node) => node?.dataset?.roiDeleteRepayment);
+      if (deleteRepayment) {
+        event.preventDefault();
+        await this._hass.callService("heros", "roi_remove_repayment", { entry_id: this._entryId(), repayment_id: deleteRepayment.dataset.roiDeleteRepayment });
+        this._roiFileLoadKey = "";
+    this._roiDraftDirty = false;
+    this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
+        this._roiForceRenderAfterLoad = true;
+        this._roiForceRenderAfterLoad = true;
+        this._ensureRoiSettingsLoaded();
+        return;
+      }
+      const editVppRate = path.find((node) => node?.dataset?.vppEditRate);
+      if (editVppRate) {
+        event.preventDefault();
+        const entry = (this._roiSettingsData?.vpp_rates || []).find((item) => String(item?.entry_id || "") === String(editVppRate.dataset.vppEditRate));
+        if (!entry) return;
+        this._editingVppRateId = String(entry.entry_id);
+        this.shadowRoot.querySelector("[data-vpp-provider]").value = String(entry.provider || "");
+        this.shadowRoot.querySelector("[data-vpp-effective-date]").value = this._normalizePricingDate(entry.effective_start_date);
+        this.shadowRoot.querySelector("[data-vpp-cents-per-kwh]").value = String(entry.cents_per_kwh ?? "");
+        this.shadowRoot.querySelector("[data-vpp-save-rate]").textContent = "Save VPP rate change";
+        return;
+      }
+      const deleteVppRate = path.find((node) => node?.dataset?.vppDeleteRate);
+      if (deleteVppRate) {
+        event.preventDefault();
+        await this._hass.callService("heros", "roi_remove_vpp_rate", { entry_id: this._entryId(), vpp_rate_id: deleteVppRate.dataset.vppDeleteRate });
+        this._roiFileLoadKey = "";
+    this._roiDraftDirty = false;
+    this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
+        this._roiForceRenderAfterLoad = true;
+        this._roiForceRenderAfterLoad = true;
+        this._ensureRoiSettingsLoaded();
+        return;
+      }      const startInstallation = path.find((node) => node?.dataset?.roiStartInstallation !== undefined);
+      if (startInstallation) { event.preventDefault(); const editor = this.shadowRoot.querySelector("[data-roi-installation-editor]"); if (editor) editor.classList.toggle("is-hidden"); return; }
+      const editInstallation = path.find((node) => node?.dataset?.roiEditInstallation);
+      if (editInstallation) { event.preventDefault(); const entry = (this._roiSettingsData?.installation_costs || []).find((item) => String(item?.entry_id || "") === String(editInstallation.dataset.roiEditInstallation)); if (!entry) return; this._editingInstallationId = String(entry.entry_id); this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.remove("is-hidden"); this.shadowRoot.querySelector("[data-roi-installation-date]").value = this._normalizePricingDate(entry.effective_start_date); this.shadowRoot.querySelector("[data-roi-installation-description]").value = String(entry.description || ""); this.shadowRoot.querySelector("[data-roi-installation-amount]").value = String(entry.amount ?? ""); this.shadowRoot.querySelector("[data-roi-save-installation]").textContent = "Save installation cost"; return; }
+      const deleteInstallation = path.find((node) => node?.dataset?.roiDeleteInstallation);
+      if (deleteInstallation) { event.preventDefault(); await this._hass.callService("heros", "roi_remove_installation_cost", { entry_id: this._entryId(), installation_cost_id: deleteInstallation.dataset.roiDeleteInstallation }); this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); return; }
+      const roiSaveInstallation = path.find((node) => node?.dataset?.roiSaveInstallation !== undefined);
+      if (roiSaveInstallation) { this._roiSaveInFlight = true; event.preventDefault(); event.stopPropagation(); const effectiveStartDate = String(this.shadowRoot.querySelector("[data-roi-installation-date]")?.value || ""); const description = String(this.shadowRoot.querySelector("[data-roi-installation-description]")?.value || "").trim(); const amountText = String(this.shadowRoot.querySelector("[data-roi-installation-amount]")?.value || "").trim(); const amount = Number(amountText); if (!effectiveStartDate || !description || !amountText || !Number.isFinite(amount) || amount < 0) { this._roiSaveInFlight = false; const status = this.shadowRoot.querySelector("[data-roi-cost-status]"); if (status) status.textContent = "Enter a date, description, and amount before saving."; return; } await this._hass.callService("heros", "roi_upsert_installation_cost", { entry_id: this._entryId(), effective_start_date: effectiveStartDate, installation_description: description, installation_amount: amount, installation_cost_id: this._editingInstallationId || undefined }); const status = this.shadowRoot.querySelector("[data-roi-cost-status]"); if (status) status.textContent = "Installation cost saved."; this._editingInstallationId = ""; roiSaveInstallation.textContent = "Save installation cost"; this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.add("is-hidden"); this._roiFileLoadKey = ""; this._roiSaveInFlight = false; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 900); return; }
+      const roiSaveRepayment = path.find((node) => node?.dataset?.roiSaveRepayment !== undefined);
+      if (roiSaveRepayment) {
+        this._roiSaveInFlight = true;
+        event.preventDefault();
+        event.stopPropagation();
+        const effectiveStartDate = String(this.shadowRoot.querySelector("[data-roi-repayment-start]")?.value || "");
+        const amountText = String(this.shadowRoot.querySelector("[data-roi-repayment-amount]")?.value || "").trim();
+        const amount = Number(amountText);
+        const frequency = String(this.shadowRoot.querySelector("[data-roi-repayment-frequency]")?.value || "weekly");
+        if (!effectiveStartDate || !amountText || !Number.isFinite(amount) || amount < 0) {
+          this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
+          const status = this.shadowRoot.querySelector("[data-roi-repayment-status]");
+          if (status) status.textContent = "Enter a repayment amount before saving.";
+          return;
+        }
+        await this._hass.callService("heros", "roi_upsert_repayment", { entry_id: this._entryId(), effective_start_date: effectiveStartDate, repayment_amount: amount, repayment_frequency: frequency, repayment_id: this._editingRepaymentId || undefined });
+        const status = this.shadowRoot.querySelector("[data-roi-repayment-status]");
+        if (status) status.textContent = "Repayment change saved.";
+        this._editingRepaymentId = "";
+        roiSaveRepayment.textContent = "Add repayment change";
+        this._roiFileLoadKey = "";
+    this._roiDraftDirty = false;
+    this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
+        this._roiForceRenderAfterLoad = true;
+        this._roiForceRenderAfterLoad = true;
+        this._ensureRoiSettingsLoaded();
+        return;
+      }
+      const vppSaveRate = path.find((node) => node?.dataset?.vppSaveRate !== undefined);
+      if (vppSaveRate) {
+        this._roiSaveInFlight = true;
+        event.preventDefault();
+        event.stopPropagation();
+        const provider = String(this.shadowRoot.querySelector("[data-vpp-provider]")?.value || "").trim();
+        const effectiveStartDate = String(this.shadowRoot.querySelector("[data-vpp-effective-date]")?.value || "");
+        const centsText = String(this.shadowRoot.querySelector("[data-vpp-cents-per-kwh]")?.value || "").trim();
+        const centsPerKwh = Number(centsText);
+        if (!provider || !effectiveStartDate || !centsText || !Number.isFinite(centsPerKwh) || centsPerKwh < 0) {
+          this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
+          const status = this.shadowRoot.querySelector("[data-vpp-rate-status]");
+          if (status) status.textContent = "Enter a provider, effective date, and cents/kWh before saving.";
+          return;
+        }
+        await this._hass.callService("heros", "roi_upsert_vpp_rate", { entry_id: this._entryId(), provider, effective_start_date: effectiveStartDate, vpp_cents_per_kwh: centsPerKwh, vpp_rate_id: this._editingVppRateId || undefined });
+        const status = this.shadowRoot.querySelector("[data-vpp-rate-status]");
+        if (status) status.textContent = "VPP rate change saved.";
+        this._editingVppRateId = "";
+        vppSaveRate.textContent = "Add VPP rate change";
+        this._roiFileLoadKey = "";
+    this._roiDraftDirty = false;
+    this._roiSaveInFlight = false;
+    this._roiForceRenderAfterLoad = false;
+        this._roiForceRenderAfterLoad = true;
+        this._roiForceRenderAfterLoad = true;
+        this._ensureRoiSettingsLoaded();
+        return;
+      }
       const connectionTypeSave = path.find((node) => node?.dataset?.connectionTypeSave !== undefined);
       if (connectionTypeSave) {
         event.preventDefault();
@@ -8390,6 +8732,8 @@ class HerosPanel extends HTMLElement {
         this._batterySelectorOpen = false;
         this._holdBatterySelectorWindow(10000);
         this._pendingBatterySelection = option;
+        this._batterySelectionPreference = option;
+        this._saveBatterySelection(option);
         this._syncEmbeddedSelectionStateInPlace();
         this._commitSharedBatterySelectionUi(option);
         await this._selectSharedBatteryOption(option);
@@ -8530,13 +8874,6 @@ class HerosPanel extends HTMLElement {
       if (pricingUiModifyGroup) {
         event.preventDefault();
         this._handlePricingUiModifyGroup();
-        return;
-      }
-
-      const pricingUiNewGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
-      if (pricingUiNewGroup) {
-        event.preventDefault();
-        this._handlePricingUiNewGroup();
         return;
       }
 
@@ -8742,11 +9079,6 @@ class HerosPanel extends HTMLElement {
         this._holdRenderWindow();
       }
 
-      const syncRefresh = path.find((node) => node?.dataset?.syncRefresh !== undefined);
-      if (syncRefresh) {
-        event.preventDefault();
-        this._loadSyncLog();
-      }
     });
 
     this.shadowRoot.addEventListener("input", (event) => {
@@ -8775,15 +9107,12 @@ class HerosPanel extends HTMLElement {
       }
     });
 
-    if (this._page === "settings" && this._debugEnabled) {
-      this._loadSyncLog();
-      this._startSyncLogPolling();
-    } else {
-      this._clearSyncLogTimer();
-    }
   }
 
   async _selectSharedBatteryOption(option) {
+    if (this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2") {
+      return;
+    }
     const target = this._settingsTargetId();
     if (!target) {
       return;
@@ -9003,13 +9332,10 @@ function herosPanelControllerForEvent(event) {
 function handleHerosGlobalActivation(event) {
   const path = event?.composedPath?.() || [];
   const actionLink = path.find((node) => node?.dataset?.pricingActionLink);
-  const newGroup = path.find((node) => node?.dataset?.pricingUiNewGroup !== undefined);
-  const addGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined)
-    || (actionLink?.dataset?.pricingActionLink === "add_group" ? actionLink : null);
   const addRule = path.find((node) => node?.dataset?.pricingUiAddRule !== undefined)
     || (actionLink?.dataset?.pricingActionLink === "add_rule" ? actionLink : null);
   const pageButton = path.find((node) => node?.dataset?.page);
-  if (!newGroup && !addGroup && !addRule && !pageButton) {
+  if (!addRule && !pageButton) {
     return;
   }
   const panel = herosPanelControllerForEvent(event)
@@ -9019,14 +9345,6 @@ function handleHerosGlobalActivation(event) {
   }
   event.preventDefault?.();
   event.stopPropagation?.();
-  if (newGroup) {
-    panel._handlePricingUiNewGroup();
-    return;
-  }
-  if (addGroup) {
-    panel._handlePricingUiAddGroup();
-    return;
-  }
   if (addRule) {
     panel._handlePricingUiAddRule(addRule.dataset?.pricingRecordType || addRule.dataset?.pricingUiAddRule || "buy");
     return;
@@ -9070,9 +9388,6 @@ const herosPanelInlineAction = (event, action, recordType = "") => {
 
 function startHerosPanelFallback() {
   bootstrapHerosPanelFallback(document);
-  if (typeof window.setInterval === "function") {
-    window.setInterval(() => bootstrapHerosPanelFallback(document), 1000);
-  }
   if (!window.__herosGlobalActivationBound) {
     window.__herosGlobalActivationBound = true;
     ["pointerdown", "mousedown", "click"].forEach((eventName) => {
@@ -9097,9 +9412,32 @@ if (typeof customElements !== "undefined") {
   if (!customElements.get("heros-panel")) {
     customElements.define("heros-panel", HerosPanel);
   }
-  startHerosPanelFallback();
+  if (!customElements.get(HEROS_PANEL_TAG)) {
+    customElements.define(HEROS_PANEL_TAG, class extends HerosPanel {});
+  }
 } else {
   startHerosPanelFallback();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

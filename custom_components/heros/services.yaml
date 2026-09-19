@@ -585,7 +585,7 @@ pricing_upsert_rule:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/day
+          unit_of_measurement: cents/day
     controlled_load_1:
       name: Controlled Load 1
       description: Controlled load 1 rate.
@@ -717,16 +717,36 @@ pricing_upsert_group:
             - fixed
             - dynamic
     daily_connection_charge:
-      name: Daily Connection Charge
-      description: Daily fixed charge in dollars/day.
+      name: Daily Supply Charge (cents)
+      description: Daily fixed charge in cents/day.
       required: false
       selector:
         number:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/day
-    other_charges:
+          unit_of_measurement: cents/day
+    dynamic_import_price_entity:
+      name: Current Import Price Entity
+      description: Home Assistant sensor supplying the current import price for this dynamic group.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    dynamic_next_import_price_entity:
+      name: Next Import Price Entity
+      description: Optional Home Assistant sensor supplying the next import price.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+    dynamic_export_price_entity:
+      name: Current Export Price Entity
+      description: Optional Home Assistant sensor supplying the current export price.
+      required: false
+      selector:
+        entity:
+          domain: sensor    other_charges:
       name: Other Charges
       description: Other named charges to record for the group.
       required: false
@@ -816,24 +836,24 @@ pricing_upsert_record:
         time: {}
     import_rate:
       name: Import Rate
-      description: Import rate in dollars/kWh, e.g. 0.42.
+      description: Import rate in cents/kWh, e.g. 42.
       required: false
       selector:
         number:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/kWh
+          unit_of_measurement: cents/kWh
     export_rate:
       name: Export Rate
-      description: Flat export/feed-in rate in dollars/kWh when the plan does not use tiers.
+      description: Flat export/feed-in rate in cents/kWh when the plan does not use tiers.
       required: false
       selector:
         number:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/kWh
+          unit_of_measurement: cents/kWh
     export_tier_1_limit:
       name: Export Tier 1 Limit
       description: First sell/feed-in block size in kWh, e.g. 1000.
@@ -853,7 +873,7 @@ pricing_upsert_record:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/kWh
+          unit_of_measurement: cents/kWh
     export_tier_2_rate:
       name: Export Tier 2 Rate
       description: Sell/feed-in rate after the first block in dollars/kWh, e.g. 0.02.
@@ -863,7 +883,7 @@ pricing_upsert_record:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/kWh
+          unit_of_measurement: cents/kWh
     controlled_load_rate:
       name: Controlled Load Rate
       description: Controlled load rate in dollars/kWh.
@@ -873,7 +893,7 @@ pricing_upsert_record:
           min: 0
           max: 100
           step: 0.001
-          unit_of_measurement: $/kWh
+          unit_of_measurement: cents/kWh
     other_charges:
       name: Other Charges
       description: Other named charges to record.

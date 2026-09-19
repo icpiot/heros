@@ -14,6 +14,7 @@ PANEL_EXAMPLE_PATH = ROOT / "examples" / "panel" / "heros-panel_custom.yaml"
 CONFIG_FLOW_PATH = ROOT / "custom_components" / "heros" / "config_flow.py"
 CONST_PATH = ROOT / "custom_components" / "heros" / "const.py"
 SERVICES_PATH = ROOT / "custom_components" / "heros" / "services.yaml"
+LATEST_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_BUILD.txt"
 LATEST_DEBUG_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_DEBUG_BUILD.txt"
 LATEST_REPORT_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_REPORT_BUILD.txt"
 README_PATH = ROOT / "README.md"
@@ -24,14 +25,18 @@ REPORT_CARD_WRAPPER_PATH = ROOT / "examples" / "www" / "heros-report-card.js"
 def test_panel_build_matches_registered_cache_version():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     integration_source = INIT_PATH.read_text(encoding="utf-8")
+    latest_build = LATEST_BUILD_PATH.read_text(encoding="utf-8").strip()
 
-    panel_build = re.search(r'PANEL_BUILD = "(\d+)"', panel_source)
-    registered_build = re.search(r'panel\.js\?v=(\d+)', integration_source)
+    panel_build = re.search(r'HEROS_PANEL_BUILD = "(\d+)"', panel_source)
+    registered_component = re.search(r'PANEL_COMPONENT_NAME = "heros-panel-(\d+)"', integration_source)
+    registered_module = re.search(r'PANEL_MODULE_URL = "/local/community/heros/heros-panel\.js\?v=(\d+)"', integration_source)
 
     assert panel_build is not None
-    assert registered_build is not None
-    assert panel_build.group(1) == registered_build.group(1)
-
+    assert registered_component is not None
+    assert registered_module is not None
+    assert latest_build == f"v{panel_build.group(1)}"
+    assert registered_component.group(1) == panel_build.group(1)
+    assert registered_module.group(1) == panel_build.group(1)
 
 def test_panel_uses_provider_neutral_entity_namespace():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
@@ -44,6 +49,62 @@ def test_panel_reads_configuration_from_home_assistant_panel_property():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     assert "this._config = panel?.config || this._config" in panel_source
 
+
+def test_report_mounts_versioned_component_after_module_load():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert "const reportModuleLoadKey = `heros-report|${HEROS_REPORT_CARD_MODULE_URL}`;" in panel_source
+    assert "const reportTag = window.herosReportCardTag || \"heros-report-card\";" in panel_source
+    assert "tag: reportTag," in panel_source
+    assert "isReport: true," in panel_source
+
+def test_analysis_reports_route_to_distinct_renderer_with_period_navigation():
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
+
+    for view in ("trend", "energy-flow", "self-sufficiency", "battery-compare", "battery-balance", "battery-flow"):
+        assert f'"{view}"' in report_card_source
+    assert "const HEROS_ANALYSIS_VIEWS = new Set([" in report_card_source
+    assert "HEROS_ANALYSIS_VIEWS.has(this._view)" in report_card_source
+    assert "this._renderAnalysisReport(reporting, this._view)" in report_card_source
+    assert 'data-analysis-period="${period.value}"' in report_card_source
+    assert 'this._analysisPeriod || "day"' in report_card_source
+    assert "const analysisKind = this._view;" in report_card_source
+    assert "button.getAttribute(`data-${analysisKind}-shift`)" in report_card_source
+    for marker in (
+        "analysis-trend__plot",
+        "analysis-energy-flow",
+        "analysis-gauge",
+        "analysis-table__row",
+        "analysis-balance__row",
+        "analysis-battery-flow__battery",
+    ):
+        assert marker in report_card_source
+    assert "analysis-trend__tooltip" in report_card_source
+    assert 'tabindex="0" aria-label="${this._escape(aria)}"' in report_card_source
+    assert "Hover or focus a date to see its energy values." in report_card_source
+    assert "min-height:230px; padding:12px 4px 18px 58px" in report_card_source
+    assert "analysis-trend__tooltip { position:absolute; z-index:12; top:-12px;" in report_card_source
+    assert "analysis-trend__plot:has(.analysis-trend__day:hover)" in report_card_source
+    assert "Energy axis in kilowatt-hours" in report_card_source
+    assert "analysis-solar-compare__tooltip" in report_card_source
+    assert "Y-axis shows daily energy in kWh" in report_card_source
+    assert "font-size:.88rem; white-space:nowrap" in report_card_source
+    assert "expected archive days represented" in report_card_source
+    assert "Period Compare" in report_card_source
+    assert "exact source-to-destination routing is not inferred" in report_card_source
+    assert "Self-sufficiency is calculated as household demand minus grid imports" in report_card_source
+    assert "Balance needs two or more provider battery rows" in report_card_source
+
+
+def test_report_card_historical_soc_uses_the_rendered_battery_series():
+    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
+
+    assert "const finalHistoricalSeriesValue = (key) => {" in report_card_source
+    assert 'const seriesSoc = finalHistoricalSeriesValue("bat");' in report_card_source
+    assert "if (Number.isFinite(Number(seriesSoc))) return seriesSoc;" in report_card_source
+    assert "return { requested, key: requested, scope: scopes?.[requested] || null };" in report_card_source
+    assert "if (this._selectionMeta().aggregate)" in report_card_source
+    assert "const HEROS_PANEL_BATTERY_PREFERENCE_KEY" in PANEL_PATH.read_text(encoding="utf-8")
 
 def test_report_battery_selector_updates_without_replacing_embedded_card():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
@@ -567,7 +628,7 @@ def test_report_card_seeds_live_timeseries_cache_and_normalizes_axis_to_kw():
     assert 'for (let hour = 0; hour <= 24; hour += 2)' in report_card_source
     assert ">Power (kW)</text>" in report_card_source
     assert "Left axis shows power in kW, with sub-1kW values labelled in W." in report_card_source
-    assert ' ? "BAT SOC"' in report_card_source
+    assert 'this._ring("SoC"' in report_card_source
     assert "chart-series-layer--soc" in report_card_source
     assert "chart-series-layer--flow" in report_card_source
 
@@ -677,3 +738,70 @@ def test_debug_card_reads_archive_from_ha_without_browser_history_cache():
     assert "heros-debug-history" not in debug_card_source
     assert "_writeLocalHistory" not in debug_card_source
     assert "_readLocalHistory" not in debug_card_source
+    assert "_lastNonEmptyReporting" in debug_card_source
+    assert "last non-empty Home Assistant state" in debug_card_source
+    assert "Reporting source" in debug_card_source
+    assert "Copy raw attributes" in debug_card_source
+    assert "Copy raw reporting" in debug_card_source
+
+
+def test_foxess_v2_uses_a_compact_stable_setup_page():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert 'this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2"' in panel_source
+    assert "FoxESS V2 Setup" in panel_source
+    assert "Battery and inverter telemetry" in panel_source
+    assert "FoxESS MPPT 1 voltage" in panel_source
+    assert "FoxESS MPPT 2 current" in panel_source
+    assert "FoxESS MPPT 4 voltage" in panel_source
+    assert "Grid and environmental telemetry" in panel_source
+    assert "FoxESS grid import power" in panel_source
+    assert "FoxESS CO2 reduction" in panel_source
+    assert "FoxESS V2 verified mappings" in panel_source
+    assert 'this._page === "forecast_setup"' in panel_source
+    assert 'this._batteryProviderKey(this._config?.battery_provider) !== "foxess_v2"' in panel_source
+    assert "_captureFoxessSetupLiveStates" in panel_source
+    assert "_foxessSetupState(entityId)" in panel_source
+    assert "this._captureFoxessSetupLiveStates(hass);" in panel_source
+    assert "sensor.heros_pv_string_4_current" in panel_source
+    assert "_foxessSetupLiveStates" in panel_source
+    assert "if (isFoxessSetup && this._foxessSetupHydrated)" in panel_source
+    assert "HEROS_PANEL_RUNTIME_TRACE_KEY" in panel_source
+    assert "Panel Runtime Trace" in panel_source
+    assert "No runtime events have been recorded in this browser." in panel_source
+    assert 'const runtimeTrace = this._runtimeTrace();' in panel_source
+    assert '<h2>Sync Status</h2>' not in panel_source
+    assert 'HEROS_PANEL_SYNC_LOG_URL' not in panel_source
+    assert '_startSyncLogPolling' not in panel_source
+
+
+def test_panel_fallback_does_not_repeatedly_scan_the_full_document():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert 'window.setInterval(() => bootstrapHerosPanelFallback(document), 1000)' not in panel_source
+    assert '    startHerosPanelFallback();\n} else {' not in panel_source
+
+
+def test_debug_page_visibility_uses_the_local_debug_toggle_without_double_label_binding():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+
+    assert 'localStorage.getItem(HEROS_PANEL_DEBUG_KEY) === "true"' in panel_source
+    assert 'page.value !== "debug" || this._debugEnabled' in panel_source
+    assert 'data-debug-toggle-button' in panel_source
+    assert 'this._setDebugEnabled(!this._debugEnabled)' in panel_source
+    assert 'FoxESS V2 is selected during installation' in panel_source
+
+def test_debug_card_exposes_foxess_v2_api_query_controls():
+    debug_card_source = (ROOT / "examples" / "www" / "heros-debug-card.js").read_text(encoding="utf-8")
+
+    assert "FoxESS V2 API Query" in debug_card_source
+    assert "heros/foxess_v2_debug_query" in debug_card_source
+    assert "data-foxess-debug-command" in debug_card_source
+    assert "data-foxess-debug-run" in debug_card_source
+    assert "foxess-debug-result" in debug_card_source
+    assert "MPPT / inverter realtime" in debug_card_source
+    assert "Battery realtime" in debug_card_source
+    assert "Plant extra info" in debug_card_source
+
+
+

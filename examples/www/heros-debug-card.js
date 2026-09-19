@@ -1,11 +1,11 @@
-const HEROS_DEBUG_CARD_BUILD = "036";
+const HEROS_DEBUG_CARD_BUILD = "058";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
     const prefix = config?.entity_prefix || "heros";
     this._config = {
       entity_prefix: prefix,
-      settings_target: config?.settings_target || `select.house_${prefix}_settings_target`,
+      settings_target: config?.settings_target || "select.heros_settings_target",
       title: config?.title || "HEROS Debug",
       ...config,
     };
@@ -17,13 +17,85 @@ class ByteWattDebugCard extends HTMLElement {
     this._historyData = this._historyData || null;
     this._historyLoadError = this._historyLoadError || "";
     this._historySourceKey = this._historySourceKey || "";
+    this._lastNonEmptyReporting = this._lastNonEmptyReporting || null;
+    this._reportingSource = this._reportingSource || "none";
+    this._foxessDebugCommand = this._foxessDebugCommand || "mppt";
+    this._foxessDebugResult = this._foxessDebugResult || null;
+    this._foxessDebugLoading = this._foxessDebugLoading || false;
+    this._debugQueryHoldUntil = this._debugQueryHoldUntil || 0;
+    this._foxessDebugSelectorOpen = this._foxessDebugSelectorOpen || false;
+    this._debugInteractionHoldUntil = this._debugInteractionHoldUntil || 0;
+    this._debugOutputExpanded = this._debugOutputExpanded || new Set();
   }
 
   set hass(hass) {
     this._hass = hass;
-    this.render();
+    const active = this.shadowRoot?.activeElement;
+    if (Date.now() < Math.max(this._debugQueryHoldUntil, this._debugInteractionHoldUntil)) return;
+    if (active && (active.matches?.("select, button, input, textarea") || active.closest?.("select, button, input, textarea"))) {
+      this._debugRenderPending = true;
+      return;
+    }
+    if (this._debugRenderTimer) window.clearTimeout(this._debugRenderTimer);
+    this._debugRenderTimer = window.setTimeout(() => {
+      this._debugRenderTimer = null;
+      this._debugRenderPending = false;
+      if (Date.now() < Math.max(this._debugQueryHoldUntil, this._debugInteractionHoldUntil)) return;
+      this.render();
+    }, 120);
+  }
+  _holdDebugInteraction(duration = 2000) {
+    this._debugInteractionHoldUntil = Math.max(this._debugInteractionHoldUntil, Date.now() + duration);
   }
 
+  _holdDebugQueryWindow(duration = 8000) {
+    this._debugQueryHoldUntil = Math.max(this._debugQueryHoldUntil, Date.now() + duration);
+  }
+
+  _bindDebugControlEvents() {
+    if (this._debugControlEventsBound || !this.shadowRoot) return;
+    this._debugControlEventsBound = true;
+    const handleFoxessDebugPickerActivation = (event) => {
+      const path = event.composedPath?.() || [];
+      const option = path.find((node) => node?.dataset?.foxessDebugCommandOption !== undefined);
+      if (option) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._holdDebugQueryWindow(2000);
+        this._foxessDebugCommand = option.dataset.foxessDebugCommandOption || "mppt";
+        this._foxessDebugSelectorOpen = false;
+        this.render();
+        return true;
+      }
+      const toggle = path.find((node) => node?.dataset?.foxessDebugCommandToggle !== undefined);
+      if (toggle) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._holdDebugQueryWindow();
+        this._foxessDebugSelectorOpen = !this._foxessDebugSelectorOpen;
+        this.render();
+        return true;
+      }
+      return false;
+    };
+    ["pointerdown", "mousedown", "click"].forEach((eventName) => {
+      this.shadowRoot.addEventListener(eventName, handleFoxessDebugPickerActivation, true);
+    });
+    this.shadowRoot.addEventListener("click", (event) => {
+      const path = event.composedPath?.() || [];
+      const outputControl = path.find((node) => node?.dataset?.debugOutputToggle !== undefined);
+      if (outputControl) {
+        event.preventDefault(); event.stopPropagation();
+        const key = outputControl.dataset.debugOutputToggle;
+        this._debugOutputExpanded = this._debugOutputExpanded || new Set();
+        const expanded = !this._debugOutputExpanded.has(key);
+        if (expanded) this._debugOutputExpanded.add(key); else this._debugOutputExpanded.delete(key);
+        const output = this.shadowRoot.querySelector(`[data-debug-output="${key}"]`);
+        if (output) output.classList.toggle("is-expanded", expanded);
+        outputControl.textContent = expanded ? "Compact output" : "Expand output";
+      }
+    }, true);
+  }
   getCardSize() {
     return 14;
   }
@@ -52,10 +124,29 @@ class ByteWattDebugCard extends HTMLElement {
     return this._reportState()?.attributes || {};
   }
 
+  _hasReportingContent(value) {
+    return Boolean(value)
+      && typeof value === "object"
+      && !Array.isArray(value)
+      && Object.keys(value).length > 0;
+  }
+
   _reporting() {
     const reportAttrs = this._reportAttrs();
     const selectorAttrs = this._attrs();
-    return reportAttrs.reporting || selectorAttrs.reporting || {};
+    const liveReporting = [reportAttrs.reporting, selectorAttrs.reporting]
+      .find((value) => this._hasReportingContent(value));
+    if (liveReporting) {
+      this._lastNonEmptyReporting = liveReporting;
+      this._reportingSource = "live Home Assistant state";
+      return liveReporting;
+    }
+    if (this._hasReportingContent(this._lastNonEmptyReporting)) {
+      this._reportingSource = "last non-empty Home Assistant state";
+      return this._lastNonEmptyReporting;
+    }
+    this._reportingSource = "no reporting payload";
+    return {};
   }
 
   _history() {
@@ -936,10 +1027,169 @@ class ByteWattDebugCard extends HTMLElement {
     this.render();
   }
 
+  _entryId() {
+    return String(this._config?.entry_id || this._history()?.entry_id || this._attrs()?.entry_id || "").trim();
+  }
+
+  _foxessDebugCommands() {
+    return [
+      ["refresh_telemetry", "Refresh HEROS telemetry"],
+      ["mppt", "MPPT / inverter realtime"],
+      ["inverter_realtime", "Inverter realtime"],
+      ["battery_from_inverter", "Battery from inverter realtime"],
+      ["battery_realtime", "Battery realtime"],
+      ["battery_health", "Battery health"],
+      ["battery_expected_life", "Battery expected life"],
+      ["device_discovery", "Device discovery"],
+      ["plant_extra_info", "Plant extra info"],
+      ["plant_work_mode", "Plant work mode"],
+      ["plant_last_energy", "Plant last energy"],
+      ["plant_alarms", "Plant alarms"],
+      ["plant_flow_preinfo", "Plant flow pre-info"],
+      ["plant_detail", "Plant detail"],
+      ["plant_green_energy", "Plant green energy"],
+      ["plant_list", "Plant list"],
+    ];
+  }
+
+  _foxessDebugErrorText(error) {
+    if (typeof error === "string") return error;
+    const values = [
+      error?.message,
+      error?.body?.message,
+      error?.error?.message,
+      error?.error,
+      error?.code,
+    ];
+    const message = values.find((value) => typeof value === "string" && value.trim());
+    if (message) return message;
+    try {
+      const rendered = JSON.stringify(error);
+      if (rendered && rendered !== "{}") return rendered;
+    } catch (_error) {
+      // Use the safe fallback below.
+    }
+    const name = typeof error?.name === "string" && error.name ? error.name : "WebSocket error";
+    const properties = error && typeof error === "object"
+      ? Object.getOwnPropertyNames(error).filter((key) => key !== "stack").join(", ")
+      : "";
+    return properties ? `${name} (${properties})` : name;
+  }
+
+  async _runFoxessDebugQuery() {
+    if (this._foxessDebugLoading) return;
+    if (!this._hass?.connection?.sendMessagePromise) {
+      this._status = "Home Assistant WebSocket connection is unavailable";
+      this._statusKind = "error";
+      this.render();
+      return;
+    }
+    const entryId = this._entryId();
+    if (!entryId) {
+      this._status = "HEROS entry_id is unavailable for FoxESS debug query";
+      this._statusKind = "error";
+      this.render();
+      return;
+    }
+    const command = this._foxessDebugCommand || "mppt";
+    this._foxessDebugLoading = true;
+    this._status = `Running FoxESS V2 debug query: ${command}`;
+    this._statusKind = "loading";
+    this.render();
+    try {
+      const response = await this._hass.connection.sendMessagePromise({
+        type: "heros/foxess_v2_debug_query",
+        entry_id: entryId,
+        command,
+      });
+      this._foxessDebugResult = {
+        requested_at: new Date().toISOString(),
+        ...response,
+      };
+      this._status = `FoxESS V2 debug query complete: ${command}`;
+      this._statusKind = "success";
+    } catch (err) {
+      const error = this._foxessDebugErrorText(err);
+      this._foxessDebugResult = {
+        requested_at: new Date().toISOString(),
+        command,
+        error,
+      };
+      this._status = `FoxESS V2 debug query failed: ${error}`;
+      this._statusKind = "error";
+    } finally {
+      this._foxessDebugLoading = false;
+      this.render();
+    }
+  }
+
+  _sectionStorageKey() {
+    return "heros-debug-card:sections:v1";
+  }
+
+  _sectionExpansion() {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(this._sectionStorageKey()) || "{}");
+      return saved && typeof saved === "object" ? saved : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  _saveSectionExpansion(sectionId, expanded) {
+    const saved = this._sectionExpansion();
+    saved[sectionId] = Boolean(expanded);
+    try {
+      window.localStorage.setItem(this._sectionStorageKey(), JSON.stringify(saved));
+    } catch (_err) {
+      // Browser storage is optional; the section still works for this visit.
+    }
+  }
+
+  _applyCollapsibleSections() {
+    const panels = [
+      ...this.shadowRoot.querySelectorAll(".shell > .panel, .shell > .history-panel, .shell > .grid > .panel"),
+    ];
+    const expandedSections = this._sectionExpansion();
+    panels.forEach((panel) => {
+      const title = panel.querySelector(".panel-title");
+      if (!title || panel.dataset.collapsibleReady === "true") return;
+      const titleText = title.textContent.trim();
+      const sectionId = titleText.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const details = document.createElement("details");
+      details.className = "debug-section";
+      details.dataset.debugSection = sectionId;
+      details.open = expandedSections[sectionId] === true;
+      const summary = document.createElement("summary");
+      summary.className = "debug-section__summary";
+      const heading = document.createElement("span");
+      heading.textContent = titleText;
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "button secondary debug-section__toggle";
+      toggle.dataset.debugSectionToggle = sectionId;
+      toggle.textContent = details.open ? "Collapse" : "Expand";
+      summary.append(heading, toggle);
+      const body = document.createElement("div");
+      body.className = "debug-section__body";
+      [...panel.childNodes].forEach((node) => {
+        if (node === title) return;
+        body.append(node);
+      });
+      details.append(summary, body);
+      details.addEventListener("toggle", () => {
+        this._saveSectionExpansion(sectionId, details.open);
+        toggle.textContent = details.open ? "Collapse" : "Expand";
+      });
+      panel.replaceChildren(details);
+      panel.classList.add("panel--collapsible");
+      panel.dataset.collapsibleReady = "true";
+    });
+  }
   render() {
     if (!this._hass || !this._config) return;
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
-
+    this._bindDebugControlEvents();
     const selector = this._selectorState();
     const attrs = this._attrs();
     const reportTarget = this._reportState();
@@ -1069,7 +1319,8 @@ class ByteWattDebugCard extends HTMLElement {
           color: #fff;
           border-color: var(--accent);
         }
-        .date-input {
+        .date-input,
+        .debug-query-select {
           border: 1px solid var(--line);
           border-radius: 12px;
           padding: 7px 10px;
@@ -1078,7 +1329,49 @@ class ByteWattDebugCard extends HTMLElement {
           color: var(--text);
           background: #fff;
         }
-        .range-pill {
+        .debug-query-select {
+          min-width: min(100%, 280px);
+        }
+        .debug-query-picker {
+          position: relative;
+          min-width: min(100%, 280px);
+        }
+        .debug-query-picker .debug-query-select {
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+        }
+        .debug-query-menu {
+          position: absolute;
+          z-index: 20;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          max-height: 320px;
+          overflow: auto;
+          padding: 4px;
+          border: 1px solid var(--line);
+          border-radius: 12px;
+          background: #fff;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
+        }
+        .debug-query-option {
+          display: block;
+          width: 100%;
+          border: 0;
+          border-radius: 8px;
+          padding: 8px 10px;
+          background: transparent;
+          color: var(--text);
+          font: inherit;
+          font-weight: 700;
+          text-align: left;
+          cursor: pointer;
+        }
+        .debug-query-option:hover,
+        .debug-query-option.is-selected {
+          background: #e8f1ff;
+        }        .range-pill {
           display: inline-flex;
           align-items: center;
           padding: 7px 10px;
@@ -1099,6 +1392,46 @@ class ByteWattDebugCard extends HTMLElement {
           border-radius: 16px;
           padding: 14px;
           box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+        }
+        .panel--collapsible {
+          display: grid;
+          gap: 10px;
+        }
+        .debug-section__summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          cursor: pointer;
+          font-size: 0.92rem;
+          font-weight: 900;
+          list-style: none;
+        }
+        .debug-section__summary::-webkit-details-marker { display: none; }
+        .debug-section__header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .debug-section__header .panel-title {
+          margin-bottom: 0;
+        }
+        .debug-section__toggle {
+          flex: 0 0 auto;
+        }
+        .debug-section__body {
+          display: grid;
+          gap: 10px;
+        }
+        .debug-section__body[hidden] {
+          display: none;
+        }
+        pre.json {
+          min-height: 180px;
+          max-height: 520px;
+          overflow: auto;
+          resize: vertical;
         }
         .panel-title {
           font-size: 0.92rem;
@@ -1146,11 +1479,20 @@ class ByteWattDebugCard extends HTMLElement {
           border: 1px solid var(--line);
           background: #0f172a;
           color: #e2e8f0;
+          display: block;
+          box-sizing: border-box;
+          height: 180px;
+          min-height: 180px;
+          max-height: none;
           overflow: auto;
-          max-height: 240px;
+          resize: vertical;
           font-size: 0.76rem;
           line-height: 1.45;
           white-space: pre;
+        }
+        .json.is-expanded {
+          height: 640px;
+          resize: none;
         }
         .history-panel {
           display: grid;
@@ -1323,6 +1665,8 @@ class ByteWattDebugCard extends HTMLElement {
             <div class="button-row header-actions">
               <button class="button" type="button" id="probe-button">Probe archive</button>
               <button class="button secondary" type="button" id="hard-refresh-button">Hard refresh</button>
+              <button class="button secondary" type="button" data-debug-sections="expand">Expand all</button>
+              <button class="button secondary" type="button" data-debug-sections="collapse">Collapse all</button>
             </div>
           </div>
 
@@ -1389,6 +1733,7 @@ class ByteWattDebugCard extends HTMLElement {
                 <button class="button secondary" type="button" data-copy="power-diagram">Copy power diagram</button>
               </div>
               ${this._summaryLine("Selected report date", range.displayDate || "-")}
+              ${this._summaryLine("Reporting source", this._reportingSource)}
               ${this._summaryLine("Live reporting date", reporting.reporting_date || reportingMeta.reporting_date || "-")}
               ${this._summaryLine("Label", reporting.label || "-")}
               ${this._summaryLine("Aggregate", reporting.aggregate ? "true" : "false")}
@@ -1399,18 +1744,60 @@ class ByteWattDebugCard extends HTMLElement {
             </div>
 
             <div class="panel">
+              <div class="panel-title">FoxESS V2 API Query</div>
+              <div class="button-row">
+                <div class="debug-query-picker">
+                  <button class="debug-query-select" type="button" aria-haspopup="listbox" aria-expanded="${this._foxessDebugSelectorOpen ? "true" : "false"}" data-foxess-debug-command-toggle>${this._escape(this._foxessDebugCommands().find(([value]) => value === this._foxessDebugCommand)?.[1] || "Select query")}</button>
+                  ${this._foxessDebugSelectorOpen ? `<div class="debug-query-menu" role="listbox">${this._foxessDebugCommands().map(([value, label]) => `<button type="button" class="debug-query-option${value === this._foxessDebugCommand ? " is-selected" : ""}" role="option" aria-selected="${value === this._foxessDebugCommand ? "true" : "false"}" data-foxess-debug-command-option="${this._escape(value)}">${this._escape(label)}</button>`).join("")}</div>` : ""}
+                </div>                <button class="button" type="button" data-foxess-debug-run ${this._foxessDebugLoading ? "disabled" : ""}>${this._foxessDebugLoading ? "Running..." : "Run query"}</button>
+                <button class="button secondary" type="button" data-copy="foxess-debug-result">Copy query result</button><button class="button secondary" type="button" data-debug-output-toggle="foxess-result">${this._debugOutputExpanded.has("foxess-result") ? "Compact output" : "Expand output"}</button>
+              </div>
+              <pre class="json${this._debugOutputExpanded.has("foxess-result") ? " is-expanded" : ""}" data-debug-output="foxess-result">${this._escape(this._json(this._foxessDebugResult || { status: "No FoxESS V2 debug query has run in this browser." }))}</pre>
+            </div>
+
+            <div class="panel">
               <div class="panel-title">Raw Attributes</div>
-              <pre class="json">${this._escape(this._json(attrs))}</pre>
+              <div class="button-row">
+                <button class="button secondary" type="button" data-copy="raw-attrs">Copy raw attributes</button><button class="button secondary" type="button" data-debug-output-toggle="raw-attrs">${this._debugOutputExpanded.has("raw-attrs") ? "Compact output" : "Expand output"}</button>
+              </div>
+              <pre class="json${this._debugOutputExpanded.has("raw-attrs") ? " is-expanded" : ""}" data-debug-output="raw-attrs">${this._escape(this._json(attrs))}</pre>
             </div>
 
             <div class="panel">
               <div class="panel-title">Raw Reporting</div>
-              <pre class="json">${this._escape(this._json(reporting))}</pre>
+              <div class="button-row">
+                <button class="button secondary" type="button" data-copy="raw-reporting">Copy raw reporting</button><button class="button secondary" type="button" data-debug-output-toggle="raw-reporting">${this._debugOutputExpanded.has("raw-reporting") ? "Compact output" : "Expand output"}</button>
+              </div>
+              <pre class="json${this._debugOutputExpanded.has("raw-reporting") ? " is-expanded" : ""}" data-debug-output="raw-reporting">${this._escape(this._json(reporting))}</pre>
             </div>
           </div>
         </div>
       </ha-card>
     `;
+
+    this._applyCollapsibleSections();
+
+    this.shadowRoot.querySelectorAll("[data-debug-sections]").forEach((control) => {
+      control.onclick = (event) => {
+        event.preventDefault();
+        const expanded = control.dataset.debugSections === "expand";
+        this.shadowRoot.querySelectorAll("details[data-debug-section]").forEach((section) => {
+          section.open = expanded;
+        });
+      };
+    });
+    this.shadowRoot.querySelectorAll("[data-debug-section-toggle]").forEach((control) => {
+      control.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const section = control.closest("details[data-debug-section]");
+        if (section) section.open = !section.open;
+      };
+    });
+
+    this.shadowRoot.querySelectorAll("[data-foxess-debug-run]").forEach((control) => {
+      control.onclick = () => this._runFoxessDebugQuery();
+    });
 
     const button = this.shadowRoot.querySelector("#probe-button");
     if (button) {
@@ -1476,6 +1863,14 @@ class ByteWattDebugCard extends HTMLElement {
           }), "Attributes");
           return;
         }
+        if (key === "foxess-debug-result") {
+          this._copyText(this._json(this._foxessDebugResult || {}), "FoxESS V2 query result");
+          return;
+        }
+        if (key === "raw-attrs") {
+          this._copyText(this._json(attrs), "Raw attributes");
+          return;
+        }
         if (key === "history") {
           this._copyText(this._json(history), "Archive metadata");
           return;
@@ -1492,6 +1887,10 @@ class ByteWattDebugCard extends HTMLElement {
         }
         if (key === "reporting") {
           this._copyText(this._json(this._selectedReportSnapshot(reporting)), "Reporting");
+          return;
+        }
+        if (key === "raw-reporting") {
+          this._copyText(this._json(reporting), "Raw reporting");
           return;
         }
         if (key === "power-diagram") {
@@ -1520,3 +1919,5 @@ window.customCards.push({
   name: "HEROS Debug Card",
   description: `HEROS debug card build ${HEROS_DEBUG_CARD_BUILD}.`,
 });
+
+

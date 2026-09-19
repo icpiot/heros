@@ -508,3 +508,19 @@ def test_group_upsert_effective_start_date_wins_over_stale_group_id():
     assert target.group_id == "date-match"
     assert target.label == "Updated target date"
     assert len({group.effective_start_date for group in schedule.groups}) == 2
+
+def test_pricing_rate_group_preserves_dynamic_entity_mapping():
+    group = PricingRateGroup(
+        group_id="dynamic-feed",
+        effective_start_date=date(2026, 9, 18),
+        pricing_type="dynamic",
+        dynamic_import_price_entity="sensor.current_import_price",
+        dynamic_next_import_price_entity="sensor.next_import_price",
+        dynamic_export_price_entity="sensor.current_export_price",
+    )
+
+    restored = PricingRateGroup.from_dict(group.to_dict())
+
+    assert restored.dynamic_import_price_entity == "sensor.current_import_price"
+    assert restored.dynamic_next_import_price_entity == "sensor.next_import_price"
+    assert restored.dynamic_export_price_entity == "sensor.current_export_price"

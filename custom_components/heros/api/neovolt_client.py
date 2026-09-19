@@ -101,7 +101,26 @@ def _float_or_none(value: Any) -> float | None:
         return None
 
 
+
+def _final_curve_value(values: Any) -> float | None:
+    """Return the final numeric point from a provider chart curve.
+
+    Bytewatt's dated power-diagram response can expose a stale or zero
+    top-level ``soc`` while its five-minute ``cbat`` curve contains the
+    actual end-of-day state of charge. Historical reporting must use the
+    chart's final point so the hero value agrees with the plotted data.
+    """
+    if not isinstance(values, list):
+        return None
+    for value in reversed(values):
+        numeric = _float_or_none(value)
+        if numeric is not None:
+            return numeric
+    return None
+
+
 def _jwt_claims(token: str | None) -> dict[str, Any]:
+
     """Decode JWT claims without verifying the signature."""
     parts = str(token or "").split(".")
     if len(parts) < 2:
@@ -117,27 +136,19 @@ def _jwt_claims(token: str | None) -> dict[str, Any]:
 
 
 def _detail_curve_value(rows: Any) -> list[float]:
-    """Extract a power-like curve from provider detail rows.
+    """Extract the provider's plotted scalar value from detail rows.
 
-    The web payload exposes interval objects with ``value`` plus optional
-    ``value1``/``value2`` fields. The screenshoted web chart behaves like a
-    power series rather than a per-interval energy bar, so prefer the larger
-    detailed point when present and fall back to ``value``.
+    Bytewatt includes auxiliary ``value1`` and ``value2`` values in detail
+    objects. They are not the feed-in curve shown by the provider chart.
+    The scalar ``value`` aligns with the top-level ``feedIn`` series and must
+    be used when a detail-list fallback is needed.
     """
     curve: list[float] = []
     if not isinstance(rows, list):
         return curve
     for row in rows:
-        if not isinstance(row, dict):
-            curve.append(0.0)
-            continue
-        candidates = [
-            _float_or_none(row.get("value1")),
-            _float_or_none(row.get("value2")),
-            _float_or_none(row.get("value")),
-        ]
-        numeric = [abs(item) for item in candidates if item is not None]
-        curve.append(max(numeric) if numeric else 0.0)
+        value = _float_or_none(row.get("value")) if isinstance(row, dict) else None
+        curve.append(value if value is not None else 0.0)
     return curve
 
 
@@ -155,7 +166,8 @@ def _provider_power_diagram(
     load_curve = stats_data.get("homePower") if isinstance(stats_data.get("homePower"), list) else stats_data.get("usePower")
     battery_curve = stats_data.get("cbat") if isinstance(stats_data.get("cbat"), list) else stats_data.get("soc")
     feed_in_curve = stats_data.get("feedIn") if isinstance(stats_data.get("feedIn"), list) else []
-    consumed_curve = _detail_curve_value(stats_data.get("gridDetailList"))
+    grid_import_curve = _detail_curve_value(stats_data.get("gridDetailList"))
+    consumed_curve = list(grid_import_curve)
     if not any(consumed_curve):
         consumed_curve = stats_data.get("homePower") if isinstance(stats_data.get("homePower"), list) else []
     normalized = {
@@ -173,7 +185,8 @@ def _provider_power_diagram(
             "bat": list(battery_curve) if isinstance(battery_curve, list) else [],
             "load": list(load_curve) if isinstance(load_curve, list) else [],
             "solar": list(solar_curve) if isinstance(solar_curve, list) else [],
-            "feed_in": _detail_curve_value(stats_data.get("feedInDetailList")) if isinstance(stats_data.get("feedInDetailList"), list) else list(feed_in_curve),
+            "feed_in": list(feed_in_curve) if isinstance(feed_in_curve, list) and feed_in_curve else _detail_curve_value(stats_data.get("feedInDetailList")),
+            "grid_import": list(grid_import_curve),
             "consumed": list(consumed_curve) if isinstance(consumed_curve, list) else [],
         },
         "raw_provider": {
@@ -669,6 +682,10 @@ class NeovoltClient:
                                 if not stats_data:
                                     last_chart_failure = "empty stats payload"
                                     continue
+                                time_points = stats_data.get("time") if isinstance(stats_data.get("time"), list) else []
+                                if len(time_points) < 2:
+                                    last_chart_failure = "chart payload has fewer than two time points"
+                                    continue
 
                                 pv_today    = _stat_value(stats_data, "epvtoday")
                                 consumed    = _stat_value(stats_data, "ehomeload")
@@ -687,7 +704,14 @@ class NeovoltClient:
                                 total_used   = consumed + feed_in + charged
                                 battery_data["Battery_Discharged_Today"] = total_used - total_gained
                                 battery_data["reporting_date"] = report_date_str
-                                provider_soc = _float_or_none(stats_data.get("soc"))
+                                battery_curve = (
+                                    stats_data.get("cbat")
+                                    if isinstance(stats_data.get("cbat"), list)
+                                    else stats_data.get("soc")
+                                )
+                                provider_soc = _final_curve_value(battery_curve)
+                                if provider_soc is None:
+                                    provider_soc = _float_or_none(stats_data.get("soc"))
                                 battery_data["Power_Diagram"] = _provider_power_diagram(
                                     stats_data,
                                     report_date=report_date_str,

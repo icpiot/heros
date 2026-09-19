@@ -71,7 +71,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/heros/heros-panel.js?v=484`
+`/local/community/heros/heros-panel.js?v=716`
 
 The panel ships with built-in theme presets:
 
@@ -241,7 +241,7 @@ The panel still uses browser storage for a few UI-only preferences:
 
 - active page / URL fragment convenience
 - selected battery target
-- debug page visibility toggle
+- debug page visibility toggle (`localStorage["heros.panel.debug"]`)
 - settings-page focus tab
 - remembered `entry_id` hint used to reconnect the same HA config entry
 
@@ -319,6 +319,16 @@ After install, Settings → Devices & Services → HEROS → Configure:
 
 - **Scan interval** (seconds) — minimum 30, default 60. Changes apply
   immediately (the integration reloads on options changes).
+- **Solar / inverter installation date** and **battery installation date** —
+  separate coverage starts for reporting and any optional historical download.
+
+### Optional historical download
+
+A new installation does not need an initial history download: HEROS starts
+collecting live reporting data immediately. For an existing installation, set
+the two installation dates after setup, then trigger a history download only if
+older reports are wanted. This is optional and can be done later; it does not
+block normal live reporting.
 
 ## Troubleshooting
 
@@ -363,9 +373,37 @@ logger:
 
 ## Support
 
+Solar forecasting is optional. Install and configure Home Assistant's
+Forecast.Solar integration first, then choose `forecast.solar` in HEROS and
+map its entities. See [docs/FORECAST_SETUP.md](docs/FORECAST_SETUP.md).
+
 Open an issue at https://github.com/icpiot/heros/issues.
 
 ## Credits
 
 Originally built with the Home Assistant community and Claude AI. Subsequent
 contributors are credited in the commit history.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

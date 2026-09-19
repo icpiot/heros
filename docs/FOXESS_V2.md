@@ -59,7 +59,12 @@ request bodies are not signer inputs. One clock value supplies the signature,
 
 Available methods: `list_plants`, `get_plant_extra_info`, `get_work_mode`,
 `get_last_energy`, `get_alarms`, `get_flow_preinfo`, `get_plant_detail`,
-`get_green_energy`, and `get_raw_analysis(plant_id, "DAY", date)`.
+`get_green_energy`, `get_raw_analysis(plant_id, "DAY", date)`,
+`list_devices(plant_id)`, `get_device_realtime(device_id)`,
+`get_battery_realtime(battery_id)`, `get_battery_health(battery_id)`, and
+`get_battery_expected_life(battery_id)`. Device and battery IDs are discovered
+from authenticated FoxESS responses for the selected plant; HEROS never stores
+or accepts manually supplied identifiers.
 The analysis date uses year/month/day string fields. Other dimensions, writes,
 arbitrary hosts/paths and WebSocket endpoints are rejected. Results are preserved
 as provider payloads; no unverified field normalization is performed.
@@ -83,26 +88,62 @@ existing HEROS coordinator/sensor payload shape:
 | `get_alarms().alarmCount` | `alarm_state` | Integer preserved | High |
 | `list_plants()[0].status` | `plant_status` | Integer preserved | Medium |
 | `list_plants()[0].systemSize.value` | `system_size_kw` | Converts W to kW when needed | Medium |
+| `get_green_energy().co2.value` | `CO2_Reduction_Tons` | Converts kg to tonnes when supplied as kg | High |
+| `get_green_energy().tree.value` | `Trees_Planted` | Numeric count preserved | High |
+| `get_battery_realtime().soc.value` | `soc` | Percentage preserved | High |
+| `get_battery_realtime().volt.value` | `battery_voltage` | Volts preserved | High |
+| `get_battery_realtime().current.value` | `battery_current` | Amps preserved | High |
+| `get_device_realtime().battery[0].temperature.value` | `battery_temperature` | Degrees Celsius preserved | High |
+| get_device_realtime().battery[0].chargingPower / dischargingPower | pbat | Charging becomes negative W; discharging becomes positive W | High |
+| `get_battery_health().soh.value` | `battery_state_of_health` | Percentage preserved | High |
+| `get_battery_health().energy.value` | `battery_usable_capacity` | Converts Wh to kWh when needed | High |
+| `get_battery_health().remainCapacity.value` | `battery_remaining_capacity` | Mapped only when FoxESS supplies Wh or kWh; amp-hours remain raw telemetry | High |
+| `get_battery_expected_life().cyclesNum` | `battery_cycles` | Numeric value preserved | High |
+| `get_battery_realtime().chargingEnergy*` | `Battery_Charged_Today`, `Total_Battery_Charge` | Converts Wh to kWh when needed | High |
+| `get_battery_realtime().dischargingEnergy*` | `Battery_Discharged_Today`, `Total_Battery_Discharge` | Converts Wh to kWh when needed | High |
+| `get_device_realtime().load.loadsPower.value` | `house_consumption` | Converts kW to W when needed | High |
+| `get_device_realtime().load.loadsTotal.value` | `Total_House_Consumption` | Converts Wh to kWh when needed | High |
+| `get_device_realtime().load.epsPower.value` | `eps_output_power` | Converts kW to W when needed | High |
+| `get_device_realtime().gridInfo.gridConsumption*` | `pgrid`, `Grid_Import_Today`, `Grid_Power_Consumption` | Import-only, converted to W or kWh | High |
+| `get_device_realtime().gridInfo.feedin*` | `Feed_In_Today`, `Total_Feed_In` | Converts Wh to kWh when needed | High |
+| `get_device_realtime().gridOperatingData.operatingData[0]` | `grid_voltage`, `grid_current`, `grid_frequency` | Uses the supplied display units | High |
+| `get_device_realtime().pvInfo.data[1:5]` | `pv_string_1..4_voltage`, `pv_string_1..4_current` | Uses the `pvInfo.unit` display units | High |
 
 The adapter also keeps the source payloads under `raw_provider` for diagnostics
 and later mapping work. It must not log or expose raw provider payloads by
 default because plant metadata can contain identifiers and location details.
 
-Battery charge/discharge power, grid import/export, feed-in, and SOC are not
-mapped yet. They appear to require the DAY analysis series (`socData`,
-`supplyData`, and `usageData`) or another captured endpoint. Those series need
-their sanitized `name` and `variable` labels inspected before HEROS assigns
-directional meanings.
+FoxESS V2's overview can omit the inverter. HEROS therefore uses the captured,
+read-only meter association endpoint to discover the linked inverter before
+calling its realtime endpoint. The first `pvInfo.data` row is the aggregate PV
+reading; the following four rows are mapped to MPPT 1-4.
 
+Battery power follows the HEROS convention: charging is negative and discharging is positive. Grid import and feed-in values remain separate fields; HEROS does not infer a net direction from them. The DAY analysis series (`socData`,
+`supplyData`, and `usageData`) remain unmapped pending sanitized labels and
+live validation.
+
+## Battery telemetry aggregation decision
+
+HEROS exposes both fixed per-battery sensors and aggregate whole-system sensors.
+Per-battery entities use stable Battery 1, Battery 2, and subsequent numbering.
+Aggregate values are used by HEROS reports and graphs by default. SOC and SOH
+use capacity-weighted averages; temperature reports the highest battery value
+(and may also expose an average); voltage is averaged; current, charge power,
+discharge power, capacity, energy, and throughput are summed. Cycle count uses
+the highest battery value because cycles are not additive. Status and fault
+values represent the worst or active battery condition. The complete provider
+payload remains available in debug raw data for traceability.
 ## Polling, privacy and lifecycle
 
-Requests are spaced at least five seconds apart by default. The Home Assistant
-coordinator uses the fixed `DEFAULT_POLL_INTERVAL` of 300 seconds for FoxESS_v2,
-matching the slow cloud update cadence observed during testing. HEROS does not
-show a polling interval option for FoxESS_v2 setup or options, and old stored
-`scan_interval` values are ignored for this provider. Static detail/discovery
-should not be polled on each telemetry update. This is a conservative local
-policy, not a claim about FoxESS's undocumented private API quota.
+The Home Assistant coordinator uses the fixed DEFAULT_POLL_INTERVAL of 60
+seconds for FoxESS_v2. HEROS does not show a polling interval option for
+FoxESS_v2 setup or options, and old stored scan_interval values are ignored
+for this provider. The small, fixed read sequence within one refresh is spaced
+by 0.5 seconds so that discovery, inverter, MPPT, and battery fields can
+complete before the next one-minute cloud update. This interval is live-tested
+against FoxESS and should be restored to five minutes if FoxESS begins
+rejecting or throttling requests. It is not a claim about FoxESS's
+undocumented private API quota.
 
 Every request has a 30-second timeout, bounded response size, and disabled
 redirects. Failures raise sanitized `FoxESSV2Error` subclasses without provider
@@ -137,3 +178,35 @@ environment with aiohttp and the pinned wasmtime runtime, passing `--wasm` and
 before authentication, discovers plants, and exercises the captured reads. It
 prints operation status only, never IDs, credentials or payloads. With multiple
 plants, choose `--plant-index` from discovery order; no captured ID is used.
+
+
+## History coverage and installation dates
+
+FoxESS history backfill uses two independent installation dates configured by
+HEROS: one for the solar/inverter system and one for the battery system. The
+solar/inverter date gates plant and inverter history (PV, load, grid, feed-in,
+EPS, and related values). The battery date gates battery history (SOC,
+charge/discharge, temperature, health, cycles, capacity, and per-battery
+values). They can be different when a battery is added or replaced after the
+inverter was installed.
+
+The dates must be stored as configuration, validated so they are not in the
+future, and exposed as independent manual/provider-derived settings. Reports
+must preserve the separate coverage windows and leave values before a stream's
+installation date absent rather than treating them as zero. A replacement
+battery gets its own scope and start date while the prior scope's history is
+retained.
+
+For a new installation, do not request a historical download during initial
+setup: live reporting begins immediately. Existing installations can set these
+coverage dates and request a historical download later if they want older
+reports. That download is optional and does not affect normal live telemetry.
+
+The operator's initial installation date is **2026-09-06** for both streams.
+The FoxESS history endpoints provide the source data; HEROS keeps the resulting
+normalized snapshots and time-series in its local report archive for later
+reports and exports.
+
+## KH/KA fault and alarm reference
+
+The canonical FoxESS KH/KA fault names and descriptions are documented in [FOXESS_KH_KA_FAULT_REFERENCE.md](FOXESS_KH_KA_FAULT_REFERENCE.md). Raw provider fault strings must remain unchanged; friendly names and categories may be layered on separately.

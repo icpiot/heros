@@ -152,14 +152,14 @@ type: module
 Reporting card:
 
 ```yaml
-url: /local/community/heros/heros-report-card.js?v=397
+url: /local/community/heros/heros-report-card.js?v=635
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/heros/heros-debug-card.js?v=036
+url: /local/community/heros/heros-debug-card.js?v=058
 type: module
 ```
 
@@ -194,14 +194,14 @@ type: module
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/heros/heros-report-card.js?v=397
+url: /local/community/heros/heros-report-card.js?v=635
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/heros/heros-debug-card.js?v=036
+url: /local/community/heros/heros-debug-card.js?v=058
 type: module
 ```
 
@@ -265,3 +265,10 @@ Feed-in fields:
 Optional not-yet-enabled fields:
 
 - `master_action`
+
+
+
+
+
+
+

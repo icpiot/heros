@@ -98,7 +98,7 @@
 .grid,
 .debug,
 .panel-nav {
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
   position: relative;
   z-index: 1;
@@ -195,12 +195,15 @@
 }
 
 .toggle-row__switch {
+  appearance: none;
+  padding: 0;
   width: 54px;
   height: 30px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid var(--heros-panel-border);
   position: relative;
+  cursor: pointer;
   transition: background 180ms ease, border-color 180ms ease;
 }
 
@@ -216,12 +219,12 @@
   transition: transform 180ms ease, background 180ms ease;
 }
 
-.toggle-row__control input:checked + .toggle-row__switch {
+.toggle-row__switch.is-active {
   background: rgba(0, 229, 255, 0.28);
   border-color: var(--heros-panel-accent);
 }
 
-.toggle-row__control input:checked + .toggle-row__switch::after {
+.toggle-row__switch.is-active::after {
   transform: translateX(24px);
   background: var(--heros-panel-accent);
 }
@@ -235,7 +238,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -278,7 +281,7 @@
 }
 
 .settings-detail {
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -515,7 +518,7 @@
 .overview {
   display: grid;
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -589,7 +592,7 @@
 .report {
   display: grid;
   gap: 8px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -977,7 +980,7 @@
 .battery {
   display: grid;
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -1021,7 +1024,7 @@
 .solar {
   display: grid;
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -1065,7 +1068,7 @@
 .history {
   display: grid;
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -1109,7 +1112,7 @@
 .forecast {
   display: grid;
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -1345,7 +1348,7 @@
 .pricing {
   display: grid;
   gap: 14px;
-  max-width: 1380px;
+  max-width:none;
   margin: 0 auto 18px;
 }
 
@@ -1408,7 +1411,7 @@
 .pricing__grid--active-groups {
   grid-template-columns: 1fr;
   justify-items: stretch;
-  max-width: 1380px;
+  max-width:none;
   width: 100%;
 }
 
@@ -1506,8 +1509,7 @@
 
   .pricing-rule__actions,
   .pricing-rule__actions--inline,
-  .pricing-form__actions,
-  .sync-status__actions {
+  .pricing-form__actions {
     justify-content: flex-start;
     width: 100%;
   }
@@ -1518,8 +1520,7 @@
   }
 
   .pricing-rule__actions--inline .pricing-rule__button,
-  .pricing-form__actions .pricing-rule__button,
-  .sync-status__actions > * {
+  .pricing-form__actions .pricing-rule__button {
     flex: 1 1 100%;
     width: 100%;
   }
@@ -2395,25 +2396,19 @@
 
 .panel-card__embedded[data-embedded="report"] {
   margin-top: 0;
-  min-height: clamp(700px, 66vh, 1200px);
+  min-height:0;
 }
 
 .panel-card__embedded > * {
   width: 100%;
 }
 
-.sync-status {
+.debug-payload {
   display: grid;
   gap: 14px;
 }
 
-.sync-status__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.sync-status__log {
+.debug-payload__log {
   margin: 0;
   padding: 14px 16px;
   min-height: 220px;
@@ -2565,3 +2560,242 @@
 .pricing-group-card .pricing-group-editor .pricing-form__notes {
   grid-column: 1 / -1;
 }
+
+/* Overview layout controls and the Report-page-only placement switch. */
+.report__overview-toggle { margin-left: auto; }
+.overview-layout-settings { display: grid; gap: 8px; margin: 12px 0; }
+.overview-layout-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 12px; border: 1px solid var(--heros-panel-border); border-radius: 12px; background: var(--heros-panel-surface-strong); color: var(--heros-panel-text); }
+.overview-layout-row span { display: flex; gap: 8px; align-items: baseline; font-weight: 700; }
+.overview-layout-row small { color: var(--heros-panel-muted); font-weight: 600; }
+.overview-layout-row input { width: 72px; border: 1px solid var(--heros-panel-border); border-radius: 9px; padding: 7px 9px; background: var(--heros-panel-surface); color: var(--heros-panel-text); font: inherit; }
+.overview__report { width: 100%; }
+
+.hero { display:block; }
+.hero__title-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.hero__badge { display:inline-flex; width:auto; height:auto; min-width:0; padding:4px 8px; border-radius:999px; font-size:.72rem; }
+.status__row { display:flex; align-items:center; gap:16px; width:100%; }
+.status__row .status__banner { margin-left:auto; width:fit-content; max-width:100%; white-space:nowrap; }
+
+.status__row { justify-content:space-between; align-items:center; }
+.status__row .status__banner { margin-left:0; }
+
+.report__stack > .panel-card:not(.report__catalog-card) { display:none; }
+
+.panel-card__embedded[data-embedded="report"] { min-height:0 !important; height:auto !important; }
+.report__stack { gap:8px !important; }
+
+/* Compact shared battery selector and aligned connection status */
+.status__row { align-items:flex-end !important; }
+.status__row .status__banner { align-self:flex-end; margin-bottom:0; }
+.shared-selector { grid-template-columns:auto minmax(120px,170px) !important; }
+.shared-selector__picker { min-width:120px !important; width:170px; }
+.shared-selector__control { min-height:42px; }
+
+/* Settings connection control */
+.settings-toggle--connection { gap:10px; margin-top:18px; padding-top:18px; border-top:1px solid var(--heros-panel-border); }
+.settings-choice { display:grid; gap:7px; max-width:360px; }
+.settings-choice > label { font-weight:700; }
+.settings-choice > select { width:100%; min-height:42px; padding:0 38px 0 12px; border:1px solid var(--heros-panel-border); border-radius:12px; background:var(--heros-panel-surface); color:var(--heros-panel-text); font:inherit; font-weight:700; }
+.settings-toggle--connection .panel-nav__item { width:fit-content; min-width:190px; }
+/* Keep battery selection and connection status together. */
+.status__row { justify-content:flex-start !important; align-items:center !important; gap:12px !important; }
+.shared-selector { grid-template-columns:auto minmax(320px, 380px) !important; width:auto !important; padding-top:0 !important; }
+.shared-selector__picker { min-width:320px !important; width:380px !important; }
+.status__row .status__banner { align-self:center !important; margin:0 !important; }
+@media (max-width: 760px) { .status__row { align-items:stretch !important; } .shared-selector { grid-template-columns:1fr !important; width:100% !important; } .shared-selector__picker { min-width:0 !important; width:100% !important; } }
+.hero__title-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.hero__connection-status { display:inline-flex; align-items:center; gap:7px; max-width:100%; padding:5px 10px; border:1px solid rgba(93,214,132,.5); border-radius:999px; background:rgba(19,83,50,.42); color:#b9ffd0; font-size:.78rem; font-weight:800; line-height:1.2; }
+.hero__connection-status.is-delayed { border-color:rgba(255,193,7,.65); background:rgba(108,76,0,.35); color:#ffe4a0; }
+.hero__connection-status.is-disconnected { border-color:rgba(255,92,92,.75); background:rgba(115,24,32,.5); color:#ffd0d0; }
+.hero__connection-status.is-checking { border-color:rgba(126,190,220,.55); background:rgba(27,57,76,.45); color:#c9e7f5; }
+.hero__connection-dot { width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:#62e989; box-shadow:0 0 0 3px rgba(98,233,137,.15); }
+.hero__connection-status.is-delayed .hero__connection-dot { background:#ffc107; box-shadow:0 0 0 3px rgba(255,193,7,.15); }
+.hero__connection-status.is-disconnected .hero__connection-dot { background:#ff6868; box-shadow:0 0 0 3px rgba(255,104,104,.18); }
+.hero__connection-status.is-checking .hero__connection-dot { background:#8ec9e7; box-shadow:0 0 0 3px rgba(142,201,231,.15); }
+.status__banner.is-disconnected { border-color:rgba(255,92,92,.75); background:rgba(115,24,32,.5); color:#ffd0d0; }
+.status__banner.is-delayed { border-color:rgba(255,193,7,.65); background:rgba(108,76,0,.35); color:#ffe4a0; }
+.status__banner.is-checking { border-color:rgba(126,190,220,.55); }
+@media (max-width:720px) { .hero__connection-status { flex-basis:100%; width:max-content; } }
+
+/* Finance settings use a dedicated stacked form so labels and fields remain readable at every panel width. */
+.roi-settings-card { min-width: 0; }
+.roi-settings-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0, 229, 255, 0.24); }
+.roi-settings-section h3 { margin: 0; font-size: 0.95rem; }
+.roi-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+.roi-settings-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.roi-settings-field { display: grid; gap: 7px; min-width: 0; color: var(--heros-panel-text); font-weight: 700; }
+.roi-settings-field span { font-size: 0.86rem; }
+.roi-settings-field input, .roi-settings-field select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 0 12px; border: 1px solid var(--heros-panel-border); border-radius: 10px; background: var(--heros-panel-surface); color: var(--heros-panel-text); font: inherit; }
+.roi-settings-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+@media (max-width: 720px) { .roi-settings-grid, .roi-settings-grid--three { grid-template-columns: 1fr; } .roi-settings-actions .panel-nav__item { width: 100%; justify-content: center; } }
+/* Content actions use the active HEROS theme; page navigation and selectors retain their own controls. */
+.panel-card button.panel-nav__item,
+.panel-card a.panel-nav__item {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg, rgba(0, 229, 255, 0.16), rgba(255, 61, 214, 0.16)) padding-box,
+    linear-gradient(135deg, var(--heros-panel-accent), var(--heros-panel-accent-strong)) border-box;
+  color: var(--heros-panel-text);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+.panel-card button.panel-nav__item:hover,
+.panel-card button.panel-nav__item:focus,
+.panel-card a.panel-nav__item:hover,
+.panel-card a.panel-nav__item:focus {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 14px 30px rgba(0, 229, 255, 0.24);
+  filter: brightness(1.06);
+}
+/* Separate Settings controls from their explanatory text. */
+.settings-toggle { display: grid; gap: 10px; }
+.settings-toggle > p { margin: 0 0 10px; line-height: 1.55; }
+.settings-toggle > .toggle-row + p { padding-bottom: 6px; border-bottom: 1px solid rgba(0, 229, 255, 0.16); }
+.settings-toggle > .panel-nav__item { margin: 2px 0 8px; justify-self: start; }
+/* Keep Pricing summary metrics on one compact row outside narrow screens. */
+@media (min-width: 761px) { .pricing__tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Keep Finance entry fields compact instead of stretching across Pricing. */
+@media (min-width: 721px) {
+  .roi-settings-grid { grid-template-columns: repeat(2, minmax(0, 240px)); gap: 10px; }
+  .roi-settings-grid--three { grid-template-columns: 140px 150px 150px; gap: 10px; }
+  .roi-settings-section { margin-top: 16px; padding-top: 14px; }
+  .roi-settings-actions { margin-top: 10px; }
+}
+.roi-save-status { align-self:center; color:var(--heros-panel-accent); font-size:0.86rem; font-weight:700; }
+.roi-repayment-history__title { margin: 18px 0 8px; font-size: 0.9rem; }
+.roi-repayment-history { display: grid; gap: 0; max-width: 520px; border: 1px solid rgba(0, 229, 255, 0.24); border-radius: 10px; overflow: hidden; }
+.roi-repayment-history__head, .roi-repayment-history__row { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 10px; align-items: center; padding: 9px 12px; }
+.roi-repayment-history__head { background: rgba(0, 229, 255, 0.08); color: var(--heros-panel-accent); font-size: 0.76rem; font-weight: 800; text-transform: uppercase; }
+.roi-repayment-history__row { border-top: 1px solid rgba(0, 229, 255, 0.14); font-size: 0.88rem; }
+.roi-repayment-history__row strong { color: var(--heros-panel-text); }
+.roi-repayment-history__empty { margin: 10px 0 0; color: var(--heros-panel-muted); font-size: 0.88rem; }
+@media (max-width: 520px) { .roi-repayment-history__head, .roi-repayment-history__row { grid-template-columns: 1fr; gap: 3px; } .roi-repayment-history__head { display: none; } }
+.roi-repayment-history__head--actions, .roi-repayment-history__row:has(.roi-history-actions) { grid-template-columns: 1.05fr 1fr 1fr auto; }
+.roi-history-actions { display: inline-flex; gap: 6px; justify-content: end; }
+.roi-history-actions button { border: 1px solid var(--heros-panel-border); border-radius: 8px; background: var(--heros-panel-surface); color: var(--heros-panel-text); cursor: pointer; font: inherit; font-size: 0.78rem; font-weight: 700; padding: 5px 8px; }
+.roi-history-actions button:hover { border-color: var(--heros-panel-accent); color: var(--heros-panel-accent); }/* Align Rate Group and Buy/Sell record controls with the compact Pricing history actions. */
+.pricing-rule__actions .pricing-rule__button, .pricing-form__actions .pricing-rule__button { border-radius: 8px; min-height: 32px; padding: 5px 10px; font-size: 0.82rem; }
+.pricing-rule__actions .pricing-rule__button--delete, .pricing-form__actions .pricing-rule__button--delete { background: var(--heros-panel-surface); border-color: var(--heros-panel-border); color: var(--heros-panel-text); }
+.pricing-rule__actions .pricing-rule__button--delete:hover, .pricing-form__actions .pricing-rule__button--delete:hover { border-color: var(--heros-panel-accent); color: var(--heros-panel-accent); }
+.roi-history-actions--vpp button { border: 1px solid transparent; background: linear-gradient(135deg, rgba(0, 229, 255, 0.16), rgba(255, 61, 214, 0.16)) padding-box, linear-gradient(135deg, var(--heros-panel-accent), var(--heros-panel-accent-strong)) border-box; color: var(--heros-panel-text); box-shadow: 0 5px 14px rgba(0, 229, 255, 0.18); }
+.roi-history-actions--vpp button:hover { color: #06111f; filter: brightness(1.08); }
+
+.pricing .panel-nav__item, .settings-page .panel-nav__item { height: 32px; min-height: 32px; padding: 5px 10px; border-radius: 8px; font-size: 0.82rem; box-sizing: border-box; }
+.pricing .roi-history-actions button { height: 32px; min-height: 32px; box-sizing: border-box; }
+
+/* Pricing cleanup: align selector, history columns, and compact rate-group cards. */
+.pricing-group-selector-row { display:flex; align-items:center; gap:16px; min-width:0; }
+.pricing-group-selector-row .shared-selector { display:flex; align-items:center; gap:12px; width:min(100%, 720px); min-width:0; }
+.pricing-group-selector-row .shared-selector__label { flex:0 0 auto; white-space:nowrap; }
+.pricing-group-selector-row .shared-selector__picker { flex:1 1 380px; min-width:0; width:auto !important; }
+.pricing-group-selector-row .shared-selector__control { width:100%; min-width:0; }
+.roi-repayment-history__head--actions, .roi-repayment-history__row:has(.roi-history-actions) { grid-template-columns: minmax(120px, 1.1fr) minmax(120px, 1fr) minmax(90px, 0.8fr) auto; }
+.roi-repayment-history__head > span, .roi-repayment-history__row > span, .roi-repayment-history__row > strong { justify-self:start; text-align:left; }
+.roi-history-actions { justify-self:end; }
+.roi-settings-grid--installation { grid-template-columns: 150px minmax(180px, 1fr) 150px; }
+.pricing-rule-list > .pricing-rule:not(.pricing-rule--editor) .pricing-rule__meta { grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px; }
+.pricing-rule-list > .pricing-rule:not(.pricing-rule--editor) .pricing-rule__meta > div { padding:10px 12px; }
+@media (max-width:720px) { .pricing-group-selector-row .shared-selector { flex-direction:column; align-items:stretch; width:100%; } .pricing-group-selector-row .shared-selector__label { white-space:normal; } .roi-settings-grid--installation { grid-template-columns:1fr; } .pricing-rule-list > .pricing-rule:not(.pricing-rule--editor) .pricing-rule__meta { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* All ROI history actions use the same HEROS themed control treatment. */
+.roi-history-actions button { border-color: transparent; background: linear-gradient(135deg, rgba(0,229,255,.16), rgba(255,61,214,.16)) padding-box, linear-gradient(135deg, var(--heros-panel-accent), var(--heros-panel-accent-strong)) border-box; color: var(--heros-panel-text); box-shadow: 0 5px 14px rgba(0,229,255,.18); }
+.roi-history-actions button:hover { color: #06111f; filter: brightness(1.08); }
+
+.roi-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.roi-section-heading h3 { margin:0; }
+.roi-add-toggle { flex:0 0 auto; }
+.roi-installation-editor { margin-top:12px; }
+
+/* Pricing section hierarchy */
+.pricing .roi-settings-section { margin-top:24px; padding:18px 0 4px; border-top:2px solid rgba(0,229,255,.34); }
+.pricing .roi-settings-section h3, .pricing .roi-repayment-history__title { display:flex; align-items:center; gap:8px; color:var(--heros-panel-text); font-size:1rem; font-weight:900; letter-spacing:.02em; text-transform:uppercase; }
+.pricing .roi-settings-section h3::before, .pricing .roi-repayment-history__title::before { content:""; width:5px; height:20px; border-radius:4px; background:linear-gradient(180deg,var(--heros-panel-accent),var(--heros-panel-accent-strong)); box-shadow:0 0 12px rgba(0,229,255,.35); }
+.pricing .roi-repayment-history__title { margin-top:22px; padding-top:4px; }
+.pricing .pricing-group-card__records { margin-top:24px; padding-top:18px; border-top:2px solid rgba(0,229,255,.28); }
+.pricing .pricing-group-card__records .panel-card__header--nested { padding-bottom:10px; border-bottom:1px solid rgba(0,229,255,.2); }
+.pricing .pricing-rule-list { margin-top:18px; }
+.pricing .pricing-rule__header strong, .pricing .pricing-section-heading strong { font-size:1.02rem; }
+
+.roi-entry-editor { margin-top:12px; }
+
+/* Keep all Finance & ROI section actions aligned consistently. */
+.pricing .roi-settings-section > .roi-settings-actions { justify-content:flex-end; min-height:32px; }
+.pricing .roi-settings-section > .roi-settings-actions .roi-save-status { margin-right:auto; }
+
+/* Final alignment: Finance ROI add actions share the Installation position. */
+.pricing .roi-settings-section > .roi-settings-actions { justify-content: flex-end; }
+.pricing .roi-settings-section > .roi-settings-actions .roi-save-status { margin-right: auto; }
+
+/* Standardize action-row placement: status left, action button right. */
+.pricing .roi-settings-section > .roi-settings-actions .roi-save-status { order: 1; margin-right: 0; }
+.pricing .roi-settings-section > .roi-settings-actions > button { order: 2; margin-left: auto; }
+
+/* Standardize Rate Group and Buy/Sell record section hierarchy. */
+.pricing .pricing-group-card__records { margin-top:24px; padding:18px 0 0; border-top:2px solid rgba(0,229,255,.34); }
+.pricing .pricing-group-card__records > .panel-card__header--nested { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 0 10px; border-bottom:1px solid rgba(0,229,255,.2); }
+.pricing .pricing-record-section { border:1px solid rgba(0,229,255,.28); border-radius:12px; padding:16px; }
+.pricing .pricing-record-section__heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; border-bottom:1px solid rgba(0,229,255,.18); }
+.pricing .pricing-record-section__heading strong { font-size:1rem; }
+.pricing .pricing-record-section .pricing-form__actions { justify-content:flex-end; }
+
+/* Enforce the Pricing button standard at exactly 32px. */
+.pricing button.panel-nav__item, .pricing a.panel-nav__item, .pricing .pricing-rule__button, .pricing .roi-history-actions button { height:32px; min-height:32px; max-height:32px; box-sizing:border-box; padding:4px 10px; line-height:22px; }
+
+/* Rate Group / Buy / Sell standard controls. */
+.pricing .pricing-rule-list .pricing-rule__header, .pricing .pricing-record-section__heading { align-items:center; }
+.pricing .pricing-rule-list .pricing-rule__actions, .pricing .pricing-record-section__heading .pricing-rule__actions { margin-left:auto; justify-content:flex-end; }
+.pricing .pricing-record-section { margin-top:14px; background:rgba(5,16,31,.52); }
+.pricing .pricing-record-section__heading strong { letter-spacing:.01em; }
+.pricing .pricing-record-section .pricing-form__actions { display:flex; justify-content:flex-end; gap:8px; }
+
+
+/* Compact Buy/Sell records to match ROI history tables. */
+.pricing .pricing-rule-list--attached > .pricing-rule--summary { display:grid; grid-template-columns:1fr auto; gap:10px 16px; padding:12px 14px; border-radius:10px; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__header { grid-column:1/-1; padding:0; border:0; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__meta { grid-column:1/-1; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__meta > div { padding:8px 10px; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__rates, .pricing .pricing-rule-list--attached > .pricing-rule--summary > p { margin:0; }
+
+
+/* Remove nested Buy/Sell containers; retain the compact record row treatment. */
+.pricing .pricing-group-card__records, .pricing .pricing-record-form, .pricing .pricing-rule-list--attached, .pricing .pricing-rule-list--attached > .pricing-rule--summary { border:0; background:transparent; box-shadow:none; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary { border-top:1px solid rgba(0,229,255,.2); border-bottom:1px solid rgba(0,229,255,.2); border-radius:0; }
+
+
+.pricing .pricing-record-list-section { border:0; background:transparent; box-shadow:none; padding:0; }
+.pricing .pricing-record-list-section + .pricing-record-list-section { margin-top:18px; padding-top:18px; border-top:1px solid rgba(0,229,255,.2); }
+
+
+@media (max-width:720px) { .pricing .pricing-rule-list--attached > .pricing-rule--summary { grid-template-columns:1fr; min-width:0; overflow:hidden; } .pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__header { flex-wrap:wrap; min-width:0; } .pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__header > div:first-child { min-width:0; overflow-wrap:anywhere; } .pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__actions { width:100%; justify-content:flex-start; flex-wrap:wrap; } .pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__meta { grid-template-columns:1fr; } }
+
+
+/* Attempt 1: flatten Buy/Sell records to the Finance history treatment. */
+.pricing .pricing-record-list-section { margin:0; padding:0; border:0; background:transparent; }
+.pricing .pricing-record-list-section .pricing-record-section__heading { margin:18px 0 8px; padding:0; border:0; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary { display:block; margin:0; padding:10px 12px; border:1px solid rgba(0,229,255,.24); border-radius:10px; background:rgba(0,229,255,.03); }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary + .pricing-rule--summary { border-top:0; border-radius:0 0 10px 10px; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 8px; }
+.pricing .pricing-rule-list--attached > .pricing-rule--summary .pricing-rule__meta { margin:0; }
+
+
+.electricity-rate-history__row > span:first-child { display:flex; flex-direction:column; gap:2px; }
+.electricity-rate-history__row small { color: var(--heros-panel-text-muted); font-size:0.78rem; }
+
+/* Mobile layout fixes for standalone electricity rates and ROI history tables. */
+.pricing .electricity-rates-card .pricing-rule-list { align-content:start; }
+.pricing .electricity-rates-card .pricing-rule { min-height:0; height:auto; align-self:start; }
+@media (max-width:720px) {
+  .pricing .roi-repayment-history__head { display:none; }
+  .pricing .roi-repayment-history__row { grid-template-columns:repeat(3,minmax(0,1fr)); min-width:0; overflow:hidden; }
+  .pricing .roi-repayment-history__row > span, .pricing .roi-repayment-history__row > strong { min-width:0; overflow-wrap:anywhere; word-break:break-word; }
+  .pricing .roi-repayment-history__row .roi-history-actions { grid-column:1/-1; justify-content:flex-start; }
+}
+
+.electricity-group-history__row > span:nth-child(2) { display:flex; flex-direction:column; gap:2px; }
+.electricity-group-history__row small { color: var(--heros-panel-text-muted); font-size:0.78rem; }
+
+/* Keep every history table heading and row on the same column tracks. */
+.pricing .roi-repayment-history__head--actions,
+.pricing .roi-repayment-history__row:has(.roi-history-actions) { grid-template-columns: minmax(118px,1.1fr) minmax(118px,1fr) minmax(108px,1fr) auto; }
+.pricing .roi-repayment-history__head--actions > span { justify-self:start; text-align:left; }
+.pricing .roi-repayment-history__row > span, .pricing .roi-repayment-history__row > strong { justify-self:start; text-align:left; }

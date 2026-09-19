@@ -272,13 +272,13 @@ def test_history_backfill_forwards_scope_to_provider_fetch():
     assert "sys_sn=history_sys_sn" in source
 
 
-def test_history_backfill_only_includes_realtime_for_the_actual_current_day():
+def test_history_backfill_uses_fox_history_for_today_and_live_for_bytewatt():
     source = Path(__file__).resolve().parents[1].joinpath(
         "custom_components", "heros", "__init__.py"
     ).read_text(encoding="utf-8")
 
     assert 'today_date = dt_util.now().date().isoformat()' in source
-    assert 'include_realtime=day == today_date and not force' in source
+    assert 'include_realtime=day == today_date and entry_data.get("provider") != PROVIDER_FOXESS_V2' in source
 
 
 def test_live_battery_summary_keeps_per_battery_mppt_source_fields():

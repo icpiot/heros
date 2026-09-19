@@ -40,6 +40,26 @@ from .topology import ByteWattScope, DiscoveredInverter
 _CYCLE_OPTIONS = ["Daily", "Weekly"]
 
 
+class _FoxESSReadOnlyManager:
+    """Minimal manager surface needed by the shared reporting selector."""
+
+    current_settings_target_id = ""
+    current_settings_target_sys_sn = "All"
+    battery_cache = None
+
+    def battery_policy_summary(self) -> dict[str, Any]:
+        return {}
+
+    def feedin_policy_summary(self) -> dict[str, Any]:
+        return {}
+
+    async def async_select_settings_target(self, scope: ByteWattScope) -> None:
+        """Keep the shared selector compatible without issuing provider writes."""
+        self.current_settings_target_id = str(scope.system_id or "")
+        self.current_settings_target_sys_sn = str(scope.sys_sn or "All")
+        return None
+
+
 def _reporting_payload(
     battery_data: dict[str, Any],
     *,
@@ -119,7 +139,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-    manager = hass.data[DOMAIN][config_entry.entry_id]["manager"]
+    manager = hass.data[DOMAIN][config_entry.entry_id].get("manager")
+    if manager is None:
+        manager = _FoxESSReadOnlyManager()
 
     async_add_entities([
         ByteWattSettingsTargetSelect(hass, coordinator, config_entry, manager),
@@ -185,7 +207,23 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         return []
 
     def _inventory(self) -> list[DiscoveredInverter]:
-        inventory = self._hass.data[DOMAIN][self._config_entry.entry_id].get("inverters", [])
+        entry_data = self._hass.data[DOMAIN][self._config_entry.entry_id]
+        inventory = list(entry_data.get("inverters", []))
+        if not inventory:
+            for plant in entry_data.get("plants", []) or []:
+                if not isinstance(plant, dict):
+                    continue
+                system_id = str(
+                    plant.get("systemId") or plant.get("plantID") or plant.get("plantId") or plant.get("id") or ""
+                ).strip()
+                sys_sn = str(plant.get("sysSn") or plant.get("serialNo") or system_id).strip()
+                label = str(
+                    plant.get("name") or plant.get("plantName") or plant.get("remark") or sys_sn
+                ).strip()
+                if system_id or sys_sn:
+                    inventory.append(
+                        DiscoveredInverter(system_id=system_id, sys_sn=sys_sn, remark=label)
+                    )
         live_inventory = self._live_inventory()
         merged: dict[tuple[str, str], DiscoveredInverter] = {}
         for inverter in live_inventory:
@@ -202,6 +240,15 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             merged.setdefault(key, inverter)
         if merged:
             return list(merged.values())
+        selected_scope = self._hass.data[DOMAIN][self._config_entry.entry_id].get("settings_scope")
+        if isinstance(selected_scope, ByteWattScope) and not selected_scope.aggregate:
+            return [
+                DiscoveredInverter(
+                    system_id=selected_scope.system_id,
+                    sys_sn=selected_scope.sys_sn,
+                    remark=selected_scope.label,
+                )
+            ]
         current_id = self._manager.current_settings_target_id
         current_sys_sn = self._manager.current_settings_target_sys_sn
         if not current_id and current_sys_sn == "All":
@@ -531,6 +578,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         }
 
     async def async_select_option(self, option: str) -> None:
+        is_foxess = self._config_entry.data.get("provider") == "foxess_v2"
         if option == "All systems":
             scope = ByteWattScope(
                 system_id="",
@@ -545,7 +593,8 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             # Publish the target before the provider refresh, which can take
             # several seconds, so the panel never falls back to the old scope.
             self.async_write_ha_state()
-            await self.coordinator.async_request_refresh()
+            if not is_foxess:
+                await self.coordinator.async_request_refresh()
             self.async_write_ha_state()
             return
         inverter = self._options_map().get(option)
@@ -557,7 +606,8 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             inverter.to_settings_scope()
         )
         self.async_write_ha_state()
-        await self.coordinator.async_request_refresh()
+        if not is_foxess:
+            await self.coordinator.async_request_refresh()
         self.async_write_ha_state()
 
 

@@ -4,7 +4,7 @@
   sidebar_title: HEROS
   sidebar_icon: mdi:solar-power-variant
   url_path: heros
-  module_url: /local/community/heros/heros-panel.js?v=484
+  module_url: /local/community/heros/heros-panel.js?v=716
   config:
     title: HEROS (Home Energy Reporting & Optimisation System)
     subtitle: Live energy control, custom theming, and provider-aware dashboards.
@@ -15,3 +15,28 @@
     theme_art_size: cover
     theme_art_position: center center
     theme_art_opacity: 0.18
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -382,6 +382,9 @@ class PricingRateGroup:
     effective_start_date: date | None = None
     pricing_type: str = "dynamic"
     daily_connection_charge: float | None = None
+    dynamic_import_price_entity: str = ""
+    dynamic_next_import_price_entity: str = ""
+    dynamic_export_price_entity: str = ""
     other_charges: str = ""
     notes: str = ""
     records: tuple[PricingRateRecord, ...] = field(default_factory=tuple)
@@ -406,6 +409,9 @@ class PricingRateGroup:
         object.__setattr__(self, "effective_start_date", effective_start_date)
         object.__setattr__(self, "pricing_type", pricing_type)
         object.__setattr__(self, "daily_connection_charge", _parse_float(self.daily_connection_charge))
+        object.__setattr__(self, "dynamic_import_price_entity", _clean_text(self.dynamic_import_price_entity))
+        object.__setattr__(self, "dynamic_next_import_price_entity", _clean_text(self.dynamic_next_import_price_entity))
+        object.__setattr__(self, "dynamic_export_price_entity", _clean_text(self.dynamic_export_price_entity))
         object.__setattr__(self, "other_charges", _clean_text(self.other_charges))
         object.__setattr__(self, "notes", _clean_text(self.notes))
         object.__setattr__(self, "records", tuple(sorted(records, key=lambda item: item.sort_key())))
@@ -444,6 +450,9 @@ class PricingRateGroup:
             "effective_start_date": _jsonable_date(self.effective_start_date),
             "pricing_type": self.pricing_type,
             "daily_connection_charge": self.daily_connection_charge,
+            "dynamic_import_price_entity": self.dynamic_import_price_entity,
+            "dynamic_next_import_price_entity": self.dynamic_next_import_price_entity,
+            "dynamic_export_price_entity": self.dynamic_export_price_entity,
             "other_charges": self.other_charges,
             "notes": self.notes,
             "records": [record.to_dict() for record in self.records],
@@ -460,6 +469,9 @@ class PricingRateGroup:
             effective_start_date=_parse_date(payload.get("effective_start_date")),
             pricing_type=_clean_text(payload.get("pricing_type"), "dynamic"),
             daily_connection_charge=payload.get("daily_connection_charge"),
+            dynamic_import_price_entity=_clean_text(payload.get("dynamic_import_price_entity")),
+            dynamic_next_import_price_entity=_clean_text(payload.get("dynamic_next_import_price_entity")),
+            dynamic_export_price_entity=_clean_text(payload.get("dynamic_export_price_entity")),
             other_charges=_clean_text(payload.get("other_charges")),
             notes=_clean_text(payload.get("notes")),
             records=tuple(PricingRateRecord.from_dict(record) for record in payload.get("records") or [] if isinstance(record, dict)),

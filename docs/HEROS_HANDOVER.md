@@ -30,6 +30,32 @@ automatically migrate existing config entries, entity registries, recorded
 history, reports, browser preferences, dashboards, or automations. Any migration
 of an existing installation is separate work requiring backups and validation.
 
+## Preventing a blank HEROS panel
+
+On 2026-09-16 this failure recurred for the fifth time. The `/heros` route showed a blank page even though Home Assistant was running, HEROS entities were available, and the panel JavaScript returned HTTP 200. The cause was build drift: Home Assistant registered the custom element `heros-panel-626`, while the served JavaScript defined `heros-panel-627`. A successful asset request does not prove that Home Assistant can mount the custom element.
+
+The following six values form one version contract and must always contain the same build number:
+
+1. `PANEL_COMPONENT_NAME` in `custom_components/heros/__init__.py`
+2. the `v=` query in `PANEL_MODULE_URL` in that same file
+3. `HEROS_PANEL_BUILD` in `examples/www/heros-panel.js`
+4. `examples/www/LATEST_BUILD.txt`
+5. the `module_url` in `examples/panel/heros-panel_custom.yaml`
+6. the panel module URL shown in `README.md`
+
+Never bump only the JavaScript asset or only the integration registration. For an asset-only deployment, keep the currently registered build number. For a cache-busting deployment, update all six values together, deploy the integration and assets to both HEROS test instances, and restart both instances because the panel registration is created during Home Assistant startup.
+
+Before handover, complete all of these checks:
+
+- Run `node --check examples/www/heros-panel.js`.
+- Run `pytest tests/test_panel_contract.py` so build drift fails locally.
+- Confirm the deployed `custom_components/heros/__init__.py` and served `heros-panel.js` contain the same build.
+- Query Home Assistant's WebSocket command `get_panels` on each target. For the `heros` entry, verify `_panel_custom.name` is `heros-panel-<build>` and `_panel_custom.module_url` ends in `heros-panel.js?v=<build>`.
+- Fetch that exact module URL and verify its `HEROS_PANEL_BUILD` is the same `<build>`.
+- Confirm HEROS entities are present after restart, then load `/heros` and visually verify the rendered panel. HTTP 200, entity availability, or a passing syntax check alone is insufficient.
+
+If `/heros` is blank, check this version contract first. Do not repeatedly restart Home Assistant until the registered name, registered module URL, served JavaScript build, and build marker agree.
+
 ## Provider inspection
 
 ByteWatt remains the implemented provider. Config flow and runtime setup directly
@@ -58,3 +84,13 @@ before continuing when runtime validation requires one.
 Continue work from the saved HEROS project at the new local path.
 
 FoxESS will initially use its cloud API. Modbus is not installed yet.
+
+### Confirmed custom dropdown interaction pattern (v543)
+Battery Selection and the Debug API Query picker use the same reliable HEROS dropdown pattern. Do not use a native `<select>` for panel controls that can receive Home Assistant updates while open.
+
+- Render a button plus an in-card option menu, using the shared selector styles.
+- Handle `pointerdown`, `mousedown`, and `click` on the shadow root in capture phase. Resolve the target through `event.composedPath()`, then call `preventDefault()` and `stopPropagation()`.
+- Hold panel redraws while the menu is open so state updates cannot close it.
+- When an option is chosen, save the selected value, close the menu, and perform the deliberate render.
+
+This was confirmed live for both Battery Selection and Debug API Query. Apply the same pattern to every new HEROS dropdown.

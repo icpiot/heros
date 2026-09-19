@@ -186,7 +186,61 @@ def test_discovery_pagination_and_proven_read_endpoints():
     assert http.calls[2][2]["json"]["page"] == 2
     assert http.calls[-1][2]["json"] == {"plantId": "synthetic-a", "dimension": "DAY",
         "date": {"year": "2026", "month": "09", "day": "06"}, "downloadFlag": False}
-    assert {url.removeprefix(api.BASE_URL) for _, url, _ in http.calls[1:]} == set(api.READ_ENDPOINTS)
+    assert {url.removeprefix(api.BASE_URL) for _, url, _ in http.calls[1:]}.issubset(set(api.READ_ENDPOINTS))
+
+
+def test_debug_query_mppt_uses_discovered_inverter_and_returns_raw_realtime():
+    session, http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-plant", "plantName": "Synthetic"}]}),
+        ok({"total": 1, "data": [{"id": "synthetic-device", "category": "device", "sn": "synthetic-sn"}]}),
+        ok({
+            "pvInfo": {
+                "data": [
+                    {"volt": {"unit": "V", "value": "111.1"}, "current": {"unit": "A", "value": "5.1"}},
+                    {"volt": {"unit": "V", "value": "222.2"}, "current": {"unit": "A", "value": "6.2"}},
+                    {"volt": {"unit": "V", "value": "333.3"}, "current": {"unit": "A", "value": "7.3"}},
+                    {"volt": {"unit": "V", "value": "444.4"}, "current": {"unit": "A", "value": "8.4"}},
+                ]
+            },
+            "battery": [{"batteryId": "synthetic-battery"}],
+        }),
+    ])
+    result = run(api.FoxESSV2Client(session).debug_query("mppt"))
+    assert result["command"] == "mppt"
+    assert result["plant"]["plantID"] == "synthetic-plant"
+    assert result["device"]["id"] == "synthetic-device"
+    assert [row["volt"]["value"] for row in result["pvInfo"]] == ["111.1", "222.2", "333.3", "444.4"]
+    assert result["realtime"]["battery"][0]["batteryId"] == "synthetic-battery"
+    assert http.calls[-1][2]["params"] == {"deviceID": "synthetic-device"}
+
+
+def test_debug_query_runs_one_plant_endpoint_at_a_time():
+    session, http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"data": [{"plantID": "plant"}], "total": 1}),
+        ok({"online": True, "workMode": "SelfUse"}),
+    ])
+
+    result = run(api.FoxESSV2Client(session).debug_query("plant_work_mode"))
+
+    assert result == {
+        "command": "plant_work_mode",
+        "plant": {"plantID": "plant"},
+        "work_mode": {"online": True, "workMode": "SelfUse"},
+    }
+    assert [url.removeprefix(api.BASE_URL) for _, url, _ in http.calls] == [
+        api.LOGIN_PATH,
+        "/dew/w/v0/plant/list",
+        "/dew/w/plant/work/mode",
+    ]
+
+
+def test_debug_query_rejects_unknown_command_without_http_call():
+    session, http, _ = make_session([])
+    with pytest.raises(api.FoxESSV2Error, match="Unsupported"):
+        run(api.FoxESSV2Client(session).debug_query("write_controls"))
+    assert not http.calls
 
 
 def test_undiscovered_plant_is_rejected():
@@ -208,6 +262,75 @@ def test_discover_plants_matches_config_flow_contract():
     assert run(client.discover_plants(force=True)) == [{"plantID": "synthetic-b"}]
 
 
+def test_inverter_selection_accepts_category_display_variant():
+    assert api._is_inverter_device({"id": "synthetic-device", "categoryStr": "Inverter"})
+    assert api._is_inverter_device({"id": "synthetic-device", "category": "DEVICE"})
+    assert not api._is_inverter_device({"id": "synthetic-meter", "category": "meter"})
+    assert not api._is_inverter_device({"category": "device"})
+
+
+def test_list_devices_ignores_non_queryable_inventory_records():
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-plant"}]}),
+        ok({"total": 3, "data": [
+            {"id": "synthetic-inverter", "category": "device"},
+            {"category": "battery", "name": "descriptive-only"},
+            {"id": "synthetic-meter", "category": "meter"},
+        ]}),
+    ])
+    client = api.FoxESSV2Client(session)
+    assert run(client.list_plants())
+    devices = run(client.list_devices("synthetic-plant"))
+    assert [device["id"] for device in devices] == [
+        "synthetic-inverter", "synthetic-meter",
+    ]
+    assert client._device_ids == {"synthetic-inverter", "synthetic-meter"}
+
+
+def test_meter_association_discovers_an_inverter_missing_from_overview():
+    session, http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-plant"}]}),
+        ok({"total": 1, "data": [{"id": "synthetic-meter", "category": "meter"}]}),
+        ok({"devices": [{"id": "synthetic-inverter", "category": "device"}]}),
+        ok({"pvInfo": {"data": []}, "battery": []}),
+    ])
+
+    result = run(api.FoxESSV2Client(session).debug_query("mppt"))
+
+    assert result["device"]["id"] == "synthetic-inverter"
+    assert "/dew/v0/device/associateDevices" in http.calls[3][1]
+
+
+def test_v2_mppt_display_strings_skip_aggregate_row():
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-plant"}]}),
+        ok({"online": True}),
+        ok({"production": {}, "consumption": {}}),
+        ok({"alarmCount": 0}),
+        ok({}),
+        ok({"total": 1, "data": [{"id": "synthetic-meter", "category": "meter"}]}),
+        ok({"devices": [{"id": "synthetic-inverter", "category": "device"}]}),
+        ok({"pvInfo": {
+            "data": [
+                {"volt": "--", "current": "--"},
+                {"volt": "400.1", "current": "6.1"},
+                {"volt": "300.2", "current": "5.2"},
+                {"volt": "200.3", "current": "4.3"},
+                {"volt": "100.4", "current": "3.4"},
+            ],
+            "unit": {"volt": "V", "current": "A"},
+        }, "battery": []}),
+    ])
+
+    data = run(api.FoxESSV2Client(session).get_battery_data())
+
+    assert [data[f"pv_string_{index}_voltage"] for index in range(1, 5)] == [400.1, 300.2, 200.3, 100.4]
+    assert [data[f"pv_string_{index}_current"] for index in range(1, 5)] == [6.1, 5.2, 4.3, 3.4]
+
+
 def test_get_battery_data_maps_high_confidence_foxess_fields():
     plant = {
         "plantID": "synthetic-plant",
@@ -226,6 +349,12 @@ def test_get_battery_data_maps_high_confidence_foxess_fields():
             "consumption": {"todayConsumption": {"unit": "kWh", "value": "7.2"}},
         }),
         ok({"alarmCount": 0}),
+        ok({"co2": {"unit": "kg", "value": "125.0"}, "tree": {"unit": "", "value": "33.0"}}),
+        ok({"total": 1, "data": [{"id": "synthetic-device", "category": "device"}]}),
+        ok({"battery": [{"batteryId": "synthetic-battery", "temperature": {"unit": "°C", "value": "24.5"}, "chargingPower": {"unit": "kW", "value": "1.5"}, "dischargingPower": {"unit": "kW", "value": "0.2"}}], "load": {"loadsPower": {"unit": "W", "value": "800"}, "loadsTotal": {"unit": "kWh", "value": "9.1"}, "epsPower": {"unit": "W", "value": "0"}}}),
+        ok({"soc": {"unit": "%", "value": "60"}, "volt": {"unit": "V", "value": "52"}, "current": {"unit": "A", "value": "10"}, "chargingEnergyDaily": {"unit": "kWh", "value": "1.2"}, "chargingEnergyTotal": {"unit": "kWh", "value": "40"}, "dischargingEnergyDaily": {"unit": "kWh", "value": "0.8"}, "dischargingEnergyTotal": {"unit": "kWh", "value": "35"}}),
+        ok({"soh": {"unit": "%", "value": "98"}, "energy": {"unit": "kWh", "value": "6.4"}, "remainCapacity": {"unit": "kWh", "value": "6.4"}}),
+        ok({"cyclesNum": "123"}),
     ])
     data = run(api.FoxESSV2Client(session).get_battery_data())
     assert data["provider"] == "foxess_v2"
@@ -240,7 +369,91 @@ def test_get_battery_data_maps_high_confidence_foxess_fields():
     assert data["Consumed_Today"] == 7.2
     assert data["total_house_consumption"] == 7.2
     assert data["system_size_kw"] == 5.5
-    assert set(data["raw_provider"]) == {"plant", "work_mode", "last_energy", "alarms"}
+    assert data["CO2_Reduction_Tons"] == 0.125
+    assert data["Trees_Planted"] == 33.0
+    assert data["soc"] == 60
+    assert data["battery_voltage"] == 52
+    assert data["battery_current"] == 10
+    assert data["battery_temperature"] == 24.5
+    assert data["battery_cycles"] == 123
+    assert data["battery_state_of_health"] == 98
+    assert data["battery_usable_capacity"] == 6.4
+    assert data["battery_remaining_capacity"] == 6.4
+    assert data["pbat"] == -1300
+    assert data["Total_Battery_Charge"] == 40
+    assert set(data["raw_provider"]) == {"plant", "work_mode", "last_energy", "alarms", "green_energy", "inverter_realtime", "battery_realtime", "battery_health", "battery_expected_life", "optional_telemetry_errors"}
+    assert data["raw_provider"]["optional_telemetry_errors"] == {}
+
+
+def test_foxess_grid_info_maps_import_export_and_operating_data():
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-plant"}]}),
+        ok({"online": True}),
+        ok({"production": {}, "consumption": {}}),
+        ok({"alarmCount": 0}),
+        ok({}),
+        ok({"total": 1, "data": [{"id": "synthetic-inverter", "category": "device"}]}),
+        ok({
+            "battery": [],
+            "gridInfo": {
+                "gridConsumptionPower": {"unit": "kW", "value": "0.4"},
+                "gridConsumptionDaily": {"unit": "kWh", "value": "1.2"},
+                "gridConsumptionTotal": {"unit": "kWh", "value": "9.3"},
+                "feedinDaily": {"unit": "kWh", "value": "0.3"},
+                "feedinTotal": {"unit": "kWh", "value": "4.4"},
+            },
+            "gridOperatingData": {
+                "unit": {"volt": "V", "current": "A", "freq": "Hz"},
+                "operatingData": [{"volt": "240.1", "current": "3.2", "freq": "50.0"}],
+            },
+        }),
+    ])
+
+    data = run(api.FoxESSV2Client(session).get_battery_data())
+
+    assert data["pgrid"] == 400
+    assert data["Grid_Import_Today"] == 1.2
+    assert data["Grid_Power_Consumption"] == 9.3
+    assert data["Feed_In_Today"] == 0.3
+    assert data["Total_Feed_In"] == 4.4
+    assert data["grid_voltage"] == 240.1
+    assert data["grid_current"] == 3.2
+    assert data["grid_frequency"] == 50.0
+
+def test_get_battery_data_keeps_other_telemetry_when_one_battery_read_fails():
+    session, _http, _ = make_session([
+        ok({"token": "synthetic-token"}),
+        ok({"total": 1, "data": [{"plantID": "synthetic-plant"}]}),
+        ok({"online": True}),
+        ok({"production": {}, "consumption": {}}),
+        ok({"alarmCount": 0}),
+        ok({"co2": {"unit": "kg", "value": "125.0"}, "tree": {"unit": "", "value": "33.0"}}),
+        ok({"total": 1, "data": [{"id": "synthetic-device", "category": "device"}]}),
+        ok({"battery": [{"batteryId": "synthetic-battery", "temperature": {"unit": "C", "value": "24"}}],
+            "load": {"loadsPower": {"unit": "W", "value": "800"}}}),
+        Response({"errno": 7}),
+        ok({"soh": {"unit": "%", "value": "98"}, "energy": {"unit": "kWh", "value": "6.4"}}),
+        ok({"cyclesNum": "123"}),
+    ])
+    data = run(api.FoxESSV2Client(session).get_battery_data())
+    assert data["house_consumption"] == 800
+    assert data["battery_temperature"] == 24
+    assert data["battery_state_of_health"] == 98
+    assert data["battery_usable_capacity"] == 6.4
+    assert data["battery_cycles"] == 123
+    assert "soc" not in data
+    assert data["raw_provider"]["optional_telemetry_errors"] == {
+        "battery_realtime": "FoxESS API request failed (errno 7)",
+    }
+
+
+def test_remaining_capacity_in_amp_hours_is_not_mislabelled_as_energy():
+    assert api._foxess_energy_amount({"unit": "Ah", "value": "122"}) is None
+    assert api._foxess_energy_amount({"unit": "kWh", "value": "48.78"}) == 48.78
+
+def test_default_poll_interval_is_one_minute():
+    assert api.DEFAULT_POLL_INTERVAL == 60
 
 
 def test_get_battery_data_falls_back_to_plant_today_yield():
@@ -253,9 +466,14 @@ def test_get_battery_data_falls_back_to_plant_today_yield():
         ok({"online": False}),
         ok({"production": {}, "consumption": {}}),
         ok({"alarmCount": 2}),
+        ok({}),
+        ok({"total": 1, "data": [{"id": "synthetic-device", "category": "device"}]}),
+        ok({"battery": []}),
     ])
     data = run(api.FoxESSV2Client(session).get_battery_data())
-    assert data["communication_status"] == "offline"
+    # An offline inverter must not create a false provider-connection alarm.
+    assert data["communication_status"] == "online"
+    assert data["inverter_communication_status"] == "offline"
     assert data["PV_Generated_Today"] == 2.5
     assert data["alarm_state"] == 2
 

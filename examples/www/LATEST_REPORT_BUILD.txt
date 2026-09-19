@@ -1,1 +1,1 @@
-heros-report-card.js?v=397
+heros-report-card.js?v=635

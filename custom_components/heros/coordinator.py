@@ -165,6 +165,39 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                     details["error_type"] = type(error).__name__
                 self.diagnostic_service.log_diagnostic("operation", details)
     
+    async def _async_update_foxess_v2_data(self, current_time):
+        """Refresh FoxESS V2 without ByteWatt-specific inventory and policy calls."""
+        try:
+            with self._timed_operation("get_battery_data"):
+                battery_data = await self.client.get_battery_data()
+        except Exception as err:
+            if self._last_battery_data:
+                _LOGGER.warning("FoxESS refresh failed; retaining last successful telemetry: %s", err)
+                return {"battery": self._last_battery_data, "selected_battery": self._selected_battery_data or {}, "live_battery_power": self.live_battery_power_summary, "connection_status": "partial", "circuit_breaker": self.circuit_breaker.state.value, "last_updated": current_time.isoformat()}
+            raise
+        if not battery_data:
+            if self._last_battery_data:
+                return {"battery": self._last_battery_data, "selected_battery": self._selected_battery_data or {}, "live_battery_power": self.live_battery_power_summary, "connection_status": "partial", "circuit_breaker": self.circuit_breaker.state.value, "last_updated": current_time.isoformat()}
+            raise UpdateFailed("FoxESS V2 returned no telemetry")
+        self._last_battery_data = battery_data
+        self._selected_battery_data = {}
+        self._live_battery_power = []
+        self._last_successful_update = current_time
+        self._consecutive_stale_checks = 0
+        self._recovery_attempts = 0
+        self.diagnostic_service.log_diagnostic("data_update", {
+            "type": "foxess_v2_telemetry",
+            "result": "success",
+        })
+        return {
+            "battery": battery_data,
+            "selected_battery": {},
+            "live_battery_power": self.live_battery_power_summary,
+            "connection_status": "connected",
+            "circuit_breaker": self.circuit_breaker.state.value,
+            "last_updated": current_time.isoformat(),
+        }
+
     async def _async_update_data(self):
         """Update data via library with improved error handling."""
         try:
@@ -194,6 +227,9 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                         f"Circuit breaker is {self.circuit_breaker.state.value} and no cached data available"
                     )
             
+            if getattr(self.client, "is_foxess_v2", False):
+                return await self._async_update_foxess_v2_data(current_time)
+
             # Get battery data
             with self._timed_operation("get_battery_data"):
                 battery_data = await self.client.get_battery_data()
@@ -209,6 +245,13 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
                 await manager.refresh()
                 await self._run_policy_charge_schedule(manager)
             
+            # A successful Bytewatt poll proves the web provider connection is healthy.
+            # Its payload communication_status describes inverter telemetry and can be
+            # unavailable while the API itself is responding, so do not use it for
+            # the global provider connection indicator.
+            if battery_data and not getattr(self.client, "is_foxess_v2", False):
+                battery_data = {**battery_data, "communication_status": "online"}
+
             # If we got battery data, update our cached version and last successful time
             if battery_data:
                 self._last_battery_data = battery_data
@@ -1037,3 +1080,5 @@ class ByteWattDataUpdateCoordinator(DataUpdateCoordinator):
     def get_diagnostic_logs(self) -> List[Dict[str, Any]]:
         """Get all diagnostic logs."""
         return self.diagnostic_service.get_diagnostic_logs()
+
+

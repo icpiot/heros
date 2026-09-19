@@ -250,8 +250,9 @@ def test_provider_power_diagram_normalizes_web_chart_payload():
     assert payload["series"]["bat"] == [64.6, 64.5]
     assert payload["series"]["load"] == [0.4, 0.5]
     assert payload["series"]["solar"] == [0.0, 0.2]
-    assert payload["series"]["feed_in"] == [2.694, 1.195]
-    assert payload["series"]["consumed"] == [0.36, 0.45]
+    assert payload["series"]["feed_in"] == [0.001, 0.047]
+    assert payload["series"]["grid_import"] == [0.0, 0.0]
+    assert payload["series"]["consumed"] == [0.4, 0.5]
     assert payload["summary"]["grid_consumption"] == 4.83
     assert payload["raw_provider"]["powerSource"] == "grid"
     assert payload["provider_payload"]["soc"] == 64.9
@@ -318,6 +319,7 @@ async def test_async_get_battery_data_uses_user_id_chart_request_for_all_scope_s
     }
     assert result["Power_Diagram"]["meta"]["source"] == "provider"
     assert result["Power_Diagram"]["time"] == ["0:00", "0:05"]
+    assert result["Power_Diagram"]["summary"]["soc"] == 41.4
 
 
 @pytest.mark.asyncio

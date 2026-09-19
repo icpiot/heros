@@ -5,7 +5,7 @@ from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import EVENT_STATE_CHANGED, Event, HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import (
@@ -47,6 +47,23 @@ from .const import (
     SENSOR_PV_STRING_1_CURRENT,
     SENSOR_PV_STRING_2_VOLTAGE,
     SENSOR_PV_STRING_2_CURRENT,
+    SENSOR_PV_STRING_3_VOLTAGE,
+    SENSOR_PV_STRING_3_CURRENT,
+    SENSOR_PV_STRING_4_VOLTAGE,
+    SENSOR_PV_STRING_4_CURRENT,
+    SENSOR_PV_STRING_1_POWER,
+    SENSOR_PV_STRING_2_POWER,
+    SENSOR_PV_STRING_3_POWER,
+    SENSOR_PV_STRING_4_POWER,
+    SENSOR_BATTERY_CAPACITY,
+    SENSOR_BATTERY_CHARGING_POWER,
+    SENSOR_BATTERY_DISCHARGING_POWER,
+    SENSOR_BATTERY_MAX_CHARGE_CURRENT,
+    SENSOR_BATTERY_MAX_DISCHARGE_CURRENT,
+    SENSOR_GRID_STATUS,
+    SENSOR_FEEDIN_POWER,
+    SENSOR_GRID_CONSUMPTION_POWER,
+    SENSOR_AC_POWER,
     SENSOR_PV_INPUT_TOTAL_POWER,
     SENSOR_BATTERY_USABLE_CAPACITY,
     SENSOR_BATTERY_REMAINING_CAPACITY,
@@ -384,6 +401,23 @@ async def async_setup_entry(
         ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_1_CURRENT, "PV String 1 Current", "current", "pv_string_1_current", "A", "mdi:solar-panel"),
         ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_2_VOLTAGE, "PV String 2 Voltage", "voltage", "pv_string_2_voltage", "V", "mdi:solar-panel"),
         ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_2_CURRENT, "PV String 2 Current", "current", "pv_string_2_current", "A", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_3_VOLTAGE, "PV String 3 Voltage", "voltage", "pv_string_3_voltage", "V", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_3_CURRENT, "PV String 3 Current", "current", "pv_string_3_current", "A", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_4_VOLTAGE, "PV String 4 Voltage", "voltage", "pv_string_4_voltage", "V", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_4_CURRENT, "PV String 4 Current", "current", "pv_string_4_current", "A", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_1_POWER, "PV String 1 Power", "power", "pv_string_1_power", "W", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_2_POWER, "PV String 2 Power", "power", "pv_string_2_power", "W", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_3_POWER, "PV String 3 Power", "power", "pv_string_3_power", "W", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_PV_STRING_4_POWER, "PV String 4 Power", "power", "pv_string_4_power", "W", "mdi:solar-panel"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_CAPACITY, "Battery Capacity", "energy", "battery_capacity", "kWh", "mdi:battery"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_CHARGING_POWER, "Battery Charging Power", "power", "battery_charging_power", "W", "mdi:battery-arrow-up"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_DISCHARGING_POWER, "Battery Discharging Power", "power", "battery_discharging_power", "W", "mdi:battery-arrow-down"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_MAX_CHARGE_CURRENT, "Battery Max Charge Current", "current", "battery_max_charge_current", "A", "mdi:current-dc"),
+        ByteWattSensor(coordinator, entry, SENSOR_BATTERY_MAX_DISCHARGE_CURRENT, "Battery Max Discharge Current", "current", "battery_max_discharge_current", "A", "mdi:current-dc"),
+        ByteWattSensor(coordinator, entry, SENSOR_GRID_STATUS, "Grid Status", None, "grid_status", "", "mdi:transmission-tower"),
+        ByteWattSensor(coordinator, entry, SENSOR_FEEDIN_POWER, "Feed-in Power", "power", "feedin_power", "W", "mdi:transmission-tower-export"),
+        ByteWattSensor(coordinator, entry, SENSOR_GRID_CONSUMPTION_POWER, "Grid Consumption Power", "power", "grid_consumption_power", "W", "mdi:transmission-tower-import"),
+        ByteWattSensor(coordinator, entry, SENSOR_AC_POWER, "AC Power", "power", "ac_power", "W", "mdi:flash"),
         ByteWattSensor(coordinator, entry, SENSOR_PV_INPUT_TOTAL_POWER, "PV Input Total Power", "power", "pv_input_total_power", "W", "mdi:solar-power"),
         ByteWattSensor(coordinator, entry, SENSOR_BATTERY_USABLE_CAPACITY, "Battery Usable Capacity", "energy", "battery_usable_capacity", "kWh", "mdi:battery"),
         ByteWattSensor(coordinator, entry, SENSOR_BATTERY_REMAINING_CAPACITY, "Battery Remaining Capacity", "energy", "battery_remaining_capacity", "kWh", "mdi:battery"),
@@ -391,15 +425,58 @@ async def async_setup_entry(
         ByteWattSensor(coordinator, entry, SENSOR_SOLAR_FORECAST, "Solar Forecast", "energy", "solar_forecast", "kWh", "mdi:weather-sunny"),
         ByteWattSensor(coordinator, entry, SENSOR_FORECAST_GENERATION_TODAY, "Forecast Generation Today", "energy", "forecast_generation_today", "kWh", "mdi:weather-sunny"),
         ByteWattSensor(coordinator, entry, SENSOR_FORECAST_GENERATION_TOMORROW, "Forecast Generation Tomorrow", "energy", "forecast_generation_tomorrow", "kWh", "mdi:weather-sunny"),
-        ByteWattSensor(coordinator, entry, SENSOR_TARIFF_CURRENT_PRICE, "Tariff Current Price", None, "tariff_current_price", "", "mdi:cash"),
-        ByteWattSensor(coordinator, entry, SENSOR_TARIFF_NEXT_PRICE, "Tariff Next Price", None, "tariff_next_price", "", "mdi:cash-clock"),
+        PricingDynamicRateSensor(coordinator, entry, SENSOR_TARIFF_CURRENT_PRICE, "Tariff Current Price", "current_import", "mdi:cash"),
+        PricingDynamicRateSensor(coordinator, entry, SENSOR_TARIFF_NEXT_PRICE, "Tariff Next Price", "next_import", "mdi:cash-clock"),
         ByteWattSensor(coordinator, entry, SENSOR_DYNAMIC_PRICING_ENABLED, "Dynamic Pricing Enabled", None, "dynamic_pricing_enabled", "", "mdi:cash-sync"),
-        ByteWattSensor(coordinator, entry, SENSOR_EXPORT_SPIKE_PRICE, "Export Spike Price", None, "export_spike_price", "", "mdi:cash-plus"),
+        PricingDynamicRateSensor(coordinator, entry, SENSOR_EXPORT_SPIKE_PRICE, "Export Price", "current_export", "mdi:cash-plus"),
         ByteWattSensor(coordinator, entry, SENSOR_BATTERY_WEAR_COST, "Battery Wear Cost", None, "battery_wear_cost", "", "mdi:chart-line"),
         ByteWattSensor(coordinator, entry, SENSOR_DAILY_COST_ESTIMATE, "Daily Cost Estimate", None, "daily_cost_estimate", "", "mdi:currency-usd"),
         ByteWattSensor(coordinator, entry, SENSOR_DAILY_INCOME_ESTIMATE, "Daily Income Estimate", None, "daily_income_estimate", "", "mdi:currency-usd"),
     ]
 
+    for battery_index in range(1, 5):
+        battery_label = f"Battery {battery_index}"
+        placeholder_sensors.extend([
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_serial", f"{battery_label} Serial", None, f"battery_{battery_index}_serial", "", "mdi:identifier"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_soc", f"{battery_label} SOC", None, f"battery_{battery_index}_soc", "%", "mdi:battery"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_voltage", f"{battery_label} Voltage", "voltage", f"battery_{battery_index}_voltage", "V", "mdi:flash"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_current", f"{battery_label} Current", "current", f"battery_{battery_index}_current", "A", "mdi:current-dc"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_temperature", f"{battery_label} Temperature", "temperature", f"battery_{battery_index}_temperature", "°C", "mdi:thermometer"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_charging_power", f"{battery_label} Charging Power", "power", f"battery_{battery_index}_charging_power", "W", "mdi:battery-arrow-up"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_discharging_power", f"{battery_label} Discharging Power", "power", f"battery_{battery_index}_discharging_power", "W", "mdi:battery-arrow-down"),
+            ByteWattSensor(coordinator, entry, f"battery_{battery_index}_capacity", f"{battery_label} Capacity", "energy", f"battery_{battery_index}_capacity", "kWh", "mdi:battery"),
+        ])
+    placeholder_sensors.extend([
+        ByteWattSensor(coordinator, entry, "battery_aggregate_soc", "Battery Aggregate SOC", None, "battery_aggregate_soc", "%", "mdi:battery-multiple"),
+        ByteWattSensor(coordinator, entry, "battery_total_capacity", "Battery Total Capacity", "energy", "battery_total_capacity", "kWh", "mdi:battery-multiple"),
+        ByteWattSensor(coordinator, entry, "battery_total_charging_power", "Battery Total Charging Power", "power", "battery_total_charging_power", "W", "mdi:battery-arrow-up"),
+        ByteWattSensor(coordinator, entry, "battery_total_discharging_power", "Battery Total Discharging Power", "power", "battery_total_discharging_power", "W", "mdi:battery-arrow-down"),
+        ByteWattSensor(coordinator, entry, "battery_max_temperature", "Battery Maximum Temperature", "temperature", "battery_max_temperature", "°C", "mdi:thermometer-alert"),
+    ])
+    telemetry_sensors = []
+    for pv_index in (5, 6):
+        telemetry_sensors.extend([
+            (f"pv_string_{pv_index}_voltage", f"PV String {pv_index} Voltage", "voltage", "V", "mdi:solar-panel"),
+            (f"pv_string_{pv_index}_current", f"PV String {pv_index} Current", "current", "A", "mdi:solar-panel"),
+            (f"pv_string_{pv_index}_power", f"PV String {pv_index} Power", "power", "W", "mdi:solar-panel"),
+        ])
+    telemetry_sensors.extend([
+        ("battery_capacity_ah", "Battery Capacity Ah", None, "Ah", "mdi:battery"),
+        ("battery_self_discharge_rate", "Battery Self Discharge Rate", None, "%", "mdi:battery-minus"),
+        ("battery_round_trip_efficiency", "Battery Round Trip Efficiency", None, "%", "mdi:percent"),
+        ("battery_ohmic_resistance", "Battery Ohmic Resistance", None, "mΩ", "mdi:resistor"),
+        ("battery_charge_energy_throughput", "Battery Charge Energy Throughput", "energy", "kWh", "mdi:battery-arrow-up"),
+        ("battery_discharge_energy_throughput", "Battery Discharge Energy Throughput", "energy", "kWh", "mdi:battery-arrow-down"),
+        ("battery_charge_capacity_throughput", "Battery Charge Capacity Throughput", None, "Ah", "mdi:battery-arrow-up"),
+        ("battery_discharge_capacity_throughput", "Battery Discharge Capacity Throughput", None, "Ah", "mdi:battery-arrow-down"),
+        ("battery_extreme_time", "Battery Extreme Temperature Time", "duration", "h", "mdi:thermometer-alert"),
+        ("battery_extreme_charging_time", "Battery Extreme Charging Time", "duration", "h", "mdi:battery-alert"),
+        ("battery_event_count", "Battery Event Count", None, "events", "mdi:alert-circle"),
+    ])
+    placeholder_sensors.extend(
+        ByteWattSensor(coordinator, entry, attribute, name, device_class, attribute, unit, icon)
+        for attribute, name, device_class, unit, icon in telemetry_sensors
+    )
     pricing_sensors = [
         PricingScheduleSensor(coordinator, entry),
         PolicyChargeScheduleSensor(coordinator, entry),
@@ -449,6 +526,20 @@ class ByteWattSensor(CoordinatorEntity, SensorEntity):
         }
 
     @property
+    def extra_state_attributes(self):
+        """Expose safe FoxESS V2 optional-telemetry diagnostics."""
+        try:
+            battery_data = (self.coordinator.data or {}).get("battery", {})
+            if battery_data.get("provider") != "foxess_v2":
+                return {}
+            errors = (battery_data.get("raw_provider") or {}).get(
+                "optional_telemetry_errors", {}
+            )
+            return {"foxess_v2_telemetry_errors": errors} if errors else {}
+        except Exception:
+            return {}
+
+    @property
     def native_value(self):
         """Return the state of the sensor."""
         try:
@@ -478,6 +569,13 @@ class ByteWattSensor(CoordinatorEntity, SensorEntity):
             _LOGGER.error(f"Error getting sensor state for {self._attr_name}: {ex}")
             return None
 
+
+    @property
+    def available(self) -> bool:
+        """Keep cached telemetry available across transient poll failures."""
+        data = self.coordinator.data or {}
+        battery_data = data.get("battery")
+        return isinstance(battery_data, dict) and self._attribute in battery_data
 
 class ByteWattGridSensor(ByteWattSensor):
     """Representation of a Byte-Watt Grid Sensor."""
@@ -586,6 +684,110 @@ class ByteWattLastUpdateSensor(ByteWattSensor):
         """Return if entity is available."""
         return hasattr(self.coordinator, '_last_successful_update') and self.coordinator._last_successful_update is not None
 
+
+class PricingDynamicRateSensor(CoordinatorEntity, SensorEntity):
+    """Expose one configured dynamic tariff source as cents per kWh."""
+
+    _SOURCE_FIELDS = {
+        "current_import": "dynamic_import_price_entity",
+        "next_import": "dynamic_next_import_price_entity",
+        "current_export": "dynamic_export_price_entity",
+    }
+
+    def __init__(self, coordinator: DataUpdateCoordinator, config_entry: ConfigEntry, sensor_type: str, name: str, source_key: str, icon: str):
+        super().__init__(coordinator)
+        self._config_entry = config_entry
+        self._store = PricingScheduleStore(coordinator.hass, config_entry.entry_id)
+        self._source_key = source_key
+        self._source_field = self._SOURCE_FIELDS[source_key]
+        self._schedule = None
+        self._signal = signal_pricing_changed(config_entry.entry_id)
+        self._attr_name = name
+        self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}"
+        self._attr_icon = icon
+        self._attr_native_unit_of_measurement = "c/kWh"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
+            "name": DEVICE_NAME,
+            "manufacturer": DEVICE_MANUFACTURER,
+            "model": DEVICE_MODEL,
+        }
+
+    async def async_added_to_hass(self):
+        self.async_on_remove(async_dispatcher_connect(self.hass, self._signal, self._handle_schedule_changed))
+        self.async_on_remove(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._handle_state_changed))
+        await self._refresh_schedule()
+
+    async def async_update(self) -> None:
+        await self._refresh_schedule()
+
+    def _handle_schedule_changed(self) -> None:
+        self.hass.async_create_task(self._refresh_schedule())
+
+    def _handle_state_changed(self, event: Event) -> None:
+        if event.data.get("entity_id") in self._source_entity_ids:
+            self.async_write_ha_state()
+
+    async def _refresh_schedule(self) -> None:
+        self._schedule = await self._store.async_schedule()
+        self.async_write_ha_state()
+
+    @property
+    def _source_entity_ids(self) -> set[str]:
+        if self._schedule is None:
+            return set()
+        return {
+            entity_id
+            for group in self._schedule.groups
+            for entity_id in (getattr(group, self._source_field, ""),)
+            if entity_id
+        }
+
+    @property
+    def _source_state(self):
+        if self._schedule is None:
+            return None
+        group = self._schedule.active_group(dt_util.now())
+        if group is None or group.pricing_type != "dynamic":
+            return None
+        entity_id = getattr(group, self._source_field, "")
+        return self.hass.states.get(entity_id) if entity_id else None
+
+    @staticmethod
+    def _normalise_cents(state) -> float | None:
+        if state is None:
+            return None
+        try:
+            value = float(state.state)
+        except (TypeError, ValueError):
+            return None
+        unit = str(state.attributes.get("unit_of_measurement") or "").lower().replace(" ", "")
+        if unit in {"c/kwh", "¢/kwh", "cent/kwh", "cents/kwh"}:
+            return value
+        if unit in {"$/kwh", "aud/kwh", "aud$/kwh", "dollar/kwh", "dollars/kwh"}:
+            return value * 100
+        return None
+
+    @property
+    def available(self) -> bool:
+        return self._normalise_cents(self._source_state) is not None
+
+    @property
+    def native_value(self):
+        value = self._normalise_cents(self._source_state)
+        return round(value, 4) if value is not None else None
+
+    @property
+    def extra_state_attributes(self):
+        state = self._source_state
+        return {
+            "source_entity": state.entity_id if state is not None else None,
+            "source_unit": state.attributes.get("unit_of_measurement") if state is not None else None,
+            "source_last_changed": state.last_changed.isoformat() if state is not None else None,
+        }
 
 class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
     """Expose the persisted pricing schedule back to the panel."""
@@ -719,5 +921,3 @@ class PolicyChargeScheduleSensor(CoordinatorEntity, SensorEntity):
             "schedules": [schedule.to_dict() for schedule in self._schedule_set.schedules],
             "updated_at": self._schedule_set.updated_at,
         }
-
-

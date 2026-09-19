@@ -1,2 +1,1 @@
-heros-debug-card.js
-/local/community/heros/heros-debug-card.js?v=036
+heros-debug-card.js?v=058

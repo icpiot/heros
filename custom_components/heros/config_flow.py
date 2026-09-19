@@ -12,6 +12,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
+    DateSelector,
+    DateSelectorConfig,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -38,12 +40,15 @@ from .const import (
     CONF_FORECAST_PROVIDER,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_HISTORY_BACKFILL_YEARS,
+    CONF_SOLAR_INSTALLATION_DATE,
+    CONF_BATTERY_INSTALLATION_DATE,
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
     CURRENT_ENTRY_VERSION,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_HISTORY_BACKFILL_YEARS,
+    DEFAULT_INSTALLATION_DATE,
     FORECAST_PROVIDER_FORECAST_SOLAR,
     FORECAST_PROVIDER_NONE,
     FORECAST_PROVIDER_OTHER,
@@ -105,6 +110,12 @@ def _provider_login_schema(provider: str) -> vol.Schema:
         vol.Optional(
             CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
         ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
+        vol.Optional(
+            CONF_SOLAR_INSTALLATION_DATE, default=DEFAULT_INSTALLATION_DATE
+        ): DateSelector(DateSelectorConfig()),
+        vol.Optional(
+            CONF_BATTERY_INSTALLATION_DATE, default=DEFAULT_INSTALLATION_DATE
+        ): DateSelector(DateSelectorConfig()),
     }
     if provider != PROVIDER_FOXESS_V2:
         fields[
@@ -314,8 +325,7 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     self._client = None
                     self._inverters = []
-                    self._user_input[CONF_FORECAST_PROVIDER] = FORECAST_PROVIDER_NONE
-                    return self._create_entry()
+                    return await self.async_step_forecast_setup()
 
                 return self.async_show_form(
                     step_id="provider_login",
@@ -381,97 +391,33 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_forecast_setup(self, user_input=None):
-        """Optional forecast wiring for solar forecast integrations."""
-        if user_input is not None:
-            self._user_input.update(user_input)
-            provider = self._user_input.get(CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE)
-            if provider != FORECAST_PROVIDER_NONE:
-                for key, entity_id in _forecast_autofill_for_provider(self.hass, provider).items():
-                    self._user_input.setdefault(key, entity_id)
-            if provider == FORECAST_PROVIDER_NONE:
-                self._user_input.pop(CONF_FORECAST_GENERATION_TODAY_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_POWER_NOW_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_PEAK_TODAY_ENTITY, None)
-                self._user_input.pop(CONF_FORECAST_PEAK_TOMORROW_ENTITY, None)
-                self._user_input.pop(CONF_SOLAR_FORECAST_ENTITY, None)
-            return self._create_entry()
+        """Optionally select a forecast provider during initial setup.
 
-        provider = self._user_input.get(CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE)
-        if provider != FORECAST_PROVIDER_NONE:
-            for key, entity_id in _forecast_autofill_for_provider(self.hass, provider).items():
-                if not self._user_input.get(key):
-                    self._user_input[key] = entity_id
+        Entity mappings are configured after onboarding.  Blank entity selectors
+        are invalid in Home Assistant's flow UI, so they must not be rendered
+        when the user does not use a forecast provider.
+        """
+        if user_input is not None:
+            provider = user_input.get(CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE)
+            self._user_input[CONF_FORECAST_PROVIDER] = provider
+            return self._create_entry()
 
         return self.async_show_form(
             step_id="forecast_setup",
             data_schema=vol.Schema({
                 vol.Optional(
                     CONF_FORECAST_PROVIDER,
-                    default=self._user_input.get(CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE),
+                    default=self._user_input.get(
+                        CONF_FORECAST_PROVIDER, FORECAST_PROVIDER_NONE
+                    ),
                 ): SelectSelector(
                     SelectSelectorConfig(
                         options=_forecast_provider_options(),
                         mode=SelectSelectorMode.DROPDOWN,
                     )
                 ),
-                vol.Optional(
-                    CONF_FORECAST_GENERATION_TODAY_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_GENERATION_TODAY_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_GENERATION_TOMORROW_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_GENERATION_TOMORROW_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_GENERATION_THIS_HOUR_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_GENERATION_REMAINING_TODAY_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_POWER_NOW_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_POWER_NOW_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_POWER_IN_1_HOUR_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_POWER_IN_1_HOUR_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_POWER_IN_12_HOURS_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_POWER_IN_12_HOURS_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_POWER_IN_24_HOURS_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_POWER_IN_24_HOURS_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_PEAK_TODAY_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_PEAK_TODAY_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_FORECAST_PEAK_TOMORROW_ENTITY,
-                    default=self._user_input.get(CONF_FORECAST_PEAK_TOMORROW_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
-                vol.Optional(
-                    CONF_SOLAR_FORECAST_ENTITY,
-                    default=self._user_input.get(CONF_SOLAR_FORECAST_ENTITY, ""),
-                ): EntitySelector(EntitySelectorConfig(domain=["sensor"])),
             }),
         )
-
     def _create_entry(self):
         return self.async_create_entry(
             title=f"HEROS ({self._user_input[CONF_USERNAME]})",
@@ -483,6 +429,8 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(self, user_input=None):
         """Re-run the Host inverter selection for an existing entry."""
         self._reconfigure_entry = self._get_reconfigure_entry()
+        if (self._reconfigure_entry.data.get(CONF_PROVIDER) == PROVIDER_FOXESS_V2):
+            return await self.async_step_reconfigure_login()
         creds = self._reconfigure_entry.data
         client = ByteWattClient(self.hass, creds[CONF_USERNAME], creds[CONF_PASSWORD])
         if not await client.initialize():
@@ -492,6 +440,40 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="no_inverters")
         return await self.async_step_reconfigure_select()
 
+    async def async_step_reconfigure_login(self, user_input=None):
+        """Update and validate FoxESS V2 credentials for an existing entry."""
+        entry = self._reconfigure_entry
+        assert entry is not None
+        errors = {}
+        if user_input is not None:
+            try:
+                client = await async_create_foxess_v2_client(
+                    self.hass,
+                    user_input[CONF_USERNAME],
+                    user_input[CONF_PASSWORD],
+                )
+                await client.discover_plants(force=True)
+            except FoxESSV2Error:
+                errors["base"] = "auth"
+            else:
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    data={
+                        **entry.data,
+                        CONF_USERNAME: user_input[CONF_USERNAME],
+                        CONF_PASSWORD: user_input[CONF_PASSWORD],
+                    },
+                )
+                try:
+                    await self.hass.config_entries.async_reload(entry.entry_id)
+                except Exception as err:
+                    _LOGGER.error("FoxESS V2 reload after credential update failed: %s", err)
+                return self.async_abort(reason="credentials_updated")
+        return self.async_show_form(
+            step_id="reconfigure_login",
+            data_schema=_provider_login_schema(PROVIDER_FOXESS_V2),
+            errors=errors,
+        )
     async def async_step_reconfigure_select(self, user_input=None):
         entry = self._reconfigure_entry
         assert entry is not None
@@ -542,10 +524,11 @@ class ByteWattConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
-    """Options for runtime polling and archive horizon."""
+    """Options for runtime polling, archive horizon, and coverage dates."""
 
     def __init__(self, config_entry):
-        self.config_entry = config_entry
+        # Home Assistant exposes config_entry as a read-only OptionsFlow property.
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
@@ -557,6 +540,18 @@ class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
                 ),
             ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
+            vol.Optional(
+                CONF_SOLAR_INSTALLATION_DATE,
+                default=self.config_entry.options.get(
+                    CONF_SOLAR_INSTALLATION_DATE, DEFAULT_INSTALLATION_DATE
+                ),
+            ): DateSelector(DateSelectorConfig()),
+            vol.Optional(
+                CONF_BATTERY_INSTALLATION_DATE,
+                default=self.config_entry.options.get(
+                    CONF_BATTERY_INSTALLATION_DATE, DEFAULT_INSTALLATION_DATE
+                ),
+            ): DateSelector(DateSelectorConfig()),
         }
         if self.config_entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT) != PROVIDER_FOXESS_V2:
             fields[

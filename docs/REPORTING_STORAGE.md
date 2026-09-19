@@ -392,3 +392,160 @@ Live report interaction notes:
 - historical dates must not capture live time-series samples or run the live
   refresh path; archived-day charts should stay stable while users inspect
   hover values
+
+## Independent installation dates
+
+HEROS treats the solar/inverter installation and the battery installation as
+separate dates. They may be the same date, but they do not have to be.
+
+- **Solar/inverter installation date** controls backfill for inverter and plant
+  history: PV production, PV power, load, grid import/export, feed-in, EPS,
+  and other inverter or solar time-series values.
+- **Battery installation date** controls backfill for battery history: SOC,
+  battery power, charge/discharge energy, battery temperature, health, cycles,
+  capacity, and per-battery values.
+
+The dates are configuration values, not guesses derived from the first value
+returned by the cloud. Settings should allow each date to be selected or
+manually overridden independently, reject future dates, and provide an
+automatic/provider-derived option when FoxESS exposes a reliable installation
+or commissioning date. A battery replacement is recorded by changing the
+battery date for the replacement scope; the original battery's archived
+history remains associated with its earlier scope.
+
+When a report combines solar and battery data, HEROS must respect both coverage
+windows. It must not invent battery values before the battery date or solar
+values before the solar/inverter date. The report should show the applicable
+coverage period for each stream, so a partially populated early period is
+understood as missing provider history rather than zero generation or zero
+battery activity.
+
+For the current installation, the initial value supplied by the operator is
+**6 September 2026**. Set both dates to `2026-09-06` initially, then adjust
+the battery date independently if the battery system was commissioned later.
+
+FoxESS history is collected from the provider's day and week history
+endpoints, while HEROS stores the normalized daily snapshot and time-series
+payload in the local archive. This archive is separate from Home Assistant's
+recorder history and is the source used for report backfill and export.
+## Derived battery interruption marker
+
+The FoxESS V2 power diagram can show a **red vertical line** labelled **Error
+occurred** in the point tooltip. This is a derived operational marker, not a
+provider-confirmed inverter fault.
+
+HEROS adds one marker at the start of a qualifying run: battery discharge is
+25 W or less while grid import and load are both at least 100 W and battery SOC
+is above 10%. It does not require the immediately preceding five-minute point
+to contain discharge, because FoxESS can omit that value at the transition.
+The first matching point receives the marker; the remaining continuous run does
+not receive repeated alerts.
+
+The current FoxESS V2 cloud history does not expose the inverter or BMS fault
+reason needed to classify the event further. When Modbus telemetry is added,
+HEROS should correlate this marker with battery enable state, inverter alarms,
+BMS fault codes, contactor state, and per-battery availability. Until then, the
+marker means that battery discharge stopped unexpectedly; it does not diagnose
+the cause.
+## Mode Timeline report
+
+Mode Timeline is a separate FoxESS V2 report view. It reads every available
+five-minute history point and groups consecutive points into operating periods;
+it does not smooth, aggregate, or replace source values.
+
+A period is labelled, in priority order, **Error occurred**, **Battery
+charging**, **Battery discharging**, **Grid importing**, **Grid exporting**,
+**Solar supplying**, or **Balanced / idle**. Error occurred follows the
+derived battery interruption marker and occupies its source five-minute
+interval. Hovering any period shows its exact start and end time. These are
+operational interpretations of cloud telemetry; Modbus alarm and BMS data will
+later provide confirmed fault classification.
+## Daily Detail report
+
+Daily Detail is a FoxESS V2 report view that displays every available
+five-minute source point for the selected day. Each row shows the timestamp,
+SOC, solar, battery discharge, battery charge, grid import, feed-in, total
+load, and the derived operating status. Power values are shown as positive
+magnitudes so charging and discharging remain directly comparable in their own
+columns.
+
+A red **Error occurred** status is shown for the same derived battery
+interruption event used by the Power Diagram and Mode Timeline. A yellow
+**Missing N five-minute points** status is added immediately after a source
+timestamp gap. Missing values are separately labelled rather than represented
+as zero. This report is the row-level audit view behind the visual reports and
+its CSV download exports the same selected-day data.
+
+## Tariff Impact report
+
+Tariff Impact is a FoxESS V2 report view that calculates an estimated daily
+energy cost from the selected day's five-minute source points and the saved
+date-effective pricing schedule. It chooses the most recent tariff group
+effective on the selected date, then applies its import and feed-in $/kWh
+records by day type and time window. Public-holiday rows take precedence when
+the selected date is recorded as a public holiday.
+
+The report shows import cost, feed-in credit, the daily connection charge, net
+daily cost, and avoided grid-only cost. Its timeline represents each available
+five-minute interval and exposes the active import/export rate and interval
+cost on hover. Source gaps are explicitly marked and excluded rather than
+being filled with assumed energy. When no applicable pricing schedule exists,
+the report explains the required Pricing-page setup instead of producing a
+zero-cost estimate. These figures are an operational estimate from available
+FoxESS telemetry, not a bill reconciliation.
+## Report toolbar placement requirements
+
+All report views share one date-picker location in the secondary toolbar. Power Diagram time presets (1H, 6H, 12H, 24H) sit immediately after the date picker. Tariff period controls (Day, Week, Month, Quarter, Year) use the same position and replace the power presets. Period labels are bold, controls use the active theme, and the selected period is visibly highlighted. Do not introduce a second date selector inside a report card.
+
+Power Diagram uses the same toolbar rule: the shared date selector comes first, followed by a bold Period label and the 1H/6H/12H/24H controls.
+
+### Report layout guardrails for future reports
+
+Every new report view must reuse the existing report toolbar structure. The date navigation belongs in the shared secondary toolbar at the same location as the other report views. Report-specific period controls follow the date navigation in that toolbar; they must not be added inside the report card or as a second date picker. Use the same date input, previous/next controls, fixed control sizing, theme variables, padding, and selected-state styling.
+
+Before deployment, verify the following in a real browser at the same viewport:
+
+1. Open Power Diagram and record the left edge of the date input and the Period label.
+2. Switch to the new report and confirm those two left edges are unchanged.
+3. Switch back and repeat once more; no control may move, resize, or change date formatting unexpectedly.
+4. Select every report-specific period and confirm the selected button is visibly highlighted using the active theme.
+5. Hard-refresh the browser and repeat the switch check to catch stale module URLs or cache-buster mistakes.
+
+The implementation is not complete until this visual switch check passes. Record the report build, panel build, cache-busted module URL, and the browser used for the check in the handback. Syntax checks and asset hash checks alone do not count as visual verification.
+### Mandatory interaction test before handback
+
+Do not hand a report change back after only source inspection, unit-style checks, syntax validation, deployment hashes, or an unauthenticated browser render. Before handback, exercise the changed interaction in the authenticated live HEROS UI at `http://10.0.0.111/heros`.
+
+For navigation changes, record the initial date, every clicked report/period/date/previous/next control, and the resulting displayed date after each step. Verify both a period change and a previous/next move. If the authenticated live UI cannot be accessed, state that the work remains unverified and do not describe it as tested or complete.
+
+The handback must state the report build, panel build, browser used, exact interaction sequence, and observed result. The user should only need to hard-refresh and independently confirm after this verification has passed.
+
+### Tariff grouped-period aggregation
+
+For Week, Month, Quarter, and Year, Tariff Impact must calculate from every saved
+five-minute history record within the selected calendar period. The calendar
+start must not be treated as a prerequisite for a result: an installation that
+began part-way through a month must aggregate the available saved days.
+
+Energy-derived values (import cost, feed-in credit, and avoided grid-only cost)
+use only valid saved source intervals. The supply charge is separate: apply it
+for every date in the selected period on which a tariff group is effective,
+even when the energy source data for that date is absent. The grouped summary
+must show `Days in period` as `saved-data days / tariff-effective days`, and its
+note must state both counts. A grouped tariff view must use the local HEROS
+archive and must not request FoxESS history merely because the first calendar
+day has no record.
+
+Before handback, use the authenticated live UI to verify a period whose first
+calendar day predates the first saved record. Confirm it renders a non-zero
+multi-day supply charge, counts the saved days, and does not show a FoxESS
+credential or history-request error.
+### Tariff Impact timeline labels
+
+Tariff Impact must show an X-axis that describes the visible segments: Day uses
+time of day; Week uses one segment per day; Month uses one segment per calendar
+week; Quarter and Year use one segment per calendar month. The axis labels and
+bar boundaries must represent the same buckets. Keep the colour legend as a
+separate explanation of Import cost, Feed-in credit, No applicable tariff rate,
+and Missing source interval. Tooltip text must use plain ASCII separators so it
+remains readable in every browser font.
