@@ -380,8 +380,10 @@ class PricingRateGroup:
     provider: str = ""
     plan_name: str = ""
     effective_start_date: date | None = None
-    pricing_type: str = "dynamic"
+    pricing_type: str = "fixed"
     daily_connection_charge: float | None = None
+    subscription_fee: float | None = None
+    subscription_period: str = "monthly"
     dynamic_import_price_entity: str = ""
     dynamic_next_import_price_entity: str = ""
     dynamic_export_price_entity: str = ""
@@ -394,7 +396,7 @@ class PricingRateGroup:
         effective_start_date = _parse_date(self.effective_start_date)
         if effective_start_date is None:
             raise ValueError("effective_start_date is required")
-        pricing_type = _clean_text(self.pricing_type, "dynamic").lower()
+        pricing_type = _clean_text(self.pricing_type, "fixed").lower()
         if pricing_type not in _PRICING_TYPE_VALUES:
             raise ValueError(f"Unsupported pricing type: {self.pricing_type!r}")
         records = tuple(
@@ -409,6 +411,9 @@ class PricingRateGroup:
         object.__setattr__(self, "effective_start_date", effective_start_date)
         object.__setattr__(self, "pricing_type", pricing_type)
         object.__setattr__(self, "daily_connection_charge", _parse_float(self.daily_connection_charge))
+        object.__setattr__(self, "subscription_fee", _parse_float(self.subscription_fee))
+        period = _clean_text(self.subscription_period, "monthly").lower()
+        object.__setattr__(self, "subscription_period", period if period in {"monthly", "yearly"} else "monthly")
         object.__setattr__(self, "dynamic_import_price_entity", _clean_text(self.dynamic_import_price_entity))
         object.__setattr__(self, "dynamic_next_import_price_entity", _clean_text(self.dynamic_next_import_price_entity))
         object.__setattr__(self, "dynamic_export_price_entity", _clean_text(self.dynamic_export_price_entity))
@@ -450,6 +455,8 @@ class PricingRateGroup:
             "effective_start_date": _jsonable_date(self.effective_start_date),
             "pricing_type": self.pricing_type,
             "daily_connection_charge": self.daily_connection_charge,
+            "subscription_fee": self.subscription_fee,
+            "subscription_period": self.subscription_period,
             "dynamic_import_price_entity": self.dynamic_import_price_entity,
             "dynamic_next_import_price_entity": self.dynamic_next_import_price_entity,
             "dynamic_export_price_entity": self.dynamic_export_price_entity,
@@ -467,8 +474,10 @@ class PricingRateGroup:
             provider=_clean_text(payload.get("provider")),
             plan_name=_clean_text(payload.get("plan_name")),
             effective_start_date=_parse_date(payload.get("effective_start_date")),
-            pricing_type=_clean_text(payload.get("pricing_type"), "dynamic"),
+            pricing_type=_clean_text(payload.get("pricing_type"), "fixed"),
             daily_connection_charge=payload.get("daily_connection_charge"),
+            subscription_fee=payload.get("subscription_fee"),
+            subscription_period=_clean_text(payload.get("subscription_period"), "monthly"),
             dynamic_import_price_entity=_clean_text(payload.get("dynamic_import_price_entity")),
             dynamic_next_import_price_entity=_clean_text(payload.get("dynamic_next_import_price_entity")),
             dynamic_export_price_entity=_clean_text(payload.get("dynamic_export_price_entity")),

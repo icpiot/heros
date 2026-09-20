@@ -229,9 +229,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 FOXESS_V2_PLATFORMS = ["sensor", "select"]
 
-PANEL_COMPONENT_NAME = "heros-panel-716"
+PANEL_COMPONENT_NAME = "heros-panel-769"
 PANEL_FRONTEND_URL_PATH = "heros"
-PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=716"
+PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=769"
 PANEL_CONFIG = {
     "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -2078,8 +2078,10 @@ def _register_services(hass: HomeAssistant) -> None:
                 "provider": call.data.get(ATTR_PROVIDER) or "",
                 "plan_name": call.data.get(ATTR_PLAN_NAME) or "",
                 "effective_start_date": call.data.get(ATTR_EFFECTIVE_START_DATE),
-                "pricing_type": call.data.get(ATTR_PRICING_TYPE) or "dynamic",
+                "pricing_type": call.data.get(ATTR_PRICING_TYPE) or "fixed",
                 "daily_connection_charge": call.data.get(ATTR_DAILY_CONNECTION_CHARGE),
+                "subscription_fee": call.data.get("subscription_fee"),
+                "subscription_period": call.data.get("subscription_period") or "monthly",
                 "dynamic_import_price_entity": call.data.get(ATTR_DYNAMIC_IMPORT_PRICE_ENTITY) or "",
                 "dynamic_next_import_price_entity": call.data.get(ATTR_DYNAMIC_NEXT_IMPORT_PRICE_ENTITY) or "",
                 "dynamic_export_price_entity": call.data.get(ATTR_DYNAMIC_EXPORT_PRICE_ENTITY) or "",
@@ -2497,7 +2499,6 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, "ensure_report_history", handle_ensure_report_history,
         schema=_history_schema,
     )
-
 
 
 

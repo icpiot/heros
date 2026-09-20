@@ -1,7 +1,7 @@
 import "./heros-policy-card.js?v=009";
 import "./heros-debug-card.js?v=058";
 
-const HEROS_PANEL_BUILD = "716";
+const HEROS_PANEL_BUILD = "769";
 const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=635";
 const HEROS_PANEL_TAG = `heros-panel-${HEROS_PANEL_BUILD}`;
 const HEROS_PANEL_THEME_KEY = "heros.panel.theme";
@@ -1318,8 +1318,7 @@ class HerosPanel extends HTMLElement {
             ? String(url.searchParams.get("group_id") || model.activeGroupId || "").trim()
             : this._generateRuleId(),
           label: String(url.searchParams.get("group_label") || "").trim(),
-          provider: this._connectionName(),
-          plan_name: String(url.searchParams.get("plan_name") || "").trim(),
+          provider: "",
           effective_start_date: this._normalizePricingDate(url.searchParams.get("effective_start_date")),
           pricing_type: String(url.searchParams.get("pricing_type") || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic",
           daily_connection_charge: String(url.searchParams.get("daily_connection_charge") || "").trim(),
@@ -1593,7 +1592,6 @@ class HerosPanel extends HTMLElement {
         group_id: activeGroup?.group_id || groupDraft.group_id,
         group_label: groupDraft.label,
         effective_start_date: activeGroup?.effective_start_date || groupDraft.effective_start_date,
-        plan_name: groupDraft.plan_name,
         pricing_type: groupDraft.pricing_type,
         daily_connection_charge: groupDraft.daily_connection_charge,
         other_charges: groupDraft.other_charges,
@@ -1605,7 +1603,6 @@ class HerosPanel extends HTMLElement {
       groupLink.href = this._pricingActionHref("add_group", {
         group_label: groupDraft.label,
         effective_start_date: groupDraft.effective_start_date,
-        plan_name: groupDraft.plan_name,
         pricing_type: groupDraft.pricing_type,
         daily_connection_charge: groupDraft.daily_connection_charge,
         other_charges: groupDraft.other_charges,
@@ -1646,7 +1643,6 @@ class HerosPanel extends HTMLElement {
       group_id: action === "update_group" ? (activeGroup.group_id || group.group_id) : "",
       group_label: group.label,
       effective_start_date: group.effective_start_date,
-      plan_name: group.plan_name,
       pricing_type: group.pricing_type,
       daily_connection_charge: group.daily_connection_charge,
       other_charges: group.other_charges,
@@ -3146,10 +3142,14 @@ class HerosPanel extends HTMLElement {
       group_id: String(group?.group_id || this._generateRuleId()),
       label: String(group?.label || ""),
       provider: String(group?.provider || ""),
-      plan_name: String(group?.plan_name || ""),
       effective_start_date: String(group?.effective_start_date || ""),
-      pricing_type: String(group?.pricing_type || "dynamic").toLowerCase() === "fixed" ? "fixed" : "dynamic",
+      pricing_type: String(group?.pricing_type || "fixed").toLowerCase() === "fixed" ? "fixed" : "dynamic",
       daily_connection_charge: group?.daily_connection_charge ?? "",
+      subscription_fee: group?.subscription_fee ?? "",
+      subscription_period: String(group?.subscription_period || "monthly"),
+      dynamic_import_price_entity: String(group?.dynamic_import_price_entity || ""),
+      dynamic_next_import_price_entity: String(group?.dynamic_next_import_price_entity || ""),
+      dynamic_export_price_entity: String(group?.dynamic_export_price_entity || ""),
       other_charges: String(group?.other_charges || ""),
       notes: String(group?.notes || ""),
       rules: Array.isArray(group?.records) ? group.records.map((record) => this._pricingUiRuleFromBackendRecord(record)) : [],
@@ -3163,7 +3163,7 @@ class HerosPanel extends HTMLElement {
   _ensureRoiSettingsLoaded() {
     if (this._page !== "pricing") return;
     const entryId = this._entryId();
-    if (!entryId || this._roiFileLoadKey === entryId) return;
+    if (!entryId || (this._roiFileLoadKey === entryId && this._roiSettingsData && Array.isArray(this._roiSettingsData.installation_costs) && Array.isArray(this._roiSettingsData.repayments) && Array.isArray(this._roiSettingsData.vpp_rates))) return;
     this._roiFileLoadKey = entryId;
     window.fetch(`/local/heros/${encodeURIComponent(entryId)}/roi_settings.json?cb=${Date.now()}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
@@ -3221,7 +3221,7 @@ class HerosPanel extends HTMLElement {
     this._pricingFileLoadKey = "";
   }
 
-  _refreshPricingFileSoon(delayMs = 1200) {
+  _refreshPricingFileSoon(delayMs = 250) {
     if (this._page !== "pricing") {
       return;
     }
@@ -3461,11 +3461,12 @@ class HerosPanel extends HTMLElement {
     return {
       group_id: "",
       label: "",
-      provider: this._connectionName(),
-      plan_name: "",
+      provider: "",
       effective_start_date: "",
-      pricing_type: "dynamic",
+      pricing_type: "fixed",
       daily_connection_charge: "",
+      subscription_fee: "",
+      subscription_period: "monthly",
       other_charges: "",
       notes: "",
       rules: [],
@@ -3489,9 +3490,8 @@ class HerosPanel extends HTMLElement {
   }
 
   _purchaseTariffOptions() {
-    const customOptions = Array.isArray(this._pricingCustomTariffOptions)
-      ? this._pricingCustomTariffOptions
-      : [];
+    const storedOptions = this._customBuyDescriptions();
+    const customOptions = [...(Array.isArray(this._pricingCustomTariffOptions) ? this._pricingCustomTariffOptions : []), ...storedOptions];
     return [...new Set([
       ...HEROS_PURCHASE_TARIFF_OPTIONS,
       ...customOptions.map((option) => String(option || "").trim()).filter(Boolean),
@@ -3507,12 +3507,19 @@ class HerosPanel extends HTMLElement {
     if (!options.includes(normalized)) {
       this._pricingCustomTariffOptions = [...options, normalized]
         .filter((option) => !HEROS_PURCHASE_TARIFF_OPTIONS.includes(option));
+      this._saveCustomBuyDescriptions(this._pricingCustomTariffOptions);
     }
     return normalized;
   }
 
   _handlePurchaseTariffOther(target) {
     if (target?.dataset?.pricingPurchaseTariffSelect === undefined || target.value !== HEROS_PURCHASE_TARIFF_OTHER_VALUE) return false;
+    if (this._pricingOtherNavigationPending) return true;
+    if (window.confirm("Add a custom Buy rate description in Settings?")) {
+      this._pricingOtherNavigationPending = true;
+      setTimeout(() => { this._pricingOtherNavigationPending = false; this._setPage("settings"); }, 0);
+      return true;
+    }
     const wrapper = target.parentElement;
     if (!wrapper || wrapper.querySelector("[data-pricing-custom-tariff]")) return true;
     target.hidden = true;
@@ -3716,10 +3723,11 @@ class HerosPanel extends HTMLElement {
       group_id: String(form.group_id || "").trim() || this._generateRuleId(),
       label: String(form.label || "").trim() || `Rates from ${form.effective_start_date || defaults.effective_start_date}`,
       provider: String(form.provider || "").trim(),
-      plan_name: String(form.plan_name || "").trim(),
       effective_start_date: this._normalizePricingDate(form.effective_start_date || defaults.effective_start_date),
       pricing_type: String(form.pricing_type || this._pricingGroupDraftType() || defaults.pricing_type).trim().toLowerCase(),
       daily_connection_charge: String(form.daily_connection_charge || "").trim(),
+      subscription_fee: String(form.subscription_fee || "").trim(),
+      subscription_period: String(form.subscription_period || "monthly").trim(),
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
       rules: [],
@@ -4113,7 +4121,7 @@ class HerosPanel extends HTMLElement {
         row[key] = String(field.value || "").trim();
       }
     });
-    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-policy-charge-row-day]:checked"))
+    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-policy-charge-row-day], [data-custom-buy-description-input]:checked"))
       .map((field) => String(field.dataset.policyChargeRowDay || ""))
       .filter(Boolean);
     return {
@@ -4450,15 +4458,24 @@ class HerosPanel extends HTMLElement {
       await this._callPricingGroupService(group);
       this._refreshPricingFileSoon();
     } catch (error) {
-      this._savePricingUi(previousModel);
+      const failedModel = {
+        ...previousModel,
+        warning: String(error?.message || error || "Unable to save rate group"),
+        activeGroupId: group.group_id || previousModel.activeGroupId,
+      };
+      this._pricingUiGroupDraft = { ...group };
+      this._pricingGroupEditorOpen = true;
+      this._setPricingEditorUrl("modify");
+      this._savePricingUi(failedModel);
       this._render();
     }
+    this._pricingUiSaveInFlight = false;
   }
 
   _handlePricingUiStartGroup() {
     const model = this._loadPricingUi();
     const activeGroup = this._pricingUiActiveGroup(model);
-    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup, group_id: "", label: "", effective_start_date: "", rules: [] } : { ...this._pricingUiGroupDefaults(), group_id: "", rules: [] };
+    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup, group_id: "", label: "", provider: "", effective_start_date: "", rules: [] } : { ...this._pricingUiGroupDefaults(), group_id: "", rules: [] };
     this._pricingGroupEditorOpen = true;
     this._pricingRecordEditorMode = "";
     this._setPricingEditorUrl("modify");
@@ -4490,8 +4507,11 @@ class HerosPanel extends HTMLElement {
     this._render();
   }
 
-  _handlePricingUiModifyGroup() {
+  _handlePricingUiModifyGroup(groupId = "") {
     const model = this._loadPricingUi();
+    if (groupId) {
+      model.activeGroupId = String(groupId);
+    }
     const activeGroup = this._pricingUiActiveGroup(model);
     if (activeGroup?.group_id) {
       model.activeGroupId = String(activeGroup.group_id || "");
@@ -4608,12 +4628,18 @@ class HerosPanel extends HTMLElement {
       await this._callPricingRemoveGroupService(deleteGroupId);
       this._refreshPricingFileSoon();
     } catch (error) {
-      this._savePricingUi(previousModel);
+      this._savePricingUi({
+        ...previousModel,
+        warning: String(error?.message || error || "Unable to delete rate group"),
+      });
       this._render();
     }
+    this._pricingUiSaveInFlight = false;
   }
 
   async _handlePricingUiAddRule(recordType = "buy") {
+    if (this._pricingUiSaveInFlight) return;
+    this._pricingUiSaveInFlight = true;
     const model = this._loadPricingUi();
     const previousModel = JSON.parse(JSON.stringify(model));
     const group = this._pricingUiActiveGroup(model);
@@ -4657,9 +4683,16 @@ class HerosPanel extends HTMLElement {
       this._render();
       this._refreshPricingFileSoon();
     } catch (error) {
-      this._savePricingUi(previousModel);
+      const failedModel = {
+        ...previousModel,
+        warning: String(error?.message || error || "Unable to save pricing record"),
+        activeGroupId: group.group_id || previousModel.activeGroupId,
+      };
+      this._pricingUiGroupDraft = { ...group };
+      this._savePricingUi(failedModel);
       this._render();
     }
+    this._pricingUiSaveInFlight = false;
   }
 
   async _handlePricingUiDeleteRule(ruleId) {
@@ -4688,6 +4721,7 @@ class HerosPanel extends HTMLElement {
       this._savePricingUi(previousModel);
       this._render();
     }
+    this._pricingUiSaveInFlight = false;
   }
 
   _callPricingGroupService(group) {
@@ -4699,7 +4733,6 @@ class HerosPanel extends HTMLElement {
       group_id: group.group_id,
       label: group.label,
       provider: group.provider,
-      plan_name: group.plan_name,
       effective_start_date: this._normalizePricingDate(group.effective_start_date),
       pricing_type: group.pricing_type,
       daily_connection_charge: String(group.daily_connection_charge ?? "").trim() === "" ? undefined : Number(group.daily_connection_charge),
@@ -4769,7 +4802,7 @@ class HerosPanel extends HTMLElement {
       effective_end_date: "",
       effective_end_time: "",
       pricing_type: "fixed",
-      provider: this._connectionName(),
+      provider: "",
       label: "",
       import_rate: "",
       export_rate: "",
@@ -6927,12 +6960,7 @@ class HerosPanel extends HTMLElement {
     const buyRules = activeRules.filter((rule) => String(rule.record_type || "buy") !== "sell");
     const sellRules = activeRules.filter((rule) => String(rule.record_type || "buy") === "sell");
     const pricingEditorMode = this._pricingEditorModeFromUrl();
-    const showGroupEditor = this._pricingGroupEditorOpen
-      || pricingEditorMode === "modify"
-
-      || pricingEditorMode === "buy"
-      || pricingEditorMode === "sell"
-      || !activeGroup.group_id;
+    const showGroupEditor = pricingEditorMode === "modify" || pricingEditorMode === "buy" || pricingEditorMode === "sell";
     const recordEditorMode = showGroupEditor
       ? (String(this._pricingRecordEditorMode || pricingEditorMode || "").toLowerCase() === "sell" ? "sell" : String(this._pricingRecordEditorMode || pricingEditorMode || "").toLowerCase() === "buy" ? "buy" : "")
       : "";
@@ -6949,7 +6977,7 @@ class HerosPanel extends HTMLElement {
     const groupDraft = {
       ...this._pricingUiGroupDefaults(),
       ...activeGroup,
-      provider: activeGroup.provider || this._connectionName(),
+      provider: activeGroup.provider || "",
       ...(this._pricingUiGroupDraft || {}),
     };
     const editableGroupId = String(activeGroup.group_id || groupDraft.group_id || "").trim();
@@ -6982,8 +7010,8 @@ class HerosPanel extends HTMLElement {
     const visibleGroups = groups;
     const groupCards = visibleGroups.length
       ? `<div class="roi-repayment-history electricity-group-history" role="list" aria-label="Rate group history">
-          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>EFFECTIVE DATE</span><span>DESCRIPTION</span><span>PROVIDER</span><span>ACTIONS</span></div>
-          ${visibleGroups.map((group) => { const isActive = String(group.group_id || "") === String(activeGroup.group_id || ""); return `<div class="roi-repayment-history__row electricity-group-history__row" role="listitem"><span>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</span><span><strong>${this._escapeHtml(String(group.label || "No description"))}</strong><small>${this._escapeHtml(this._pricingDisplayType(group.pricing_type))} · ${Array.isArray(group.rules) ? group.rules.length : 0} rule(s)</small></span><span>${this._escapeHtml(String(group.provider || "Provider not set"))}</span><span class="roi-history-actions"><button type="button" data-pricing-ui-select-group="${this._escapeHtml(String(group.group_id || ""))}">${isActive ? "Selected" : "Select"}</button><a class="panel-nav__item pricing-rule__button" data-pricing-ui-modify-group href="${this._pricingEditorHref("modify")}">Modify</a><button type="button" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete</button></span></div>`; }).join("")}
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>EFFECTIVE DATE</span><span>DESCRIPTION</span><span>PROVIDER</span><span>SUPPLY (CENTS/DAY)</span><span>ACTIONS</span></div>
+          ${visibleGroups.map((group) => { const isActive = String(group.group_id || "") === String(activeGroup.group_id || ""); return `<div class="roi-repayment-history__row electricity-group-history__row" role="listitem"><span>${this._escapeHtml(String(group.effective_start_date || "Not set"))}</span><span><strong>${this._escapeHtml(String(group.label || "No description"))}</strong><small>${this._escapeHtml(this._pricingDisplayType(group.pricing_type))} · ${Array.isArray(group.rules) ? group.rules.length : 0} rule(s)${group.daily_connection_charge !== null && group.daily_connection_charge !== undefined && String(group.daily_connection_charge) !== "" ? ` · ${this._escapeHtml(String(group.daily_connection_charge))} cents/day` : ""}${group.subscription_fee !== null && group.subscription_fee !== undefined && String(group.subscription_fee) !== "" ? ` · ${this._escapeHtml(String(group.subscription_fee))} ${this._escapeHtml(String(group.subscription_period || "monthly"))}` : ""}</small></span><span>${this._escapeHtml(String(group.provider || "Provider not set"))}</span><span>${group.daily_connection_charge !== null && group.daily_connection_charge !== undefined && String(group.daily_connection_charge) !== "" ? this._escapeHtml(String(group.daily_connection_charge)) : "Not set"}</span><span class="roi-history-actions"><button type="button" data-pricing-ui-select-group="${this._escapeHtml(String(group.group_id || ""))}">${isActive ? "Selected" : "Select"}</button><a class="panel-nav__item pricing-rule__button" data-pricing-ui-modify-group="${this._escapeHtml(String(group.group_id || ""))}" href="${this._pricingEditorHref("modify")}">Modify</a><button type="button" data-pricing-ui-delete-group="${this._escapeHtml(String(group.group_id || ""))}">Delete</button></span></div>`; }).join("")}
         </div>`
       : '<p class="roi-repayment-history__empty">No rate groups have been saved yet.</p>';
     const renderRuleCards = (rules, emptyLabel, emptyDescription) => rules.length
@@ -7020,12 +7048,11 @@ class HerosPanel extends HTMLElement {
     const renderGroupEditor = showGroupEditor ? `
       <div class="electricity-group-editor pricing-record-form">
         <div class="roi-settings-grid electricity-group-editor__grid">
-          <label class="roi-settings-field"><span>Effective Date</span><input type="date" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" /></label>
-          <label class="roi-settings-field"><span>Description</span><input type="text" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from date" /></label>
-          <label class="roi-settings-field"><span>Provider</span><input type="text" data-pricing-group-field="provider" value="${this._escapeHtml(String(groupDraft.provider || ""))}" /></label>
+          <label class="roi-settings-field"><span>Pricing type</span><select data-pricing-group-field="pricing_type"><option value="fixed" ${String(groupDraft.pricing_type)==="fixed"?"selected":""}>Fixed</option><option value="dynamic" ${String(groupDraft.pricing_type)==="dynamic"?"selected":""}>Dynamic</option></select></label><label class="roi-settings-field"><span>Effective Date</span><input type="date" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" /></label>
+          <label class="roi-settings-field"><span>Plan / Description</span><input type="text" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from date" /></label>
+          <label class="roi-settings-field"><span>Provider</span><input type="text" data-pricing-group-field="provider" value="${this._escapeHtml(String(groupDraft.provider || ""))}" /></label><label class="roi-settings-field"><span>Daily supply charge (cents/day)</span><input type="number" step="0.001" min="0" data-pricing-group-field="daily_connection_charge" value="${this._escapeHtml(String(groupDraft.daily_connection_charge ?? ""))}" placeholder="0.000" /></label>${String(groupDraft.pricing_type || "dynamic") === "dynamic" ? `<label class="roi-settings-field"><span>Subscription fee</span><input type="number" step="0.01" min="0" data-pricing-group-field="subscription_fee" value="${this._escapeHtml(String(groupDraft.subscription_fee ?? ""))}" placeholder="0.00" /></label><label class="roi-settings-field"><span>Subscription period</span><select data-pricing-group-field="subscription_period"><option value="monthly" ${String(groupDraft.subscription_period)==="monthly"?"selected":""}>Monthly</option><option value="yearly" ${String(groupDraft.subscription_period)==="yearly"?"selected":""}>Yearly</option></select></label><label class="roi-settings-field"><span>Current import price entity</span><input type="text" data-pricing-group-field="dynamic_import_price_entity" value="${this._escapeHtml(String(groupDraft.dynamic_import_price_entity || ""))}" /></label><label class="roi-settings-field"><span>Next import price entity</span><input type="text" data-pricing-group-field="dynamic_next_import_price_entity" value="${this._escapeHtml(String(groupDraft.dynamic_next_import_price_entity || ""))}" /></label><label class="roi-settings-field"><span>Export price entity</span><input type="text" data-pricing-group-field="dynamic_export_price_entity" value="${this._escapeHtml(String(groupDraft.dynamic_export_price_entity || ""))}" /></label>` : ""}
         </div>
         <input type="hidden" data-pricing-group-field="group_id" value="${this._escapeHtml(String(groupDraft.group_id || ""))}" />
-        <input type="hidden" data-pricing-group-field="pricing_type" value="${this._escapeHtml(String(groupDraft.pricing_type || "dynamic"))}" />
         <div class="roi-settings-actions"><button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-${editableGroupId ? "update" : "add"}-group>${editableGroupId ? "Save group" : "Add group"}</button><button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button></div>
       </div>` : "";
     const repaymentEntries = Array.isArray(this._roiSettingsData?.repayments) ? [...this._roiSettingsData.repayments] : [];
@@ -7055,8 +7082,8 @@ class HerosPanel extends HTMLElement {
     const installationEntries = Array.isArray(this._roiSettingsData?.installation_costs) ? [...this._roiSettingsData.installation_costs] : [];
     if (!installationEntries.length) {
       const legacy = this._roiSettingsData || {};
-      if (Number(legacy.solar_installation_cost) > 0) installationEntries.push({ effective_start_date: "", description: "Solar installation (legacy)", amount: legacy.solar_installation_cost, entry_id: "" });
-      if (Number(legacy.battery_installation_cost) > 0) installationEntries.push({ effective_start_date: "", description: "Battery installation (legacy)", amount: legacy.battery_installation_cost, entry_id: "" });
+      if (Number(legacy.solar_installation_cost) > 0) installationEntries.push({ effective_start_date: "", description: "Solar installation (legacy)", amount: legacy.solar_installation_cost, entry_id: "legacy-solar" });
+      if (Number(legacy.battery_installation_cost) > 0) installationEntries.push({ effective_start_date: "", description: "Battery installation (legacy)", amount: legacy.battery_installation_cost, entry_id: "legacy-battery" });
     }
     installationEntries.sort((left, right) => String(right?.effective_start_date || "").localeCompare(String(left?.effective_start_date || "")) || String(left?.description || "").localeCompare(String(right?.description || "")));
     const installationHistoryMarkup = installationEntries.length
@@ -7087,10 +7114,11 @@ class HerosPanel extends HTMLElement {
             and supersedes older rates. Buy and sell records are saved separately inside the group.
           </p>
         </article>
+        ${groupWarningMarkup}
 
         <article class="panel-card roi-settings-card">
           <div class="panel-card__header"><h2>Finance & ROI</h2><span>HEROS</span></div>
-          <p>Record installation costs and each repayment change. A repayment applies from its effective date, so later changes remain available for ROI reporting.</p>
+          <p>Record installation costs and each repayment change. A repayment applies from its effective date, so later changes remain available for ROI reporting.</p>${!this._roiSettingsData ? `<div class="pricing-loading" role="status">Loading saved ROI records...</div>` : ""}
           <section class="roi-settings-section" aria-label="Installation costs">
             <div class="roi-section-heading"><h3>Installation costs</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-installation>Add installation cost</button></div>
             <div class="roi-installation-editor is-hidden" data-roi-installation-editor>
@@ -7099,7 +7127,7 @@ class HerosPanel extends HTMLElement {
                 <label class="roi-settings-field"><span>Installation Description</span><input type="text" autocomplete="off" placeholder="Solar, Battery, Extra battery" data-roi-installation-description /></label>
                 <label class="roi-settings-field"><span>Amount ($)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-roi-installation-amount /></label>
               </div>
-              <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-installation>Save installation cost</button><span class="roi-save-status" data-roi-cost-status aria-live="polite"></span></div>
+              <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-installation>Save installation cost</button><button type="button" class="panel-nav__item pricing-rule__button--ghost" data-roi-cancel-installation>Cancel</button><span class="roi-save-status" data-roi-cost-status aria-live="polite"></span></div>
             </div>
             <h4 class="roi-repayment-history__title">Installation cost history</h4>${installationHistoryMarkup}
           </section>
@@ -7110,7 +7138,7 @@ class HerosPanel extends HTMLElement {
               <label class="roi-settings-field"><span>Amount ($)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-roi-repayment-amount /></label>
               <label class="roi-settings-field"><span>Frequency</span><select data-roi-repayment-frequency><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
             </div>
-            <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-repayment>Save repayment change</button><span class="roi-save-status" data-roi-repayment-status aria-live="polite"></span></div></div>
+            <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-repayment>Save repayment change</button><button type="button" class="panel-nav__item pricing-rule__button--ghost" data-roi-cancel-repayment>Cancel</button><span class="roi-save-status" data-roi-repayment-status aria-live="polite"></span></div></div>
             <h4 class="roi-repayment-history__title">Repayment history</h4>
             ${repaymentHistoryMarkup}
 
@@ -7128,7 +7156,7 @@ class HerosPanel extends HTMLElement {
               <label class="roi-settings-field"><span>Provider</span><input type="text" autocomplete="organization" placeholder="Provider name" data-vpp-provider /></label>
               <label class="roi-settings-field"><span>Cents p/kWh</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-vpp-cents-per-kwh /></label>
             </div>
-            <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-vpp-save-rate>Save VPP rate change</button><span class="roi-save-status" data-vpp-rate-status aria-live="polite"></span></div></div>
+            <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-vpp-save-rate>Save VPP rate change</button><button type="button" class="panel-nav__item pricing-rule__button--ghost" data-vpp-cancel-rate>Cancel</button><span class="roi-save-status" data-vpp-rate-status aria-live="polite"></span></div></div>
             <h4 class="roi-repayment-history__title">VPP rate history</h4>
             ${vppRateHistoryMarkup}
           </section>
@@ -7140,14 +7168,14 @@ class HerosPanel extends HTMLElement {
           <section class="roi-settings-section electricity-rates-section" aria-label="Group">
             <div class="roi-section-heading"><h3>Group</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-group>Add group</button></div>
             ${renderGroupEditor}
-            ${showGroupEditor ? "" : `<div class="pricing-rule-list">${groupCards}</div>`}
+            <div class="pricing-rule-list">${groupCards}</div>
           </section>
-          <section class="roi-settings-section electricity-rates-section" aria-label="Buy Rates">
+          <section class="roi-settings-section electricity-rates-section ${String(activeGroup.pricing_type || "dynamic") === "dynamic" ? "is-dynamic-hidden" : ""}" aria-label="Buy Rates">
             <div class="roi-section-heading"><h3>Buy Rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-record="buy">Add buy rate</button></div>
             ${renderRateEditor("buy")}
             <div class="pricing-rule-list pricing-rule-list--attached">${buyRuleCards}</div>
           </section>
-          <section class="roi-settings-section electricity-rates-section" aria-label="Sell Rates">
+          <section class="roi-settings-section electricity-rates-section ${String(activeGroup.pricing_type || "dynamic") === "dynamic" ? "is-dynamic-hidden" : ""}" aria-label="Sell Rates">
             <div class="roi-section-heading"><h3>Sell Rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-record="sell">Add sell rate</button></div>
             ${renderRateEditor("sell")}
             <div class="pricing-rule-list pricing-rule-list--attached">${sellRuleCards}</div>
@@ -7186,8 +7214,26 @@ class HerosPanel extends HTMLElement {
       </section>
     `;
   }
+  _customBuyDescriptions() {
+    try { return JSON.parse(localStorage.getItem("heros.custom_buy_descriptions") || "[]").filter((item) => typeof item === "string" && item.trim()); } catch (_) { return []; }
+  }
+
+  _saveCustomBuyDescriptions(items) { localStorage.setItem("heros.custom_buy_descriptions", JSON.stringify([...new Set(items.map((item) => String(item).trim()).filter(Boolean))])); }
+  _setPendingBuyDescription(value) {
+    const normalized = String(value || "").trim();
+    if (normalized) localStorage.setItem("heros.pending_buy_description", normalized);
+    else localStorage.removeItem("heros.pending_buy_description");
+  }
+
+  _takePendingBuyDescription() {
+    const value = String(localStorage.getItem("heros.pending_buy_description") || "").trim();
+    if (value) localStorage.removeItem("heros.pending_buy_description");
+    return value;
+  }
+
   _settingsPage() {
     const isFoxessV2 = this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2";
+    const customBuyDescriptions = this._customBuyDescriptions();
     const settingsItems = [
       { label: "Theme", value: this._themeLabel() },
       { label: "Route", value: this._route?.path || this._panel?.url_path || "heros" },
@@ -7286,6 +7332,8 @@ class HerosPanel extends HTMLElement {
           </div>
         </article>
       </section>
+
+      <article class="panel-card panel-card--wide settings-custom-descriptions"><div class="panel-card__header"><h2>Custom Buy Descriptions</h2><span>Pricing</span></div><p>Manage custom Buy rate descriptions shown in the Pricing dropdown.</p><div class="settings-custom-descriptions__list">${customBuyDescriptions.length ? customBuyDescriptions.map((item) => `<div class="settings-custom-description"><span>${this._escapeHtml(item)}</span><button type="button" class="panel-nav__item" data-custom-buy-description-edit="${this._escapeHtml(item)}">Modify</button><button type="button" class="panel-nav__item" data-custom-buy-description-delete="${this._escapeHtml(item)}">Delete</button></div>`).join("") : "<p>No custom descriptions saved.</p>"}</div><div class="settings-custom-descriptions__add"><input type="text" data-custom-buy-description-input placeholder="New description" /><button type="button" class="panel-nav__item" data-custom-buy-description-add>Add description</button></div><button type="button" class="panel-nav__item" data-return-to-buy-rates>Return to Buy Rates</button></article>
 
       ${this._archiveSettingsContent()}
 
@@ -7959,7 +8007,7 @@ class HerosPanel extends HTMLElement {
       field.addEventListener("click", (event) => event.stopPropagation());
     });
 
-    this.shadowRoot.querySelectorAll("select, [data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day]").forEach((field) => {
+    this.shadowRoot.querySelectorAll("select, [data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day], [data-custom-buy-description-input]").forEach((field) => {
       if (field.__herosNativeInputStopBound) {
         return;
       }
@@ -7976,7 +8024,24 @@ class HerosPanel extends HTMLElement {
       const handleCriticalActivation = (event) => {
         const path = event.composedPath?.() || [];
       if (this._roiSaveInFlight) return;
-        const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
+        const returnToBuyRates = path.find((node) => node?.dataset?.returnToBuyRates !== undefined);
+        if (returnToBuyRates) {
+          event.preventDefault(); event.stopPropagation();
+          const pending = this._takePendingBuyDescription();
+          if (pending) this._pricingUiRuleDrafts = { ...(this._pricingUiRuleDrafts || {}), buy: { ...this._pricingUiRuleDefaults("buy"), ...(this._pricingUiRuleDrafts?.buy || {}), label: pending } };
+          this._pricingRecordEditorMode = "buy";
+          this._pricingGroupEditorOpen = true;
+          this._setPricingEditorUrl("buy");
+          this._setPage("pricing");
+          return true;
+        }
+        const customAdd = path.find((node) => node?.dataset?.customBuyDescriptionAdd !== undefined);
+      if (customAdd) { const input = this.shadowRoot.querySelector("[data-custom-buy-description-input]"); const value = String(input?.value || "").trim(); if (value) { this._saveCustomBuyDescriptions([...this._customBuyDescriptions(), value]); this._setPendingBuyDescription(value); input.value = ""; this._render(); } return true; }
+      const customEdit = path.find((node) => node?.dataset?.customBuyDescriptionEdit !== undefined);
+      if (customEdit) { const oldValue = customEdit.dataset.customBuyDescriptionEdit; const nextValue = window.prompt("Modify custom description", oldValue); if (nextValue && nextValue.trim()) { this._saveCustomBuyDescriptions(this._customBuyDescriptions().map((item) => item === oldValue ? nextValue.trim() : item)); this._render(); } return true; }
+      const customDelete = path.find((node) => node?.dataset?.customBuyDescriptionDelete !== undefined);
+      if (customDelete) { this._saveCustomBuyDescriptions(this._customBuyDescriptions().filter((item) => item !== customDelete.dataset.customBuyDescriptionDelete)); this._render(); return true; }
+      const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
         if (pricingUiAddGroup) {
           event.preventDefault();
           event.stopPropagation();
@@ -7994,7 +8059,7 @@ class HerosPanel extends HTMLElement {
         if (pricingUiModifyGroup) {
           event.preventDefault();
           event.stopPropagation();
-          this._handlePricingUiModifyGroup();
+          this._handlePricingUiModifyGroup(pricingUiModifyGroup.dataset.pricingUiModifyGroup || "");
           return true;
         }
         const pricingUiCancelGroup = path.find((node) => node?.dataset?.pricingUiCancelGroup !== undefined);
@@ -8341,8 +8406,19 @@ class HerosPanel extends HTMLElement {
       }
       if (target?.dataset?.pricingGroupField !== undefined) {
         this._syncPricingUiGroupDraft();
+        if (target.dataset.pricingGroupField === "pricing_type") {
+          this._pricingUiGroupDraft = {
+            ...(this._pricingUiGroupDraft || {}),
+            pricing_type: String(target.value || "fixed").toLowerCase() === "dynamic" ? "dynamic" : "fixed",
+          };
+        }
         this._updatePricingActionLinks();
-        this._schedulePricingAutoCommit();
+        if (target.dataset.pricingGroupField === "pricing_type") {
+          this._holdRenderWindow(1200);
+          this._render();
+        } else {
+          this._schedulePricingAutoCommit();
+        }
         return;
       }
       if (this._handlePurchaseTariffOther(target)) {
@@ -8429,6 +8505,13 @@ class HerosPanel extends HTMLElement {
         event.preventDefault();
         event.stopPropagation();
         this._handlePricingUiCancelGroupEdit();
+        return true;
+      }
+      const pricingUiModifyGroup = path.find((node) => node?.dataset?.pricingUiModifyGroup !== undefined);
+      if (pricingUiModifyGroup) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiModifyGroup(pricingUiModifyGroup.dataset.pricingUiModifyGroup || "");
         return true;
       }
       const pricingUiSelectGroup = path.find((node) => node?.dataset?.pricingUiSelectGroup);
@@ -8588,8 +8671,20 @@ class HerosPanel extends HTMLElement {
       if (editInstallation) { event.preventDefault(); const entry = (this._roiSettingsData?.installation_costs || []).find((item) => String(item?.entry_id || "") === String(editInstallation.dataset.roiEditInstallation)); if (!entry) return; this._editingInstallationId = String(entry.entry_id); this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.remove("is-hidden"); this.shadowRoot.querySelector("[data-roi-installation-date]").value = this._normalizePricingDate(entry.effective_start_date); this.shadowRoot.querySelector("[data-roi-installation-description]").value = String(entry.description || ""); this.shadowRoot.querySelector("[data-roi-installation-amount]").value = String(entry.amount ?? ""); this.shadowRoot.querySelector("[data-roi-save-installation]").textContent = "Save installation cost"; return; }
       const deleteInstallation = path.find((node) => node?.dataset?.roiDeleteInstallation);
       if (deleteInstallation) { event.preventDefault(); await this._hass.callService("heros", "roi_remove_installation_cost", { entry_id: this._entryId(), installation_cost_id: deleteInstallation.dataset.roiDeleteInstallation }); this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); return; }
+      const roiCancelInstallation = path.find((node) => node?.dataset?.roiCancelInstallation !== undefined);
+      if (roiCancelInstallation) {
+        event.preventDefault();
+        event.stopPropagation();
+        this._editingInstallationId = "";
+        this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.add("is-hidden");
+        const status = this.shadowRoot.querySelector("[data-roi-cost-status]");
+        if (status) status.textContent = "";
+        return;
+      }
       const roiSaveInstallation = path.find((node) => node?.dataset?.roiSaveInstallation !== undefined);
-      if (roiSaveInstallation) { this._roiSaveInFlight = true; event.preventDefault(); event.stopPropagation(); const effectiveStartDate = String(this.shadowRoot.querySelector("[data-roi-installation-date]")?.value || ""); const description = String(this.shadowRoot.querySelector("[data-roi-installation-description]")?.value || "").trim(); const amountText = String(this.shadowRoot.querySelector("[data-roi-installation-amount]")?.value || "").trim(); const amount = Number(amountText); if (!effectiveStartDate || !description || !amountText || !Number.isFinite(amount) || amount < 0) { this._roiSaveInFlight = false; const status = this.shadowRoot.querySelector("[data-roi-cost-status]"); if (status) status.textContent = "Enter a date, description, and amount before saving."; return; } await this._hass.callService("heros", "roi_upsert_installation_cost", { entry_id: this._entryId(), effective_start_date: effectiveStartDate, installation_description: description, installation_amount: amount, installation_cost_id: this._editingInstallationId || undefined }); const status = this.shadowRoot.querySelector("[data-roi-cost-status]"); if (status) status.textContent = "Installation cost saved."; this._editingInstallationId = ""; roiSaveInstallation.textContent = "Save installation cost"; this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.add("is-hidden"); this._roiFileLoadKey = ""; this._roiSaveInFlight = false; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 900); return; }
+      if (roiSaveInstallation) { this._roiSaveInFlight = true; event.preventDefault(); event.stopPropagation(); const effectiveStartDate = String(this.shadowRoot.querySelector("[data-roi-installation-date]")?.value || ""); const description = String(this.shadowRoot.querySelector("[data-roi-installation-description]")?.value || "").trim(); const amountText = String(this.shadowRoot.querySelector("[data-roi-installation-amount]")?.value || "").trim(); const amount = Number(amountText); if (!effectiveStartDate || !description || !amountText || !Number.isFinite(amount) || amount < 0) { this._roiSaveInFlight = false; const status = this.shadowRoot.querySelector("[data-roi-cost-status]"); if (status) status.textContent = "Enter a date, description, and amount before saving."; return; } await this._hass.callService("heros", "roi_upsert_installation_cost", { entry_id: this._entryId(), effective_start_date: effectiveStartDate, installation_description: description, installation_amount: amount, installation_cost_id: this._editingInstallationId || undefined }); const status = this.shadowRoot.querySelector("[data-roi-cost-status]"); if (status) status.textContent = "Installation cost saved."; this._editingInstallationId = ""; roiSaveInstallation.textContent = "Save installation cost"; this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.add("is-hidden"); this._roiFileLoadKey = ""; this._roiSaveInFlight = false; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 250); return; }
+      const roiCancelRepayment = path.find((node) => node?.dataset?.roiCancelRepayment !== undefined);
+      if (roiCancelRepayment) { event.preventDefault(); event.stopPropagation(); this._editingRepaymentId = ""; this.shadowRoot.querySelector("[data-roi-repayment-editor]")?.classList.add("is-hidden"); return; }
       const roiSaveRepayment = path.find((node) => node?.dataset?.roiSaveRepayment !== undefined);
       if (roiSaveRepayment) {
         this._roiSaveInFlight = true;
@@ -8616,10 +8711,13 @@ class HerosPanel extends HTMLElement {
     this._roiSaveInFlight = false;
     this._roiForceRenderAfterLoad = false;
         this._roiForceRenderAfterLoad = true;
-        this._roiForceRenderAfterLoad = true;
+        this.shadowRoot.querySelector("[data-roi-repayment-editor]")?.classList.add("is-hidden");
         this._ensureRoiSettingsLoaded();
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 350);
         return;
       }
+      const vppCancelRate = path.find((node) => node?.dataset?.vppCancelRate !== undefined);
+      if (vppCancelRate) { event.preventDefault(); event.stopPropagation(); this._editingVppId = ""; this.shadowRoot.querySelector("[data-vpp-editor]")?.classList.add("is-hidden"); return; }
       const vppSaveRate = path.find((node) => node?.dataset?.vppSaveRate !== undefined);
       if (vppSaveRate) {
         this._roiSaveInFlight = true;
@@ -8642,12 +8740,12 @@ class HerosPanel extends HTMLElement {
         this._editingVppRateId = "";
         vppSaveRate.textContent = "Add VPP rate change";
         this._roiFileLoadKey = "";
-    this._roiDraftDirty = false;
-    this._roiSaveInFlight = false;
-    this._roiForceRenderAfterLoad = false;
+        this._roiDraftDirty = false;
+        this._roiSaveInFlight = false;
         this._roiForceRenderAfterLoad = true;
-        this._roiForceRenderAfterLoad = true;
+        this.shadowRoot.querySelector("[data-vpp-editor]")?.classList.add("is-hidden");
         this._ensureRoiSettingsLoaded();
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 350);
         return;
       }
       const connectionTypeSave = path.find((node) => node?.dataset?.connectionTypeSave !== undefined);
@@ -8873,7 +8971,7 @@ class HerosPanel extends HTMLElement {
       const pricingUiModifyGroup = path.find((node) => node?.dataset?.pricingUiModifyGroup !== undefined);
       if (pricingUiModifyGroup) {
         event.preventDefault();
-        this._handlePricingUiModifyGroup();
+        this._handlePricingUiModifyGroup(pricingUiModifyGroup.dataset.pricingUiModifyGroup || "");
         return;
       }
 

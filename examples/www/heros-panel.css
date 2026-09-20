@@ -2799,3 +2799,20 @@
 .pricing .roi-repayment-history__row:has(.roi-history-actions) { grid-template-columns: minmax(118px,1.1fr) minmax(118px,1fr) minmax(108px,1fr) auto; }
 .pricing .roi-repayment-history__head--actions > span { justify-self:start; text-align:left; }
 .pricing .roi-repayment-history__row > span, .pricing .roi-repayment-history__row > strong { justify-self:start; text-align:left; }
+
+.settings-custom-descriptions__add { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; }
+.settings-custom-descriptions__add input { box-sizing:border-box; width:min(450px,100%); min-height:42px; padding:0 12px; border:1px solid var(--heros-panel-border); border-radius:10px; background:var(--heros-panel-surface); color:var(--heros-panel-text); font:inherit; font-weight:600; }
+.settings-custom-descriptions__add input::placeholder { color:var(--heros-panel-muted); opacity:1; }
+
+.electricity-group-editor input[data-pricing-group-field="label"] { min-width: 360px; }
+.pricing .electricity-group-history .roi-repayment-history__head, .pricing .electricity-group-history .electricity-group-history__row { grid-template-columns: 1.05fr 1.1fr 1fr 1fr auto; }
+.pricing .electricity-rates-section.is-dynamic-hidden { display:none; }
+.electricity-group-editor__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .electricity-group-editor__grid .roi-settings-field { min-width: 0; } .electricity-group-editor__grid input, .electricity-group-editor__grid select { box-sizing: border-box; width: 100%; min-width: 0; }
+@media (max-width:720px) { .electricity-group-editor__grid { grid-template-columns: 1fr !important; } }
+.roi-installation-history .roi-repayment-history__head, .roi-installation-history .roi-repayment-history__row { grid-template-columns: 130px minmax(145px, 1fr) 110px 140px !important; }
+.roi-installation-history { max-width: 100%; } .roi-installation-history .roi-repayment-history__head, .roi-installation-history .roi-repayment-history__row { grid-template-columns: minmax(105px,1.1fr) minmax(145px,1.4fr) minmax(90px,1fr) auto !important; }
+.roi-installation-history { width: 100%; max-width: 560px; } .roi-installation-history .roi-repayment-history__head, .roi-installation-history .roi-repayment-history__row { grid-template-columns: 120px 150px 110px 140px !important; }
+.roi-repayment-history { max-width: 560px; } .roi-repayment-history__head--actions, .roi-repayment-history__row:has(.roi-history-actions) { grid-template-columns: 120px 150px 110px 140px !important; }
+.electricity-group-editor__grid { column-gap: 14px !important; row-gap: 14px !important; }
+.electricity-group-history { max-width: 560px; } .electricity-group-history .roi-repayment-history__head, .electricity-group-history .roi-repayment-history__row { grid-template-columns: 90px 110px 100px 110px auto !important; } .electricity-group-history .roi-history-actions { white-space: nowrap; }
+.electricity-group-history { max-width: 680px; } .electricity-group-history .roi-repayment-history__head, .electricity-group-history .roi-repayment-history__row { grid-template-columns: 90px 120px 100px 120px auto !important; }

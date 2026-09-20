@@ -270,3 +270,7 @@ Suggested migration:
 5. Panel service wiring.
 6. HA deploy/restart.
 7. Chrome live test with cache-busted version loop.
+
+## Public holiday dates
+
+Public holiday dates come from the configured Weekdays integration rather than being entered manually in each Buy or Sell record. HEROS stores the selected holiday source and region with the pricing configuration and refreshes the resolved `holiday_dates` list from the integration on its normal update cycle. Each refresh replaces the stored list with the current and upcoming dates (and may retain past dates for history). Buy and Sell records marked **Public holiday** are matched against the refreshed dates when selecting the applicable rate.

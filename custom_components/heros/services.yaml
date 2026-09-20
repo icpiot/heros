@@ -746,7 +746,7 @@ pricing_upsert_group:
       required: false
       selector:
         entity:
-          domain: sensor    other_charges:
+          domain: sensor`r`n    other_charges:
       name: Other Charges
       description: Other named charges to record for the group.
       required: false
