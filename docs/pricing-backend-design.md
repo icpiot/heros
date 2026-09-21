@@ -209,6 +209,271 @@ Suggested migration:
   they override those records. Public holiday records should still be checked
   against other public holiday records for overlap.
 
+
+## Finance & ROI
+
+The **Finance & ROI** section records capital costs and repayment history
+associated with the home energy system. These records are source data for HEROS
+ROI reporting and may be combined with feed-in tariff income, VPP income,
+calculated solar generation value, and other applicable financial or energy
+data.
+
+The Finance & ROI page is primarily an input and history-management surface.
+Calculated totals, repayment progress, ROI, and related financial outputs belong
+in reporting rather than in the data-entry tables.
+
+### Installation Costs
+
+Installation Costs record expenses associated with the user's home energy
+system. Typical records include the initial solar installation, later panel
+upgrades, batteries, inverter replacement, switchboard/electrical work, and
+other associated home-energy costs.
+
+Negative values are supported for rebates, refunds, credits, or other
+reductions in overall installation cost.
+
+Installation Cost fields:
+
+- **Effective Date** - required. The date the cost was incurred or the
+  equipment/work was installed. Future dates are not valid.
+- **Description** - required free text.
+- **Amount** - required, non-zero. Positive and negative values are supported.
+
+The logical Installation Cost key is:
+
+`Effective Date + Description`
+
+Duplicate Installation Cost keys are not permitted.
+
+Installation History contains:
+
+- Effective Date
+- Description
+- Amount
+- Action
+
+Records are ordered by Effective Date descending, with the most recent record
+first.
+
+**Modify** loads the selected record into the existing Installation Cost form.
+Effective Date, Description, and Amount may all be changed, subject to the same
+validation rules as a new record.
+
+**Delete** always requires confirmation. An Installation Cost cannot be deleted
+while Repayment records are linked to it. Linked repayments must first be
+deleted or reassigned to another valid Installation Cost.
+
+### Repayments
+
+Every Repayment record must be linked to exactly one Installation Cost. One
+Installation Cost may have multiple Repayment records so changes to repayment
+terms can be preserved historically.
+
+A genuine change to repayment terms is recorded as a new effective-dated
+Repayment record. Existing history must not be edited merely to represent a
+later repayment change. Modify is used to correct an existing record.
+
+Repayment fields:
+
+- **Installation Cost** - required parent Installation Cost.
+- **Effective Date** - required. The first repayment occurrence for the record.
+- **End Date** - optional manual end date for recurring repayments.
+- **Amount** - required, non-zero. Positive and negative values are supported.
+- **Frequency** - required.
+
+Supported frequencies:
+
+- Weekly
+- Fortnightly
+- Monthly
+- Quarterly
+- Yearly
+- One-off
+
+Repayment schedule semantics:
+
+- Weekly means every 7 days from the Effective Date.
+- Fortnightly means every 14 days from the Effective Date.
+- Monthly means every calendar month from the Effective Date.
+- Quarterly means every 3 calendar months from the Effective Date.
+- Yearly means every calendar year from the Effective Date.
+- One-off occurs once on the Effective Date and does not use an End Date.
+- For monthly or quarterly schedules, if the target day does not exist in the
+  target month, use the last valid day of that month.
+- A yearly schedule anchored to 29 February uses 28 February in non-leap years
+  and returns to 29 February in leap years.
+
+The End Date only stops future scheduled repayments. It does not itself create
+an additional repayment. A scheduled repayment falling exactly on the End Date
+is included. If End Date is blank, a recurring repayment remains active
+indefinitely.
+
+### Repayment validation
+
+Repayment records must satisfy all of the following:
+
+- Effective Date is required and may be future-dated.
+- Effective Date cannot be earlier than the linked Installation Cost Effective
+  Date.
+- End Date is optional.
+- End Date cannot be earlier than Effective Date.
+- Amount cannot be zero.
+- Positive and negative Amount values are permitted.
+- Repayments linked to the same Installation Cost cannot overlap.
+- Gaps between repayment periods are permitted.
+- For the same Installation Cost, each new Repayment Effective Date must be
+  later than the latest existing Repayment Effective Date.
+- Earlier or duplicate Repayment Effective Dates are invalid.
+
+If the latest repayment for an Installation Cost has no End Date and a newer
+repayment is added, HEROS must prompt the user to confirm whether the existing
+repayment should be ended.
+
+If confirmed, HEROS sets the existing repayment End Date to the day immediately
+before the new Effective Date. For example, a new repayment beginning
+`2026-07-01` ends the previous open-ended repayment on `2026-06-30`.
+
+If the user does not confirm, the new repayment is not saved because overlapping
+repayments for the same Installation Cost are not permitted.
+
+If the existing repayment already has an End Date, the new repayment must begin
+after that End Date.
+
+The same chronology and no-overlap validation applies when modifying or
+reassigning a repayment.
+
+### Repayment Modify and Delete
+
+Selecting **Modify** loads the selected repayment into the existing Repayment
+form. The form enters edit mode with **Save Changes** and **Cancel** controls.
+
+All stored repayment fields may be changed:
+
+- linked Installation Cost
+- Effective Date
+- End Date
+- Amount
+- Frequency
+
+Status is system-calculated and is not user-editable.
+
+Repayments may be reassigned to a different Installation Cost, but the record
+must pass all date, uniqueness, and overlap validation against the target
+Installation Cost before the reassignment is saved.
+
+All Repayment deletions require confirmation. Deleting a Repayment removes only
+that record. HEROS does not automatically extend, merge, or alter neighbouring
+repayment periods. Any resulting gap remains.
+
+### Repayment Status
+
+Repayment Status is calculated automatically by HEROS and is displayed only in
+Repayment History.
+
+Recurring repayment statuses:
+
+- **Scheduled** - Effective Date is in the future.
+- **Active** - Effective Date has been reached and End Date has not passed.
+- **Ended** - End Date has passed.
+
+A recurring repayment with no End Date remains Active indefinitely after its
+Effective Date. On the End Date itself it is still Active and becomes Ended the
+following day.
+
+One-off repayment statuses:
+
+- **Scheduled** - Effective Date is in the future.
+- **Completed** - Effective Date has been reached.
+
+### Repayment History
+
+Repayment History uses a single flat table with these columns:
+
+- Installation Description
+- Effective Date
+- End Date
+- Amount
+- Frequency
+- Status
+- Action
+
+Only the linked Installation Description is shown from the parent Installation
+Cost.
+
+Where an Installation Description is unique, only the description is shown.
+Where the same description exists on more than one Installation Cost, append
+the Installation Effective Date to disambiguate the parent record.
+
+The displayed label is only user-facing. The stored repayment relationship must
+reference the actual parent Installation Cost record.
+
+Repayment History is ordered by Installation Description and then Repayment
+Effective Date descending within each Installation Cost.
+
+### Finance record keys
+
+The logical uniqueness rules are:
+
+- **Installation Cost key** = `Effective Date + Description`
+- **Repayment record key** = `Installation Cost key + Repayment Effective Date`
+
+Duplicate logical keys are not permitted.
+
+### Reporting relationship
+
+Installation Costs and Repayments are source financial records. Any HEROS report
+or calculation consuming these records must use the current stored values after
+records are added, modified, reassigned, or deleted.
+
+The implementation may calculate values on demand, pre-calculate them, or cache
+them; the required behaviour is that linked reports reflect the current stored
+data.
+
+### Finance & ROI implementation requirements
+
+The current Finance & ROI implementation must be extended to support the final
+model above. Outstanding work includes:
+
+- enforce required Installation Cost Description;
+- enforce non-zero Installation Cost Amount;
+- allow positive and negative Installation Cost Amount values;
+- reject future Installation Cost Effective Dates;
+- enforce the unique Installation Cost key;
+- block Installation Cost deletion while linked repayments exist;
+- require confirmation for every delete action;
+- add the mandatory Installation Cost selector to Repayments;
+- support multiple Repayment records per Installation Cost;
+- remove the need for a separate Repayment Description;
+- add optional Repayment End Date;
+- add One-off repayment frequency;
+- implement Weekly, Fortnightly, Monthly, Quarterly, Yearly, and One-off
+  schedule logic;
+- implement month-end and leap-year schedule handling;
+- allow future-dated Repayment Effective Dates;
+- enforce non-zero Repayment Amount while allowing positive and negative values;
+- enforce Repayment Effective Date against the parent Installation Cost date;
+- enforce End Date against Effective Date;
+- enforce the Repayment logical key;
+- prevent overlapping repayments for the same Installation Cost;
+- allow gaps between repayment periods;
+- prompt to end an open-ended repayment when a newer repayment is added;
+- if confirmed, auto-set the prior End Date to the day before the new Effective
+  Date;
+- reject the new record if the user declines and an overlap would remain;
+- apply the same chronology and overlap validation to Modify and reassignment;
+- allow repayment reassignment to another Installation Cost;
+- add automatic Repayment Status calculation;
+- add Status to Repayment History;
+- use the existing repayment form for Modify mode with Save Changes and Cancel;
+- allow all stored repayment fields except Status to be edited;
+- ensure deleting a repayment never alters neighbouring repayment records;
+- update Repayment History to the final column set and ordering rules;
+- apply Installation Description disambiguation only when duplicate descriptions
+  exist; and
+- refresh affected tables after successful add, modify, reassign, or delete
+  operations.
+
+
 ## Implementation checklist
 
 1. Extend `custom_components/heros/pricing.py`.
