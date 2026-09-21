@@ -474,6 +474,455 @@ model above. Outstanding work includes:
   operations.
 
 
+
+## VPP Programs and Compensation
+
+The **VPP** section must support Virtual Power Plant compensation models used
+internationally rather than assuming every VPP pays a single fixed cents/kWh
+rate.
+
+HEROS models VPP data as:
+
+- a parent **VPP Program**; and
+- one or more child **Compensation Components**.
+
+Only one VPP Program may be active at a time, but a program may contain
+multiple compensation components and may contain multiple components of the
+same type where the provider's scheme requires it.
+
+### Currency
+
+HEROS does not define a separate VPP currency.
+
+All monetary VPP values use the currency configured in Home Assistant. The
+Home Assistant currency is the source of truth for display and financial
+reporting across HEROS.
+
+Energy and capacity rates should be stored internally in standard base units,
+for example currency/kWh and currency/kW, even when the UI displays a more
+familiar local representation such as cents/kWh.
+
+### VPP Program fields
+
+A VPP Program contains:
+
+- **Provider** - required free text.
+- **Program / Plan Name** - optional free text.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive.
+- **Status** - calculated automatically by HEROS.
+
+VPP Program status values are:
+
+- **Scheduled** - Effective Date is in the future.
+- **Active** - Effective Date has been reached and End Date is blank or has not
+  passed.
+- **Ended** - End Date has passed.
+
+On the End Date itself, the program is still Active and becomes Ended the
+following day.
+
+Future-dated VPP Programs are allowed.
+
+Only one VPP Program may be active for a given date. Gaps between programs are
+allowed.
+
+If a new VPP Program is created while the current program has no End Date,
+HEROS must prompt the user to confirm whether the current program should end.
+If confirmed, HEROS sets the current program End Date to the day immediately
+before the new Program Effective Date. If declined, the new program is not
+saved because overlapping programs are not permitted.
+
+If the existing program already has an End Date, a new VPP Program must begin
+after it.
+
+### Compensation Components
+
+Each VPP Program may contain one or more Compensation Components.
+
+Every component contains:
+
+- **Label / Description** - required free text.
+- **Component Type** - required.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive where the component is recurring.
+- **Value** - required and interpreted according to Component Type.
+- **Frequency** - required only for component types that recur by cycle.
+- **Basis** - required only where the payment is percentage-based.
+- **Condition Type** - optional where compensation depends on a condition.
+- **Notes** - optional free text for provider-specific rules.
+- **Status** - calculated automatically by HEROS.
+
+A component Effective Date cannot be earlier than the parent VPP Program
+Effective Date.
+
+If the parent VPP Program has an End Date, the component cannot extend beyond
+that date.
+
+A component End Date cannot be earlier than its own Effective Date.
+
+Components may overlap where the VPP scheme legitimately pays more than one
+compensation component at the same time.
+
+### Supported Compensation Component types
+
+HEROS should support the following initial component types for worldwide
+compatibility.
+
+#### Energy Payment
+
+Compensation based on energy delivered during qualifying VPP activity.
+
+Required data:
+
+- Label
+- Effective Date
+- optional End Date
+- Rate in currency/kWh
+
+Example:
+
+- Label: `VPP Event Energy Payment`
+- Rate displayed to user: `70 c/kWh`
+- Stored rate: `0.70 currency/kWh`
+
+#### Capacity Payment
+
+Compensation based on available or delivered power capacity.
+
+Required data:
+
+- Label
+- Effective Date
+- optional End Date
+- Rate in currency/kW
+- Frequency where the provider pays the capacity amount on a repeating cycle
+
+Example:
+
+- Label: `Monthly Capacity Credit`
+- Rate: `10.00 currency/kW`
+- Frequency: Monthly
+
+#### Fixed Recurring Payment
+
+A fixed monetary amount paid on a repeating cycle.
+
+Required data:
+
+- Label
+- Effective Date
+- optional End Date
+- Amount
+- Frequency
+
+Supported frequencies should reuse the HEROS finance frequency model where
+applicable:
+
+- Weekly
+- Fortnightly
+- Monthly
+- Quarterly
+- Yearly
+
+Example:
+
+- Label: `VPP Participation Credit`
+- Amount: `25.00`
+- Frequency: Monthly
+
+#### One-off Incentive
+
+A fixed monetary amount paid once.
+
+Required data:
+
+- Label
+- Effective Date
+- Amount
+
+No End Date or Frequency is required.
+
+Example:
+
+- Label: `VPP Signup Incentive`
+- Effective Date: `2026-07-01`
+- Amount: `500.00`
+
+#### Event Payment
+
+A fixed monetary amount paid per qualifying VPP event.
+
+Required data:
+
+- Label
+- Effective Date
+- optional End Date
+- Amount per event
+
+Example:
+
+- Label: `Event Participation Bonus`
+- Amount: `20.00 per event`
+
+#### Percentage-based Payment
+
+Compensation calculated as a percentage of another defined amount.
+
+Required data:
+
+- Label
+- Effective Date
+- optional End Date
+- Percentage
+- Basis
+
+The Basis describes what the percentage applies to.
+
+Example:
+
+- Label: `Market Revenue Share`
+- Percentage: `20%`
+- Basis: `VPP market revenue`
+
+### Condition Types
+
+Some international VPP schemes only pay a component when a provider-defined
+condition is met.
+
+HEROS should support these initial condition types:
+
+- **Always**
+- **VPP event only**
+- **Seasonal**
+- **Performance-based**
+- **Provider-defined / custom**
+
+For Seasonal components, the component Effective Date and End Date define the
+applicable season.
+
+For Performance-based components, HEROS records that payment depends on measured
+performance rather than assuming the configured nominal rate is guaranteed.
+
+For Provider-defined / custom conditions, Notes should be used to describe the
+provider rule until a more specific structured model is required.
+
+### VPP Program and Component Modify/Delete behaviour
+
+The same effective-dated record behaviour used elsewhere on the Pricing page
+applies.
+
+- Modify loads the selected record into the existing form.
+- Stored user-editable fields may be changed.
+- Status remains system-calculated and cannot be edited.
+- Save re-runs all date and parent/child validation.
+- Cancel discards unsaved edits.
+- Every deletion requires confirmation.
+- A parent VPP Program cannot be deleted while Compensation Components remain
+  linked to it.
+- Components must first be deleted or reassigned before the Program may be
+  deleted.
+- Deleting a child component removes only that component and does not alter
+  neighbouring or sibling components.
+- Tables refresh after successful add, modify, reassign, or delete operations.
+
+### VPP Program logical key
+
+Because only one VPP Program may begin on a given date, the logical VPP Program
+key is:
+
+`VPP Program Effective Date`
+
+Duplicate VPP Program Effective Dates are not permitted.
+
+Child Compensation Components should use a stable internal identifier rather
+than depending on their display Label for identity.
+
+### VPP History
+
+The VPP Program history table should show:
+
+- Effective Date
+- End Date
+- Provider
+- Program / Plan Name
+- Status
+- Action
+
+Records are ordered by Effective Date descending.
+
+Compensation Components should be visible beneath or within the selected VPP
+Program and should expose enough information to identify the component type,
+label, dates, configured value/rate, and Status.
+
+### User examples
+
+The following examples are intended to help users understand how to enter
+common VPP arrangements.
+
+#### Example 1 - Simple energy-only VPP
+
+A provider pays 70 cents/kWh whenever it dispatches the battery.
+
+VPP Program:
+
+- Provider: `Example Energy`
+- Program / Plan Name: `Battery Rewards`
+- Effective Date: `2026-01-01`
+- End Date: blank
+
+Compensation Component:
+
+- Label: `VPP Event Energy Payment`
+- Component Type: Energy Payment
+- Effective Date: `2026-01-01`
+- End Date: blank
+- Rate: `70 c/kWh`
+- Condition Type: VPP event only
+
+HEROS uses this rate only for qualifying VPP-event energy.
+
+#### Example 2 - Energy payment plus monthly capacity credit
+
+A VPP pays both an event energy payment and a recurring capacity credit.
+
+VPP Program:
+
+- Provider: `Example Utility`
+- Program / Plan Name: `Flex Battery Program`
+- Effective Date: `2026-03-01`
+
+Component 1:
+
+- Label: `Event Energy Payment`
+- Component Type: Energy Payment
+- Effective Date: `2026-03-01`
+- Rate: `30 c/kWh`
+- Condition Type: VPP event only
+
+Component 2:
+
+- Label: `Monthly Capacity Credit`
+- Component Type: Capacity Payment
+- Effective Date: `2026-03-01`
+- Rate: `8.00 currency/kW`
+- Frequency: Monthly
+- Condition Type: Performance-based
+
+Both components may be active at the same time because they compensate different
+parts of the same program.
+
+#### Example 3 - Signup incentive plus ongoing monthly credit
+
+A provider pays an upfront incentive and an ongoing monthly participation
+credit.
+
+VPP Program:
+
+- Provider: `Example VPP`
+- Program / Plan Name: `Home Battery Flex`
+- Effective Date: `2026-05-01`
+
+Component 1:
+
+- Label: `Signup Incentive`
+- Component Type: One-off Incentive
+- Effective Date: `2026-05-01`
+- Amount: `500.00`
+
+Component 2:
+
+- Label: `Monthly Participation Credit`
+- Component Type: Fixed Recurring Payment
+- Effective Date: `2026-05-01`
+- Amount: `15.00`
+- Frequency: Monthly
+
+#### Example 4 - Seasonal capacity rates
+
+A program pays different capacity rates in summer and winter.
+
+VPP Program:
+
+- Provider: `Example Grid Services`
+- Effective Date: `2026-01-01`
+- End Date: `2026-12-31`
+
+Component 1:
+
+- Label: `Summer Capacity Rate`
+- Component Type: Capacity Payment
+- Effective Date: `2026-12-01`
+- End Date: `2026-12-31`
+- Rate: `12.00 currency/kW`
+- Frequency: Monthly
+- Condition Type: Seasonal
+
+Component 2:
+
+- Label: `Winter Capacity Rate`
+- Component Type: Capacity Payment
+- Effective Date: `2026-06-01`
+- End Date: `2026-08-31`
+- Rate: `8.00 currency/kW`
+- Frequency: Monthly
+- Condition Type: Seasonal
+
+The components use their own dates while remaining inside the parent Program
+date range.
+
+#### Example 5 - Percentage revenue share
+
+A provider pays the customer a percentage of market revenue earned by the VPP.
+
+VPP Program:
+
+- Provider: `Example Aggregator`
+- Effective Date: `2026-01-01`
+
+Compensation Component:
+
+- Label: `Market Revenue Share`
+- Component Type: Percentage-based Payment
+- Effective Date: `2026-01-01`
+- Percentage: `20%`
+- Basis: `VPP market revenue`
+- Condition Type: Provider-defined / custom
+- Notes: `Provider calculates distributable market revenue monthly.`
+
+#### Example 6 - Changing VPP provider
+
+Existing Program:
+
+- Provider: `Provider A`
+- Effective Date: `2026-01-01`
+- End Date: blank
+
+The user adds Provider B with an Effective Date of `2026-09-01`.
+
+HEROS prompts to end Provider A.
+
+If the user confirms:
+
+- Provider A End Date becomes `2026-08-31`.
+- Provider B begins on `2026-09-01`.
+
+If the user declines, Provider B is not saved because two VPP Programs cannot
+be active at the same time.
+
+### VPP reporting relationship
+
+VPP Programs and Compensation Components are source data for HEROS financial
+and ROI reporting.
+
+Where the component type can be calculated directly from recorded HEROS data,
+HEROS should calculate the applicable VPP income from the configured component.
+
+Where the provider supplies a performance or revenue value that HEROS cannot
+derive independently, the component definition must preserve the payment basis
+so externally supplied values can be incorporated correctly by reporting.
+
+
 ## Implementation checklist
 
 1. Extend `custom_components/heros/pricing.py`.
