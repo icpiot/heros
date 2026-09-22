@@ -1,5 +1,7 @@
 # Pricing Backend Design
 
+> Codex implementation reference: see `docs/PRICING_DATA_MODEL_CODEX.md` for the consolidated field list, stable IDs, parent-child links, migration map, and implementation order.
+
 This document describes the pricing data shape used by the Pricing UI.
 
 ## Scope
