@@ -923,6 +923,445 @@ derive independently, the component definition must preserve the payment basis
 so externally supplied values can be incorporated correctly by reporting.
 
 
+## Electricity Rates - Final Approved Design
+
+This section defines the final intended Electricity Rates model and supersedes
+earlier rate-group details in this document wherever they conflict.
+
+The design goal is to keep common residential tariff setup simple while still
+supporting complex international tariff structures. HEROS therefore uses one
+underlying tariff model with two user-interface levels:
+
+- **Basic** - the default experience for flat and straightforward time-of-use
+  residential tariffs.
+- **Advanced** - exposes additional tariff structures only when required.
+
+Basic and Advanced are not separate data stores. Advanced mode exposes more of
+the same Electricity Plan model. A plan may be changed from Basic to Advanced
+without losing its existing configuration.
+
+### Electricity Plan
+
+An Electricity Plan is the parent record for all electricity tariff components.
+
+Only one Electricity Plan may apply on a given date.
+
+Plan fields:
+
+- **Retailer / Plan** - required free text. Retailer and plan name are combined
+  into one user-facing field.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive.
+- **Mode** - Basic or Advanced. Basic is the default.
+- **Rates Include Tax** - required Yes/No indication of whether entered tariff
+  values already include GST, VAT, sales tax, or equivalent.
+- **Tax Percentage** - optional where HEROS needs to calculate gross or net
+  values.
+- **Notes** - optional.
+- **Status** - calculated automatically and not user-editable.
+
+Plan Status values are:
+
+- **Scheduled** - Effective Date is in the future.
+- **Active** - Effective Date has been reached and End Date is blank or has not
+  passed.
+- **Ended** - End Date has passed.
+
+The End Date itself remains Active. The plan becomes Ended on the following day.
+
+Future-dated Electricity Plans are allowed. Gaps between plans are allowed.
+
+If a new Electricity Plan is added while the existing plan is open-ended, HEROS
+must prompt the user to end the existing plan on the day immediately before the
+new Effective Date. If confirmed, HEROS updates the old End Date and saves the
+new plan. If declined, the new plan is not saved because plan date ranges may
+not overlap.
+
+If the previous plan already has an End Date, the new plan must begin after it.
+
+Every deletion requires confirmation.
+
+### Basic mode
+
+Basic mode is intentionally capable enough for normal residential tariffs and
+does not mean "single rate only".
+
+Basic supports:
+
+- flat Buy / Import pricing;
+- straightforward time-of-use Buy / Import pricing;
+- flat Sell / Export / Feed-in Tariff pricing;
+- straightforward time-of-use Sell / Export pricing;
+- multiple Fixed Charges;
+- optional multiple Controlled Loads;
+- multiple rate periods for each Controlled Load;
+- ordinary day and time selection;
+- Public Holiday rate periods;
+- zero rates where legitimate; and
+- negative rates where legitimate.
+
+Basic does not expose tiered/block, demand, or market-linked configuration.
+
+### Buy / Import Rates
+
+Buy / Import Rates are configured separately from Sell / Export Rates because
+their schedules may differ.
+
+Each Buy Rate record contains:
+
+- **Rate Description** - required. Uses the existing common-description dropdown
+  and Add to List/custom-description behaviour.
+- **Days** - required.
+- **Start Time** - required unless the record is explicitly All Day.
+- **End Time** - required unless the record is explicitly All Day.
+- **Rate** - required, stored internally in currency/kWh.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive.
+- **Status** - calculated automatically.
+- **Notes** - optional.
+
+Common descriptions should include:
+
+- Standard
+- Peak
+- Shoulder
+- Off-Peak
+- Super Off-Peak
+- Other
+
+Custom descriptions may be added and persisted using the existing Pricing page
+description-management behaviour.
+
+Supported day selections in Basic include:
+
+- All days
+- Weekdays
+- Weekends
+- individual days Monday through Sunday
+- Public Holidays
+
+Multiple Buy Rate periods are allowed so normal Peak / Shoulder / Off-Peak
+pricing remains a Basic configuration.
+
+Rate values may be positive, zero, or negative where the tariff legitimately
+requires them.
+
+### Sell / Export / Feed-in Tariff Rates
+
+Sell / Export Rates use a separate section and the same simple day/time model as
+Buy Rates.
+
+Each Sell Rate record contains:
+
+- Rate Description
+- Days
+- Start Time
+- End Time
+- Rate
+- Effective Date
+- optional End Date
+- Status
+- optional Notes
+
+Basic Sell Rates may be either:
+
+- one flat export rate; or
+- multiple time-of-use export periods.
+
+Zero export rates are valid. Negative export rates are also supported where a
+tariff can charge for export.
+
+The same description dropdown and Add to List/custom-description behaviour used
+by Buy Rates is reused here.
+
+### Time-window validation
+
+Within the same logical rate set, overlapping day/time windows are not
+permitted unless a documented precedence rule applies.
+
+Overnight periods are supported. For validation, an overnight period is treated
+as two time segments split at midnight.
+
+A start time equal to the end time is invalid unless the UI explicitly stores
+the record as All Day rather than as a zero-length window.
+
+Public Holiday records override ordinary weekday/weekend records and therefore
+may coexist with them. Public Holiday records must still be checked against
+other Public Holiday records for overlap.
+
+### Fixed Charges
+
+Fixed Charges are separate child records because a plan may contain several
+simultaneous fixed or recurring charges.
+
+Common descriptions include:
+
+- Daily Supply Charge
+- Meter Fee
+- Service Fee
+- Membership Fee
+- Account Fee
+- Other
+
+Demand Charges are not Fixed Charges and belong to the Advanced Demand Charges
+component.
+
+Fixed Charge fields:
+
+- **Charge Description** - required. Uses a common dropdown plus the existing
+  Add to List/custom-description behaviour.
+- **Amount** - required and non-zero.
+- **Frequency** - required.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive for recurring charges.
+- **Status** - calculated automatically.
+- **Notes** - optional.
+
+Supported frequencies:
+
+- Daily
+- Weekly
+- Fortnightly
+- Monthly
+- Quarterly
+- Yearly
+- One-off
+
+A One-off charge applies once on its Effective Date and does not use an End
+Date.
+
+Positive values represent charges. Negative values represent recurring credits
+or discounts. Zero is invalid.
+
+Different Fixed Charge descriptions may overlap. Two effective-dated records for
+the same Fixed Charge description may not overlap.
+
+When a new record for the same Charge Description begins while the previous
+record is open-ended, HEROS applies the standard close-previous prompt and, if
+confirmed, ends the old record on the day before the new Effective Date.
+
+Gaps are allowed.
+
+### Controlled Loads
+
+Controlled Load is a separate optional child tariff component.
+
+A single Electricity Plan may contain multiple Controlled Loads, for example:
+
+- Controlled Load 1 - Hot Water
+- Controlled Load 2 - EV Circuit
+- Pool Pump
+- Dedicated Heating Circuit
+
+Each Controlled Load parent contains:
+
+- **Description** - required.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive.
+- **Status** - calculated automatically.
+- **Notes** - optional.
+
+Each Controlled Load may contain multiple rate periods.
+
+Controlled Load Rate Period fields:
+
+- Rate Description
+- Days
+- Start Time
+- End Time
+- Rate
+- Effective Date
+- optional End Date
+- Status
+- optional Notes
+
+The same common Rate Description dropdown and Add to List/custom-description
+behaviour used by Buy and Sell Rates is reused here.
+
+Controlled Load rate periods may be Flat, Peak, Shoulder, Off-Peak, or another
+custom description.
+
+All Day is supported. This is important where a network controls when power is
+available but the tariff itself is a single flat controlled-load rate.
+
+### Advanced mode
+
+Advanced mode exposes tariff structures that go beyond ordinary flat or
+day/time-based residential pricing.
+
+Advanced initially supports:
+
+- Tiered / Block Pricing
+- Demand Charges
+- Dynamic / Market-linked pricing references
+- the full Basic feature set
+
+Advanced mode does not replace Basic configuration. Existing Basic records
+remain valid and visible.
+
+### Tiered / Block Pricing
+
+Tiered pricing supports rates that depend on accumulated consumption.
+
+Each tier contains:
+
+- **From Quantity** - inclusive lower threshold.
+- **To Quantity** - upper threshold; optional for the final open-ended tier.
+- **Rate** - currency/kWh.
+- **Reset Period** - required.
+
+Supported Reset Period values:
+
+- Daily
+- Monthly
+- Billing Period
+
+Tiers must form a valid ordered set for the applicable tariff definition.
+Overlapping quantity ranges are not permitted.
+
+The final tier may omit To Quantity to represent all consumption above its From
+Quantity.
+
+A change in the provider's tier rates or thresholds must create a new
+effective-dated tariff record. HEROS must not assume that a seasonal or annual
+rate automatically repeats.
+
+### Demand Charges
+
+Demand Charges are an optional Advanced component and are intentionally separate
+from Fixed Charges because the billed amount depends on measured maximum power
+rather than a fixed recurring amount.
+
+A Demand Charge record contains at minimum:
+
+- **Description** - required.
+- **Rate** - currency/kW.
+- **Measurement Interval** - for example 15 or 30 minutes.
+- **Applicable Days** - required.
+- **Start Time** - required unless All Day.
+- **End Time** - required unless All Day.
+- **Billing Period** - required.
+- **Effective Date** - required.
+- **End Date** - optional and inclusive.
+- **Status** - calculated automatically.
+- **Notes** - optional.
+
+A change in demand-charge rules or pricing creates a new effective-dated
+Demand Charge record.
+
+HEROS should calculate the applicable maximum demand from measured energy/power
+data where the required source data is available.
+
+### Dynamic / Market-linked pricing
+
+Dynamic interval prices are not stored as ordinary Electricity Rate records.
+
+The Electricity Plan or Rate Group stores only a reference to the applicable
+Dynamic Pricing Source.
+
+The actual dynamic interval prices belong in a separate data table/module to be
+designed independently.
+
+This separation allows:
+
+- one Dynamic Pricing Source to feed Buy prices;
+- one source to feed Sell prices;
+- one source to feed both where appropriate;
+- interval price history to be retained independently from tariff definition
+  history; and
+- provider/API-specific ingestion logic to remain outside the ordinary Pricing
+  configuration model.
+
+The dynamic data model will be specified separately when that feature is
+designed.
+
+### Seasonal changes
+
+HEROS does not treat seasonal price periods as automatically repeating every
+year.
+
+If a tariff changes for a new season or year, a new effective-dated record is
+required.
+
+This preserves the actual historical rates applied by the retailer rather than
+assuming that a previous year's seasonal values remain valid.
+
+### Tax handling
+
+HEROS records whether Electricity Plan rates are entered tax-inclusive or
+tax-exclusive.
+
+Where required, an optional Tax Percentage may be stored so HEROS can calculate
+the corresponding gross or net amount for reporting.
+
+The configured Home Assistant currency remains the monetary display source of
+truth throughout HEROS.
+
+### Rate values
+
+Electricity rates may be:
+
+- positive;
+- zero; or
+- negative.
+
+This applies where the underlying tariff legitimately allows the value. The
+model must not reject zero or negative rates merely because most ordinary
+residential tariffs are positive.
+
+### Effective-dated child behaviour
+
+Unless a more specific rule above overrides it, all effective-dated Electricity
+Plan child records use the same established Pricing-page behaviour:
+
+- Effective Date is required.
+- End Date is optional and inclusive where applicable.
+- future-dated records are allowed.
+- Status is system-calculated and not editable.
+- gaps are allowed.
+- successive records for the same logical item may not overlap.
+- when an open-ended record is replaced, HEROS prompts to close it on the day
+  before the new record starts.
+- if the user declines and overlap would remain, the new record is not saved.
+- Modify uses the existing form with Save Changes and Cancel.
+- all stored user-editable fields may be corrected through Modify.
+- Save re-runs all applicable validation.
+- every deletion requires confirmation.
+- deleting one child record does not merge, extend, or otherwise alter adjacent
+  records.
+- affected tables refresh after successful add, modify, or delete.
+
+Parent/child dates must remain valid. A child Effective Date cannot be earlier
+than its parent Electricity Plan Effective Date, and a child cannot extend
+beyond the parent's End Date when one exists.
+
+### Electricity Plan history
+
+The Electricity Plan history table should show:
+
+- Effective Date
+- End Date
+- Retailer / Plan
+- Mode
+- Status
+- Action
+
+Records are ordered by Effective Date descending.
+
+Child sections should expose their own history records beneath or within the
+selected Electricity Plan.
+
+### User setup examples
+
+Detailed user-facing Advanced setup examples are maintained separately in:
+
+`docs/PRICING_ADVANCED_SETUP_EXAMPLES.md`
+
+Keeping the examples separate prevents this backend/design document from
+becoming a UI walkthrough while still providing concrete configurations that
+users and implementers can follow.
+
+
 ## Implementation checklist
 
 1. Extend `custom_components/heros/pricing.py`.
