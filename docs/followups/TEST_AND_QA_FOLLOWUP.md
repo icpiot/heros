@@ -29,16 +29,15 @@ pytest tests/test_roi.py tests/test_panel_contract.py
 
 ## Mobile verification
 
-The available browser automation exposes tab navigation, DOM inspection, screenshots, and clicks, but no viewport/device emulation API. `playwright.setViewportSize` is not available. A true iPhone portrait screenshot could not be captured in this environment, so no full iPhone claim is made.
+The Codex In-app Browser viewport capability was used to inspect the live `.111` page at `390 x 844` CSS pixels. After a report of overlapping, clipped, and hidden content, all nine HEROS pages were rechecked visually and with an element-level DOM scan. The original suspected defects were not reproduced: no local card/container overflow, clipped controls, out-of-viewport controls, or independent heading/control overlaps were found. Pricing Buy/Sell states, Policy editor stacking, Reports catalog/date/period controls, and the Settings theme preview were inspected in their deeper page sections.
 
-The CSS contains responsive rules for narrow selectors, stacked policy/pricing editors, wrapped report controls, and compact Buy/Sell cards. A later manual or device-capable browser pass should inspect all nine pages at 390x844 and record screenshots.
+The detailed structured notes are in [MOBILE_QA_390X844.md](mobile-qa/MOBILE_QA_390X844.md). This is a real narrow viewport check, but it is not a physical iPhone or device-pixel-ratio/touch-emulation test. Safari-specific rendering, touch hit targets, and safe-area behavior remain suitable for a later device-capable pass.
 
 ### Reproducible mobile QA procedure
 
 1. Open `.111` or `.112` in a browser with real device emulation set to an iPhone portrait viewport (390 x 844 CSS pixels), device pixel ratio 3, and touch enabled.
-2. Visit Overview, Policy, Reports, Battery, Solar, History, Pricing, Settings, and Mapping. Capture one full-page screenshot per page.
-3. On every page, check that the document has no horizontal overflow, navigation and buttons are not clipped, text remains readable, and cards stack within the viewport.
-4. On Pricing, check the group editor, date inputs, Buy cards, Sell cards, and Modify/Delete actions. On Policy, check immediate controls and policy editors. On Reports, check catalog wrapping, period/date controls, selected-state contrast, and chart bounds. On Settings, check the theme preview. Record any issue with page, viewport, screenshot, and selector/component.
+2. Repeat the nine-page checklist in [MOBILE_QA_390X844.md](mobile-qa/MOBILE_QA_390X844.md), adding Safari/device-specific observations.
+3. On Pricing, check populated Buy/Sell cards and Modify/Delete actions when records are available. On Policy, check immediate controls and policy editors. On Reports, check selected-state contrast and chart hit targets. On Settings, check the theme preview and touch target sizing.
 
 ## `sensor.py` warning
 
