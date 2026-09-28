@@ -1,17 +1,18 @@
-"""Shared reporting helpers and local history persistence for Byte-Watt."""
+"""Shared HEROS reporting helpers and SQLite-backed history."""
 from __future__ import annotations
 
-import csv
-import json
-import logging
 import re
+import threading
 from copy import deepcopy
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, TypeVar
 
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+
+from .archive_store import ArchiveStore, DB_FILE_NAME
 
 from .const import (
     CONF_FORECAST_GENERATION_NEXT_HOUR_ENTITY,
@@ -28,9 +29,22 @@ from .const import (
     CONF_FORECAST_PROVIDER,
     CONF_SOLAR_FORECAST_ENTITY,
     FORECAST_PROVIDER_NONE,
+    DOMAIN,
 )
 
-_LOGGER = logging.getLogger(__name__)
+_HISTORY_FILE_LOCK = threading.RLock()
+_HistoryCallable = TypeVar("_HistoryCallable", bound=Callable[..., Any])
+
+
+def _synchronized_history_io(func: _HistoryCallable) -> _HistoryCallable:
+    """Serialize archive access during migration and concurrent writes."""
+    @wraps(func)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:
+        with _HISTORY_FILE_LOCK:
+            return func(*args, **kwargs)
+
+    return wrapped  # type: ignore[return-value]
+
 
 HISTORY_DIR_NAME = "heros-history"
 HISTORY_FILE_NAME = "history.json"
@@ -230,81 +244,6 @@ def _safe_filename(value: str) -> str:
     return value or "all"
 
 
-def _json_default(value: Any) -> Any:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    return str(value)
-
-
-def _csv_cell(value: Any) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, (dict, list, tuple)):
-        value = json.dumps(value, default=_json_default, ensure_ascii=False, separators=(",", ":"))
-    else:
-        value = str(value)
-    return value
-
-
-def _summary_row(
-    *,
-    scope_key: str,
-    label: str,
-    record_date: str,
-    reporting: dict[str, Any],
-) -> dict[str, Any]:
-    live = reporting.get("live") or {}
-    today = reporting.get("today") or {}
-    totals = reporting.get("totals") or {}
-    forecast = reporting.get("forecast") or {}
-    forecast_values = forecast.get("values") if isinstance(forecast, dict) else {}
-    power_diagram = _power_diagram_from_reporting(reporting)
-    series = power_diagram.get("series") or {}
-
-    return {
-        "record_date": record_date,
-        "scope_key": scope_key,
-        "label": label,
-        "aggregate": reporting.get("aggregate", False),
-        "reporting_date": power_diagram.get("date") or "",
-        "saved_at": reporting.get("meta", {}).get("saved_at") or "",
-        "live_soc": live.get("soc"),
-        "live_battery_power": live.get("battery_power"),
-        "live_load_power": live.get("house_consumption"),
-        "live_grid_power": live.get("grid_power"),
-        "live_pv_power": live.get("pv_power"),
-        "power_source": live.get("power_source"),
-        "solar_generation_today": today.get("solar_generation"),
-        "load_consumption_today": today.get("load_consumption"),
-        "feed_in_today": today.get("feed_in"),
-        "grid_consumption_today": today.get("grid_consumption"),
-        "battery_charged_today": today.get("battery_charge"),
-        "battery_discharged_today": today.get("battery_discharge"),
-        "self_consumption": today.get("self_consumption"),
-        "self_sufficiency": today.get("self_sufficiency"),
-        "trees_planted": today.get("trees_planted"),
-        "co2_reduction_tons": today.get("co2_reduction_tons"),
-        "total_solar_generation": totals.get("solar_generation"),
-        "total_feed_in": totals.get("feed_in"),
-        "total_battery_charge": totals.get("battery_charge"),
-        "total_battery_discharge": totals.get("battery_discharge"),
-        "total_house_consumption": totals.get("house_consumption"),
-        "total_grid_consumption": totals.get("grid_consumption"),
-        "pv_power_house": totals.get("pv_power_house"),
-        "pv_charging_battery": totals.get("pv_charging_battery"),
-        "grid_battery_charge": totals.get("grid_battery_charge"),
-        "forecast_provider": forecast.get("provider") if isinstance(forecast, dict) else "",
-        "forecast_saved_at": forecast.get("saved_at") if isinstance(forecast, dict) else "",
-        "forecast_values": json.dumps(forecast_values or {}, default=_json_default, ensure_ascii=False, separators=(",", ":")),
-        "chart_time": json.dumps(power_diagram.get("time") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
-        "chart_bat": json.dumps(series.get("bat") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
-        "chart_load": json.dumps(series.get("load") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
-        "chart_solar": json.dumps(series.get("solar") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
-        "chart_feed_in": json.dumps(series.get("feed_in") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
-        "chart_consumed": json.dumps(series.get("consumed") or [], default=_json_default, ensure_ascii=False, separators=(",", ":")),
-    }
-
-
 def _power_diagram_from_reporting(reporting: dict[str, Any]) -> dict[str, Any]:
     """Return a nested or bare power diagram payload when one exists."""
     if not isinstance(reporting, dict):
@@ -325,374 +264,134 @@ def _provider_payload_from_reporting(reporting: dict[str, Any]) -> dict[str, Any
     return provider_payload if isinstance(provider_payload, dict) else {}
 
 
-def _reporting_has_power_diagram_data(reporting: dict[str, Any]) -> bool:
-    """Return True when a stored row has chart data worth treating as archived."""
-    power_diagram = _power_diagram_from_reporting(reporting)
-    if not isinstance(power_diagram, dict) or not power_diagram:
-        return False
-    time_points = power_diagram.get("time") or []
-    if isinstance(time_points, list) and len(time_points) > 0:
-        return True
-    series = power_diagram.get("series") or {}
-    if isinstance(series, dict):
-        for value in series.values():
-            if isinstance(value, list) and len(value) > 0:
-                return True
-    return False
-
-
 class ByteWattReportHistory:
-    """Persist one local snapshot per date and scope."""
+    """Persistent per-entry SQLite archive; legacy JSON is migration input only."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self.hass = hass
         self.entry_id = entry_id
         self.base_dir = Path(hass.config.path("www", HISTORY_DIR_NAME, entry_id))
         self.history_file = self.base_dir / HISTORY_FILE_NAME
+        self.db_dir = Path(hass.config.path("heros-history", entry_id))
+        self.archive_file = self.db_dir / DB_FILE_NAME
+        entry_data = getattr(hass, "data", {}).get(DOMAIN, {}).get(entry_id, {})
+        self.provider = str(entry_data.get("provider") or "bytewatt")
+        self.store = ArchiveStore(self.archive_file, self.provider)
+
+    def ensure_ready_sync(self) -> dict[str, Any]:
+        """Run an idempotent migration before SQLite becomes authoritative."""
+        return self.store.ensure_migrated(self.history_file)
+
+    async def async_ensure_ready(self) -> dict[str, Any]:
+        return await self.hass.async_add_executor_job(self.ensure_ready_sync)
 
     async def async_store_snapshot(
-        self,
-        *,
-        scope_key: str,
-        label: str,
-        reporting: dict[str, Any],
+        self, *, scope_key: str, label: str, reporting: dict[str, Any],
         record_date: str | None = None,
-    ) -> None:
-        """Store a daily snapshot and regenerate the CSV summary."""
+    ) -> str:
+        """Commit a validated day; surface errors to the job controller."""
         payload = deepcopy(reporting)
         scope_key = _safe_filename(scope_key)
-        label = label or payload.get("label") or scope_key
-        record_date = record_date or str(
-            payload.get("power_diagram", {}).get("date")
-            or _local_date_iso()
-        )
+        label = str(label or payload.get("label") or scope_key)
+        record_date = record_date or str(payload.get("power_diagram", {}).get("date") or _local_date_iso())
         payload["reporting_date"] = record_date
         meta = payload.setdefault("meta", {})
         if isinstance(meta, dict):
             meta["reporting_date"] = record_date
-        power_diagram = payload.setdefault("power_diagram", {})
-        if isinstance(power_diagram, dict):
-            power_diagram["date"] = record_date
+        diagram = payload.setdefault("power_diagram", {})
+        if isinstance(diagram, dict):
+            diagram["date"] = record_date
+        return await self.hass.async_add_executor_job(
+            self._store_snapshot_sync, scope_key, label, record_date, payload,
+        )
 
-        try:
-            await self.hass.async_add_executor_job(
-                self._store_snapshot_sync,
-                scope_key,
-                label,
-                record_date,
-                payload,
-            )
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning(
-                "Failed to persist ByteWatt history for %s (%s): %s",
-                scope_key,
-                record_date,
-                err,
-            )
+    @_synchronized_history_io
+    def _store_snapshot_sync(self, scope_key: str, label: str,
+                             record_date: str, reporting: dict[str, Any]) -> str:
+        self.ensure_ready_sync()
+        return self.store.put_report(scope_key, record_date, label, reporting)
 
     async def async_mark_missing_date(
-        self,
-        *,
-        scope_key: str,
-        label: str,
-        record_date: str,
+        self, *, scope_key: str, label: str, record_date: str,
         reason: str = "no_reporting_data",
     ) -> None:
-        """Persist a known-missing date so it is not re-requested forever."""
-        scope_key = _safe_filename(scope_key)
-        try:
-            await self.hass.async_add_executor_job(
-                self._mark_missing_date_sync,
-                scope_key,
-                label or scope_key,
-                record_date,
-                reason,
-            )
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning(
-                "Failed to persist missing ByteWatt history date for %s (%s): %s",
-                scope_key,
-                record_date,
-                err,
-            )
+        await self.hass.async_add_executor_job(
+            self._mark_missing_date_sync, _safe_filename(scope_key), label,
+            record_date, reason,
+        )
+
+    @_synchronized_history_io
+    def _mark_missing_date_sync(self, scope_key: str, label: str,
+                                record_date: str, reason: str) -> None:
+        self.ensure_ready_sync()
+        self.store.mark_missing(scope_key, record_date, reason)
 
     async def async_record_dates(self, scope_key: str) -> set[str]:
-        """Return the known record dates for a scope."""
-        scope_key = _safe_filename(scope_key)
-        try:
-            return await self.hass.async_add_executor_job(self._record_dates_sync, scope_key)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Failed to read ByteWatt history dates for %s: %s", scope_key, err)
-            return set()
+        return await self.hass.async_add_executor_job(self._record_dates_sync, _safe_filename(scope_key))
+
+    @_synchronized_history_io
+    def _record_dates_sync(self, scope_key: str) -> set[str]:
+        self.ensure_ready_sync()
+        return self.store.dates(scope_key)
 
     async def async_missing_dates(self, scope_key: str) -> dict[str, dict[str, Any]]:
-        """Return the known missing-date markers for a scope."""
-        scope_key = _safe_filename(scope_key)
-        try:
-            return await self.hass.async_add_executor_job(self._missing_dates_sync, scope_key)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Failed to read ByteWatt missing dates for %s: %s", scope_key, err)
-            return {}
+        return await self.hass.async_add_executor_job(self._missing_dates_sync, _safe_filename(scope_key))
+
+    @_synchronized_history_io
+    def _missing_dates_sync(self, scope_key: str) -> dict[str, dict[str, Any]]:
+        self.ensure_ready_sync()
+        return self.store.missing(scope_key)
 
     async def async_scope_summary(self, scope_key: str) -> dict[str, Any]:
-        """Return compact archive summary details for one scope."""
-        scope_key = _safe_filename(scope_key)
-        try:
-            return await self.hass.async_add_executor_job(self.scope_summary_sync, scope_key)
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Failed to read ByteWatt scope summary for %s: %s", scope_key, err)
-            return {}
+        return await self.hass.async_add_executor_job(self.scope_summary_sync, _safe_filename(scope_key))
 
-    def _store_snapshot_sync(
-        self,
-        scope_key: str,
-        label: str,
-        record_date: str,
-        reporting: dict[str, Any],
-    ) -> None:
-        if not _reporting_has_power_diagram_data(reporting):
-            _LOGGER.debug(
-                "Skipping ByteWatt history snapshot for %s (%s): no chart data",
-                scope_key,
-                record_date,
-            )
-            return
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-
-        if self.history_file.exists():
-            try:
-                history = json.loads(self.history_file.read_text(encoding="utf-8"))
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.warning("Unable to read existing ByteWatt history file: %s", err)
-                history = {}
-        else:
-            history = {}
-
-        scopes = history.setdefault("scopes", {})
-        scope = scopes.setdefault(
-            scope_key,
-            {
-                "label": label,
-                "records": {},
-            },
-        )
-        scope["label"] = label
-        scope["updated"] = dt_util.utcnow().isoformat()
-        records = scope.setdefault("records", {})
-        records[record_date] = reporting
-        missing_dates = scope.get("missing_dates")
-        if isinstance(missing_dates, dict) and record_date in missing_dates:
-            missing_dates.pop(record_date, None)
-        history["version"] = 1
-        history["updated"] = dt_util.utcnow().isoformat()
-
-        self.history_file.write_text(
-            json.dumps(history, indent=2, ensure_ascii=False, default=_json_default),
-            encoding="utf-8",
-        )
-        self._write_scope_csv(scope_key, label, scope.get("records", {}))
-
-    def _mark_missing_date_sync(
-        self,
-        scope_key: str,
-        label: str,
-        record_date: str,
-        reason: str,
-    ) -> None:
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-
-        if self.history_file.exists():
-            try:
-                history = json.loads(self.history_file.read_text(encoding="utf-8"))
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.warning("Unable to read existing ByteWatt history file: %s", err)
-                history = {}
-        else:
-            history = {}
-
-        scopes = history.setdefault("scopes", {})
-        scope = scopes.setdefault(
-            scope_key,
-            {
-                "label": label,
-                "records": {},
-                "missing_dates": {},
-            },
-        )
-        scope["label"] = label
-        scope["updated"] = dt_util.utcnow().isoformat()
-        records = scope.setdefault("records", {})
-        existing_record = records.get(record_date)
-        if _reporting_has_power_diagram_data(existing_record or {}):
-            missing_dates = scope.setdefault("missing_dates", {})
-            if isinstance(missing_dates, list):
-                missing_dates = {str(item): {"reason": reason} for item in missing_dates if item}
-                scope["missing_dates"] = missing_dates
-            if isinstance(missing_dates, dict) and record_date in missing_dates:
-                missing_dates.pop(record_date, None)
-                history["version"] = 1
-                history["updated"] = dt_util.utcnow().isoformat()
-                self.history_file.write_text(
-                    json.dumps(history, indent=2, ensure_ascii=False, default=_json_default),
-                    encoding="utf-8",
-                )
-            return
-
-        records.pop(record_date, None)
-        missing_dates = scope.setdefault("missing_dates", {})
-        if isinstance(missing_dates, list):
-            missing_dates = {str(item): {"reason": reason} for item in missing_dates if item}
-            scope["missing_dates"] = missing_dates
-        missing_dates[record_date] = {
-            "reason": reason,
-            "saved_at": dt_util.utcnow().isoformat(),
-        }
-        history["version"] = 1
-        history["updated"] = dt_util.utcnow().isoformat()
-
-        self.history_file.write_text(
-            json.dumps(history, indent=2, ensure_ascii=False, default=_json_default),
-            encoding="utf-8",
-        )
-
-    def _record_dates_sync(self, scope_key: str) -> set[str]:
-        if not self.history_file.exists():
-            return set()
-        try:
-            history = json.loads(self.history_file.read_text(encoding="utf-8"))
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Unable to read existing ByteWatt history file: %s", err)
-            return set()
-        scopes = history.get("scopes") or {}
-        scope = scopes.get(scope_key) or {}
-        records = scope.get("records") or {}
-        return {
-            str(key)
-            for key, reporting in records.items()
-            if key and _reporting_has_power_diagram_data(reporting or {})
-        }
-
-    def _missing_dates_sync(self, scope_key: str) -> dict[str, dict[str, Any]]:
-        if not self.history_file.exists():
-            return {}
-        try:
-            history = json.loads(self.history_file.read_text(encoding="utf-8"))
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Unable to read existing ByteWatt history file: %s", err)
-            return {}
-        scopes = history.get("scopes") or {}
-        scope = scopes.get(scope_key) or {}
-        missing = scope.get("missing_dates") or {}
-        if isinstance(missing, list):
-            return {str(key): {} for key in missing if key}
-        if not isinstance(missing, dict):
-            return {}
-        return {str(key): (value if isinstance(value, dict) else {}) for key, value in missing.items() if key}
-
+    @_synchronized_history_io
     def scope_summary_sync(self, scope_key: str) -> dict[str, Any]:
-        """Return compact archive summary details for one scope."""
-        if not self.history_file.exists():
-            return {}
-        try:
-            history = json.loads(self.history_file.read_text(encoding="utf-8"))
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("Unable to read existing ByteWatt history file: %s", err)
-            return {}
+        self.ensure_ready_sync()
+        summary = self.store.summary(scope_key)
+        latest = self.store.report(scope_key, summary["last_record_date"]) if summary["last_record_date"] else {}
+        latest = latest or {}
+        diagram = _power_diagram_from_reporting(latest)
+        provider_payload = _provider_payload_from_reporting(latest)
+        summary.update({
+            "label": str(latest.get("label") or scope_key),
+            "csv_filename": "", "history_filename": "",
+            "storage": "sqlite", "database_filename": self.archive_file.name,
+            "provider_payload_present": bool(provider_payload),
+            "provider_payload_key_count": len(provider_payload),
+            "provider_payload_keys": sorted(str(key) for key in provider_payload),
+            "raw_provider_present": bool(diagram.get("raw_provider"))
+                if isinstance(diagram.get("raw_provider"), dict) else False,
+        })
+        return summary
 
-        scopes = history.get("scopes") or {}
-        scope = scopes.get(scope_key) or {}
-        records = scope.get("records") or {}
-        valid_dates = sorted(
-            str(key)
-            for key, reporting in records.items()
-            if key and _reporting_has_power_diagram_data(reporting or {})
+    async def async_archive_state(self) -> dict[str, Any]:
+        return await self.hass.async_add_executor_job(self.archive_state_sync)
+
+    @_synchronized_history_io
+    def archive_state_sync(self) -> dict[str, Any]:
+        self.ensure_ready_sync()
+        return self.store.job()
+
+    async def async_update_archive_state(self, updates: dict[str, Any]) -> dict[str, Any]:
+        state = await self.hass.async_add_executor_job(self._update_archive_state_sync, dict(updates or {}))
+        from homeassistant.helpers.dispatcher import async_dispatcher_send
+        async_dispatcher_send(self.hass, f"{DOMAIN}_{self.entry_id}_history_updated")
+        return state
+
+    @_synchronized_history_io
+    def _update_archive_state_sync(self, updates: dict[str, Any]) -> dict[str, Any]:
+        self.ensure_ready_sync()
+        return self.store.update_job(updates)
+
+    async def async_range_reports(self, scope_key: str, start: str,
+                                  end: str) -> dict[str, dict[str, Any]]:
+        return await self.hass.async_add_executor_job(
+            self._range_reports_sync, _safe_filename(scope_key), start, end,
         )
-        missing = self._missing_dates_sync(scope_key)
-        csv_path = self.base_dir / f"{scope_key}.csv"
-        latest_record = records.get(valid_dates[-1]) if valid_dates else {}
-        latest_power_diagram = _power_diagram_from_reporting(latest_record or {})
-        latest_provider_payload = _provider_payload_from_reporting(latest_record or {})
-        return {
-            "scope_key": scope_key,
-            "label": str(scope.get("label") or scope_key),
-            "record_count": len(valid_dates),
-            "first_record_date": valid_dates[0] if valid_dates else "",
-            "last_record_date": valid_dates[-1] if valid_dates else "",
-            "missing_count": len(missing),
-            "last_updated": str(scope.get("updated") or history.get("updated") or ""),
-            "csv_filename": csv_path.name if csv_path.exists() else "",
-            "history_filename": self.history_file.name if self.history_file.exists() else "",
-            "provider_payload_present": bool(latest_provider_payload),
-            "provider_payload_key_count": len(latest_provider_payload),
-            "provider_payload_keys": sorted(str(key) for key in latest_provider_payload.keys()),
-            "raw_provider_present": isinstance(latest_power_diagram.get("raw_provider"), dict)
-            and bool(latest_power_diagram.get("raw_provider")),
-        }
 
-    def _write_scope_csv(
-        self,
-        scope_key: str,
-        label: str,
-        records: dict[str, Any],
-    ) -> None:
-        csv_path = self.base_dir / f"{scope_key}.csv"
-        fieldnames = [
-            "record_date",
-            "scope_key",
-            "label",
-            "aggregate",
-            "reporting_date",
-            "saved_at",
-            "live_soc",
-            "live_battery_power",
-            "live_load_power",
-            "live_grid_power",
-            "live_pv_power",
-            "power_source",
-            "solar_generation_today",
-            "load_consumption_today",
-            "feed_in_today",
-            "grid_consumption_today",
-            "battery_charged_today",
-            "battery_discharged_today",
-            "self_consumption",
-            "self_sufficiency",
-            "trees_planted",
-            "co2_reduction_tons",
-            "total_solar_generation",
-            "total_feed_in",
-            "total_battery_charge",
-            "total_battery_discharge",
-            "total_house_consumption",
-            "total_grid_consumption",
-            "pv_power_house",
-            "pv_charging_battery",
-            "grid_battery_charge",
-            "forecast_provider",
-            "forecast_saved_at",
-            "forecast_values",
-            "chart_time",
-            "chart_bat",
-            "chart_load",
-            "chart_solar",
-            "chart_feed_in",
-            "chart_consumed",
-        ]
-
-        rows: list[dict[str, Any]] = []
-        for record_date in sorted(records):
-            reporting = records.get(record_date) or {}
-            rows.append(
-                _summary_row(
-                    scope_key=scope_key,
-                    label=label,
-                    record_date=record_date,
-                    reporting=reporting,
-                )
-            )
-
-        with csv_path.open("w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in rows:
-                writer.writerow({key: _csv_cell(row.get(key)) for key in fieldnames})
+    @_synchronized_history_io
+    def _range_reports_sync(self, scope_key: str, start: str,
+                            end: str) -> dict[str, dict[str, Any]]:
+        self.ensure_ready_sync()
+        return self.store.range_reports(scope_key, start, end)

@@ -1324,3 +1324,66 @@ test_forecast_history_source:
       required: false
       selector:
         text:
+
+ensure_report_history:
+  name: Ensure report history
+  description: Download and store provider report history for a selected scope and date range.
+  fields:
+    scope_key:
+      name: Archive scope
+      description: Use all for the aggregate scope or a provider battery scope key.
+      required: true
+      selector:
+        text:
+    start_date:
+      name: Start date
+      description: First local reporting date to download (YYYY-MM-DD).
+      required: true
+      selector:
+        date:
+    end_date:
+      name: End date
+      description: Last local reporting date to download (YYYY-MM-DD).
+      required: true
+      selector:
+        date:
+    force:
+      name: Refresh existing records
+      description: Re-fetch dates already stored so late provider corrections are captured.
+      required: false
+      default: false
+      selector:
+        boolean:
+    action:
+      name: Download action
+      description: Identifies the selected download or refresh action in job status.
+      required: false
+      selector:
+        select:
+          options:
+            - download_missing
+            - refresh_range
+            - refresh_previous_2_months
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple HEROS accounts are configured.
+      required: false
+      selector:
+        text:
+
+cancel_report_history:
+  name: Cancel report history download
+  description: Stop requesting further dates while retaining reports already committed.
+  fields:
+    entry_id:
+      name: Integration ID
+      description: Required only if multiple HEROS accounts are configured.
+      required: false
+      selector:
+        text:
+    job_id:
+      name: Job ID
+      description: Optional job identifier to prevent cancelling a different job.
+      required: false
+      selector:
+        text:

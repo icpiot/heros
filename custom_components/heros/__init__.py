@@ -22,6 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from .bytewatt_client import ByteWattClient
@@ -40,6 +41,7 @@ from .pricing_store import PricingScheduleStore
 from .roi import InstallationCostEntry, RepaymentScheduleEntry, RoiSettings, VppRateEntry
 from .roi_store import RoiSettingsStore
 from .reporting import ByteWattReportHistory, build_forecast_snapshot, build_reporting_payload
+from .archive_jobs import ArchiveJobController
 from .settings_manager import SettingsManager, SettingsValidationError
 from .topology import DiscoveredInverter
 from .const import (
@@ -216,7 +218,6 @@ from .const import (
     signal_policy_charge_changed,
     CONF_HOST_SYSTEM_ID,
     CONF_HOST_SYS_SN,
-    CONF_HISTORY_BACKFILL_YEARS,
     CURRENT_ENTRY_VERSION,
     FEEDIN_MAX_SLOTS,
     FEEDIN_MAX_POWER_W,
@@ -341,6 +342,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     if not hass.services.has_service(DOMAIN, SERVICE_SET_HERO_MAPPING):
         _register_hero_mapping_service(hass)
     _register_foxess_v2_debug_websocket(hass)
+    _register_archive_query_websocket(hass)
+    _register_archive_cancel_service(hass)
     return True
 
 
@@ -538,6 +541,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not hass.services.has_service(DOMAIN, "ensure_report_history"):
             _register_history_service(hass)
 
+    await _resume_archive_after_setup(hass, entry.entry_id)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Reload the entry whenever the user changes options (currently just
@@ -546,49 +550,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     _register_frontend_panel(hass, entry)
-    history = ByteWattReportHistory(hass, entry.entry_id)
-    if not history.history_file.exists():
-        backfill_days = _history_backfill_days(entry)
-        end_date = dt_util.now().date()
-        start_date = (end_date - timedelta(days=backfill_days)).isoformat()
-        end_date_str = end_date.isoformat()
-        scopes: list[tuple[str, str]] = [("all", "All systems")]
-        scopes.extend(
-            (
-                inverter.sys_sn or inverter.system_id,
-                inverter.display_name,
-            )
-            for inverter in inverters
-            if inverter.sys_sn or inverter.system_id
-        )
-        seen_scopes: set[str] = set()
-        for scope_key, scope_label in scopes:
-            scope_key = str(scope_key or "").strip()
-            if not scope_key or scope_key in seen_scopes:
-                continue
-            seen_scopes.add(scope_key)
-            _LOGGER.info(
-                "Scheduling initial HEROS history backfill for %s (%s): %s -> %s",
-                entry.entry_id,
-                scope_label,
-                start_date,
-                end_date_str,
-            )
-            hass.async_create_task(
-                hass.services.async_call(
-                    DOMAIN,
-                    "ensure_report_history",
-                    {
-                        ATTR_ENTRY_ID: entry.entry_id,
-                        "scope_key": scope_key,
-                        "start_date": start_date,
-                        "end_date": end_date_str,
-                        "force": False,
-                    },
-                    blocking=False,
-                )
-            )
-
+    _schedule_archive_maintenance(hass, entry)
     return True
 
 
@@ -641,11 +603,13 @@ async def _async_setup_foxess_v2_entry(hass: HomeAssistant, entry: ConfigEntry) 
     if not hass.services.has_service(DOMAIN, SERVICE_FORCE_RECONNECT):
         _register_services(hass)
     await coordinator.async_config_entry_first_refresh()
+    await _resume_archive_after_setup(hass, entry.entry_id)
     await hass.config_entries.async_forward_entry_setups(entry, FOXESS_V2_PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     entry.async_on_unload(lambda: client.session.clear_credentials())
     if not hass.services.has_service(DOMAIN, "ensure_report_history"):
         _register_history_service(hass)
+    _schedule_archive_maintenance(hass, entry)
     return True
 
 
@@ -684,6 +648,130 @@ def _history_scope_targets(entry_data: dict[str, Any]) -> list[tuple[str, str, s
     return targets
 
 
+def _archive_provider_supported(entry_data: dict[str, Any]) -> bool:
+    """Return whether the configured provider exposes downloadable history."""
+    return entry_data.get("provider") in {PROVIDER_BYTEWATT, PROVIDER_FOXESS_V2}
+
+
+def _previous_two_complete_months() -> tuple[str, str]:
+    """Return the first and last dates of the previous two calendar months."""
+    current_month = dt_util.now().date().replace(day=1)
+    previous_end = current_month - timedelta(days=1)
+    previous_start = (previous_end.replace(day=1) - timedelta(days=1)).replace(day=1)
+    return previous_start.isoformat(), previous_end.isoformat()
+
+
+async def _monthly_archive_refresh(hass: HomeAssistant, entry_id: str) -> None:
+    """Refresh the previous two complete months once per calendar month."""
+    entry_data = hass.data.get(DOMAIN, {}).get(entry_id, {})
+    if not _archive_provider_supported(entry_data):
+        return
+    history = ByteWattReportHistory(hass, entry_id)
+    if not history.history_file.exists() and not history.archive_file.exists():
+        return
+    lock = entry_data.setdefault("history_archive_lock", asyncio.Lock())
+    if lock.locked():
+        return
+    controller = _archive_controller(hass, entry_id)
+    if controller.task is not None and not controller.task.done():
+        return
+    month_key = dt_util.now().date().strftime("%Y-%m")
+    async with lock:
+        state = await history.async_archive_state()
+        if state.get("monthly_refresh_key") == month_key:
+            return
+        await history.async_update_archive_state({
+            "status": "monthly_refresh_running",
+            "monthly_refresh_started_at": dt_util.utcnow().isoformat(),
+        })
+        start_date, end_date = _previous_two_complete_months()
+        entry_data["history_status"] = f"Refreshing archive {start_date} to {end_date}..."
+        completed = True
+        try:
+            for scope_key, label, station_id in _history_scope_targets(entry_data):
+                scope_completed = await _ensure_report_history_range(
+                    hass,
+                    entry_id,
+                    scope_key=scope_key,
+                    start_date=start_date,
+                    end_date=end_date,
+                    force=True,
+                    label=label,
+                    station_id=station_id,
+                )
+                if not scope_completed:
+                    completed = False
+        finally:
+            await history.async_update_archive_state({
+                "status": "ready" if completed else "paused_unavailable",
+                "monthly_refresh_key": month_key if completed else state.get("monthly_refresh_key", ""),
+                "monthly_refresh_completed_at": dt_util.utcnow().isoformat() if completed else "",
+                "monthly_refresh_range": f"{start_date}/{end_date}",
+            })
+
+
+def _schedule_archive_maintenance(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Schedule low-frequency archive reconciliation without changing live polling."""
+    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if not entry_data or not _archive_provider_supported(entry_data):
+        return
+    if entry_data.get("history_archive_unsub"):
+        return
+
+    async def _tick(_now) -> None:
+        await _monthly_archive_refresh(hass, entry.entry_id)
+
+    entry_data["history_archive_unsub"] = async_track_time_interval(
+        hass,
+        _tick,
+        timedelta(hours=6),
+    )
+def _archive_controller(hass: HomeAssistant, entry_id: str) -> ArchiveJobController:
+    """Get the sole runtime controller for this loaded HEROS entry."""
+    entry_data = hass.data[DOMAIN].get(entry_id)
+    if not isinstance(entry_data, dict) or entry_data.get("client") is None:
+        raise HomeAssistantError("HEROS entry is not ready")
+    controller = entry_data.get("archive_controller")
+    if controller is not None:
+        return controller
+    history = ByteWattReportHistory(hass, entry_id)
+
+    def scope_details(scope: str) -> tuple[str, str]:
+        for key, label, station in _history_scope_targets(entry_data):
+            if key == scope:
+                return label, station
+        return scope, ""
+
+    async def fetch(scope: str, day: str) -> dict[str, Any] | None:
+        _, station = scope_details(scope)
+        return await entry_data["client"].get_battery_data(
+            station_id=station or None,
+            report_date=day,
+            include_realtime=day == dt_util.now().date().isoformat()
+                and entry_data.get("provider") != PROVIDER_FOXESS_V2,
+            sys_sn=None if scope == "all" else scope,
+        )
+
+    def build(data: dict[str, Any], scope: str, day: str) -> dict[str, Any]:
+        label, _ = scope_details(scope)
+        return build_reporting_payload(
+            data, aggregate=scope == "all", label=label,
+            forecast=build_forecast_snapshot(
+                hass, {**entry_data.get("config", {}), **entry_data.get("options", {})},
+            ),
+        )
+
+    def changed(state: dict[str, Any]) -> None:
+        status = str(state.get("status") or "idle")
+        entry_data["history_status"] = (
+            f"Archive {status}: {state.get('progress', '0/0')} days"
+        )
+
+    controller = ArchiveJobController(history, fetch, build, changed)
+    entry_data["archive_controller"] = controller
+    return controller
+
+
 async def _ensure_report_history_range(
     hass: HomeAssistant,
     entry_id: str,
@@ -694,123 +782,42 @@ async def _ensure_report_history_range(
     force: bool = False,
     label: str | None = None,
     station_id: str = "",
+) -> bool:
+    """Start a bounded job and wait for it when called by background maintenance."""
+    controller = _archive_controller(hass, entry_id)
+    await controller.start(scope_key, start_date, end_date, force=force,
+                           action="refresh_range" if force else "download_missing")
+    if controller.task is not None:
+        await controller.task
+    state = await controller.history.async_archive_state()
+    return state.get("status") == "completed"
+
+
+async def _launch_archive_service_job(
+    hass: HomeAssistant, entry_id: str, scope_key: str,
+    start_date: str, end_date: str, force: bool, action: str = "download_missing",
 ) -> None:
-    """Download and persist report history snapshots for one scope."""
-    entry_data = hass.data[DOMAIN].get(entry_id, {})
-    client = entry_data.get("client")
-    if client is None:
-        raise HomeAssistantError("HEROS entry is not ready")
-
-    if not station_id and scope_key != "all":
-        for inverter in entry_data.get("inverters") or []:
-            if not isinstance(inverter, DiscoveredInverter):
-                continue
-            candidates = {
-                str(inverter.system_id or "").strip(),
-                str(inverter.sys_sn or "").strip(),
-                str(inverter.display_name or "").strip(),
-            }
-            if scope_key in candidates:
-                station_id = str(inverter.system_id or "").strip()
-                break
-
-    history = ByteWattReportHistory(hass, entry_id)
-    history_label = label or scope_key.replace("_", " ").title()
-    dates = _date_range(start_date, end_date)
-    status_text = f"Downloading {len(dates)} day(s) for {history_label}..."
-    entry_data["history_status"] = status_text
-    notify_create(
-        hass,
-        status_text,
-        title="HEROS History",
-        notification_id=f"heros_history_{entry_id}",
-    )
-
-    today_date = dt_util.now().date().isoformat()
-    for index, day in enumerate(dates, start=1):
-        history_sys_sn = None if scope_key == "all" else scope_key
-        battery_data = await client.get_battery_data(
-            station_id=station_id or None,
-            report_date=day,
-            # Fox exposes the current day through its five-minute history
-            # endpoint; using its live snapshot here collapses the chart to
-            # one synthetic 00:00 point. Bytewatt retains live-day behavior.
-            include_realtime=day == today_date and entry_data.get("provider") != PROVIDER_FOXESS_V2,
-            sys_sn=history_sys_sn,
-        )
-        reporting = build_reporting_payload(
-            battery_data or {},
-            aggregate=(scope_key == "all"),
-            label=history_label,
-            forecast=build_forecast_snapshot(
-                hass,
-                {**entry_data.get("config", {}), **entry_data.get("options", {})},
-            ),
-        )
-        if battery_data:
-            await history.async_store_snapshot(
-                scope_key=scope_key,
-                label=history_label,
-                reporting=reporting,
-                record_date=day,
-            )
-        else:
-            await history.async_mark_missing_date(
-                scope_key=scope_key,
-                label=history_label,
-                record_date=day,
-                reason="no_reporting_data",
-            )
-        progress = f"Downloaded {index}/{len(dates)} days for {history_label}"
-        entry_data["history_status"] = progress
-        notify_create(
-            hass,
-            progress,
-            title="HEROS History",
-            notification_id=f"heros_history_{entry_id}",
-        )
-
-    done_text = f"History ready for {history_label} ({len(dates)} day(s))"
-    entry_data["history_status"] = done_text
-    notify_create(
-        hass,
-        done_text,
-        title="HEROS History",
-        notification_id=f"heros_history_{entry_id}",
-    )
+    """Return promptly for long jobs so the pressed button can become Cancel."""
+    controller = _archive_controller(hass, entry_id)
+    await controller.start(scope_key, start_date, end_date, force=force,
+                           action=action)
+    if start_date == end_date and controller.task is not None:
+        await controller.task
 
 
-async def _bootstrap_report_history(hass: HomeAssistant, entry_id: str, backfill_days: int) -> None:
-    """Seed history for a fresh install if no local archive exists yet."""
-    entry_data = hass.data[DOMAIN].get(entry_id, {})
-    history = ByteWattReportHistory(hass, entry_id)
-    if history.history_file.exists():
-        _LOGGER.debug("History archive already exists for %s; skipping bootstrap", entry_id)
-        return
-
-    from datetime import timedelta
-
-    end_date = dt_util.now().date().isoformat()
-    start_date = (dt_util.now().date() - timedelta(days=max(1, backfill_days) - 1)).isoformat()
-    for scope_key, label, station_id in _history_scope_targets(entry_data):
-        try:
-            await _ensure_report_history_range(
-                hass,
-                entry_id,
-                scope_key=scope_key,
-                start_date=start_date,
-                end_date=end_date,
-                force=False,
-                label=label,
-                station_id=station_id,
-            )
-        except Exception as err:  # noqa: BLE001
-            _LOGGER.warning(
-                "Failed to bootstrap report history for %s (%s): %s",
-                entry_id,
-                scope_key,
-                err,
-            )
+async def _resume_archive_after_setup(hass: HomeAssistant, entry_id: str) -> None:
+    """Migrate once, then continue a job left running by an unclean stop."""
+    controller = _archive_controller(hass, entry_id)
+    try:
+        result = await controller.history.async_ensure_ready()
+        _LOGGER.info("HEROS archive ready for %s: migration %s, %s source records",
+                     entry_id, result.get("status"), result.get("source_records"))
+        await controller.recover()
+    except Exception as err:  # noqa: BLE001
+        hass.data[DOMAIN][entry_id]["history_status"] = (
+            f"Archive migration or recovery failed: {type(err).__name__}: {err}"
+        )[:300]
+        _LOGGER.exception("HEROS archive migration or job recovery failed for %s", entry_id)
 
 
 def _stop_heartbeat_factory(coordinator):
@@ -832,6 +839,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Warn the user if they have unsaved pending changes that will be lost
     if entry_data:
+        archive_controller = entry_data.get("archive_controller")
+        if archive_controller is not None:
+            await archive_controller.interrupt_for_unload()
+        archive_unsub = entry_data.pop("history_archive_unsub", None)
+        if callable(archive_unsub):
+            archive_unsub()
         manager: SettingsManager | None = entry_data.get("manager")
         if manager is not None and manager.has_pending():
             count = manager.pending_count()
@@ -1104,6 +1117,68 @@ def _entry_id_from_message(hass: HomeAssistant, msg: dict[str, Any]) -> str:
     if not entries:
         raise HomeAssistantError("No HEROS integration is configured")
     raise HomeAssistantError(f"Multiple HEROS integrations are configured; pass entry_id. Available: {entries}")
+
+
+ARCHIVE_QUERY_WS_TYPE = "heros/archive_query"
+
+
+def _register_archive_query_websocket(hass: HomeAssistant) -> None:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("archive_query_websocket_registered"):
+        return
+
+    @websocket_api.websocket_command({
+        vol.Required("type"): ARCHIVE_QUERY_WS_TYPE,
+        vol.Required("scope_key"): cv.string,
+        vol.Required("start_date"): cv.string,
+        vol.Required("end_date"): cv.string,
+        vol.Optional(ATTR_ENTRY_ID): cv.string,
+    })
+    @websocket_api.async_response
+    async def handle_archive_query(hass: HomeAssistant,
+                                   connection: websocket_api.ActiveConnection,
+                                   msg: dict[str, Any]) -> None:
+        try:
+            if not connection.user.is_admin:
+                raise HomeAssistantError("Administrator permission is required")
+            entry_id = _entry_id_from_message(hass, msg)
+            scope = str(msg["scope_key"])
+            history = ByteWattReportHistory(hass, entry_id)
+            records = await history.async_range_reports(
+                scope, str(msg["start_date"]), str(msg["end_date"]),
+            )
+            connection.send_result(msg["id"], {
+                "version": 2, "source": "sqlite",
+                "scopes": {scope: {"records": records}},
+            })
+        except Exception as err:  # noqa: BLE001
+            connection.send_error(msg["id"], "archive_query_failed", str(err))
+
+    websocket_api.async_register_command(hass, handle_archive_query)
+    domain_data["archive_query_websocket_registered"] = True
+
+
+def _register_archive_cancel_service(hass: HomeAssistant) -> None:
+    if hass.services.has_service(DOMAIN, "cancel_report_history"):
+        return
+
+    async def handle_cancel(call: ServiceCall) -> None:
+        target = call.data.get(ATTR_ENTRY_ID)
+        targets = [entry_id for entry_id, entry_data in hass.data.get(DOMAIN, {}).items()
+                   if isinstance(entry_data, dict) and entry_data.get("client")
+                   and (not target or target == entry_id)]
+        if not targets:
+            raise HomeAssistantError("No HEROS archive job is available")
+        for entry_id in targets:
+            controller = _archive_controller(hass, entry_id)
+            if not await controller.cancel(str(call.data.get("job_id") or "") or None):
+                raise HomeAssistantError("No matching HEROS archive job is running")
+
+    hass.services.async_register(
+        DOMAIN, "cancel_report_history", handle_cancel,
+        schema=vol.Schema({vol.Optional(ATTR_ENTRY_ID): cv.string,
+                           vol.Optional("job_id"): cv.string}),
+    )
 
 
 def _register_foxess_v2_debug_websocket(hass: HomeAssistant) -> None:
@@ -1661,13 +1736,14 @@ async def _submit_battery_service(
 
 
 def _register_history_service(hass: HomeAssistant) -> None:
-    """Register report-history backfill even when core services already exist."""
+    """Register report-history download service even when core services already exist."""
     async def handle(call: ServiceCall) -> None:
         target_entry = call.data.get(ATTR_ENTRY_ID)
         scope_key = str(call.data.get("scope_key") or "all").strip() or "all"
         start_date = str(call.data.get("start_date") or "").strip()
         end_date = str(call.data.get("end_date") or "").strip()
         force = bool(call.data.get("force", False))
+        action = str(call.data.get("action") or ("refresh_range" if force else "download_missing"))
         if not start_date or not end_date:
             raise HomeAssistantError("start_date and end_date are required")
         target_entry_ids = [
@@ -1678,9 +1754,8 @@ def _register_history_service(hass: HomeAssistant) -> None:
         if not target_entry_ids:
             raise HomeAssistantError("No HEROS entries are loaded")
         for entry_id in target_entry_ids:
-            await _ensure_report_history_range(
-                hass, entry_id, scope_key=scope_key, start_date=start_date,
-                end_date=end_date, force=force,
+            await _launch_archive_service_job(
+                hass, entry_id, scope_key, start_date, end_date, force, action,
             )
 
     schema = vol.Schema({
@@ -1688,6 +1763,7 @@ def _register_history_service(hass: HomeAssistant) -> None:
         vol.Required("start_date"): cv.string,
         vol.Required("end_date"): cv.string,
         vol.Optional("force", default=False): cv.boolean,
+        vol.Optional("action"): cv.string,
         vol.Optional(ATTR_ENTRY_ID): cv.string,
     })
     hass.services.async_register(DOMAIN, "ensure_report_history", handle, schema=schema)
@@ -1961,6 +2037,7 @@ def _register_services(hass: HomeAssistant) -> None:
         start_date = str(call.data.get("start_date") or "").strip()
         end_date = str(call.data.get("end_date") or "").strip()
         force = bool(call.data.get("force", False))
+        action = str(call.data.get("action") or ("refresh_range" if force else "download_missing"))
         if not start_date or not end_date:
             raise HomeAssistantError("start_date and end_date are required")
         target_entry_ids = [
@@ -1973,13 +2050,8 @@ def _register_services(hass: HomeAssistant) -> None:
             raise HomeAssistantError("No HEROS entries are loaded")
 
         for entry_id in target_entry_ids:
-            await _ensure_report_history_range(
-                hass,
-                entry_id,
-                scope_key=scope_key,
-                start_date=start_date,
-                end_date=end_date,
-                force=force,
+            await _launch_archive_service_job(
+                hass, entry_id, scope_key, start_date, end_date, force, action,
             )
 
     async def handle_pricing_upsert_rule(call: ServiceCall) -> None:
@@ -2244,6 +2316,7 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Required("start_date"): cv.string,
         vol.Required("end_date"): cv.string,
         vol.Optional("force", default=False): cv.boolean,
+        vol.Optional("action"): cv.string,
         **_entry_id_opt,
     })
     _pricing_rule_schema = vol.Schema({

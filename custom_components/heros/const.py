@@ -17,7 +17,6 @@ DEVICE_MODEL = "Battery Management System"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SCAN_INTERVAL = "scan_interval"
-CONF_HISTORY_BACKFILL_YEARS = "history_backfill_years"
 CONF_SOLAR_INSTALLATION_DATE = "solar_installation_date"
 CONF_BATTERY_INSTALLATION_DATE = "battery_installation_date"
 CONF_RECOVERY_ENABLED = "recovery_enabled"
@@ -30,7 +29,6 @@ CONF_AUTO_RECONNECT_TIME = "auto_reconnect_time"
 
 # Defaults
 DEFAULT_SCAN_INTERVAL = 10  # 10 seconds
-DEFAULT_HISTORY_BACKFILL_YEARS = 2
 DEFAULT_INSTALLATION_DATE = "2026-09-06"
 MIN_SCAN_INTERVAL = 10  # 10 seconds
 DEFAULT_RECOVERY_ENABLED = True

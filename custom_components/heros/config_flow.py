@@ -39,7 +39,6 @@ from .const import (
     CONF_FORECAST_PEAK_TOMORROW_ENTITY,
     CONF_FORECAST_PROVIDER,
     CONF_SOLAR_FORECAST_ENTITY,
-    CONF_HISTORY_BACKFILL_YEARS,
     CONF_SOLAR_INSTALLATION_DATE,
     CONF_BATTERY_INSTALLATION_DATE,
     CONF_PASSWORD,
@@ -47,7 +46,6 @@ from .const import (
     CONF_USERNAME,
     CURRENT_ENTRY_VERSION,
     DEFAULT_SCAN_INTERVAL,
-    DEFAULT_HISTORY_BACKFILL_YEARS,
     DEFAULT_INSTALLATION_DATE,
     FORECAST_PROVIDER_FORECAST_SOLAR,
     FORECAST_PROVIDER_NONE,
@@ -107,9 +105,6 @@ def _provider_login_schema(provider: str) -> vol.Schema:
     fields: dict[Any, Any] = {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
-        vol.Optional(
-            CONF_HISTORY_BACKFILL_YEARS, default=DEFAULT_HISTORY_BACKFILL_YEARS
-        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
         vol.Optional(
             CONF_SOLAR_INSTALLATION_DATE, default=DEFAULT_INSTALLATION_DATE
         ): DateSelector(DateSelectorConfig()),
@@ -534,12 +529,6 @@ class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
         fields: dict[Any, Any] = {
-            vol.Optional(
-                CONF_HISTORY_BACKFILL_YEARS,
-                default=self.config_entry.options.get(
-                    CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
-                ),
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=10)),
             vol.Optional(
                 CONF_SOLAR_INSTALLATION_DATE,
                 default=self.config_entry.options.get(
