@@ -71,7 +71,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/heros/heros-panel.js?v=744`
+`/local/community/heros/heros-panel.js?v=926`
 
 The panel ships with built-in theme presets:
 
@@ -80,7 +80,7 @@ The panel ships with built-in theme presets:
 - `neon`
 
 The Home Assistant deploy scripts are manifest-driven:
-[`scripts/ha_deploy.manifest`](C:\Dev\repos\heros\scripts\ha_deploy.manifest)
+[`scripts/ha_deploy.manifest`](scripts/ha_deploy.manifest)
 controls which repo paths are copied into HA, so the same script shape can be
 reused for other projects by swapping the manifest and environment variables.
 For Codex-driven live sync work, prefer the direct Home Assistant config share
@@ -166,7 +166,7 @@ from the live forecast sensor mapping. It is intended for benchmark/backfill
 data when the provider plan supports the Forecast.Solar `history` endpoint.
 Public Forecast.Solar access does not provide this history endpoint.
 
-See [docs/FORECAST_HISTORY.md](C:\Dev\repos\heros\docs\FORECAST_HISTORY.md)
+See [docs/FORECAST_HISTORY.md](docs/FORECAST_HISTORY.md)
 for the required settings and service flow.
 
 ## Entities
@@ -250,12 +250,9 @@ of the shared HEROS configuration model.
 
 ## Reporting storage
 
-HEROS reporting currently uses a compact local archive for provider-aware daily
-snapshots and CSV exports, while InfluxDB is the planned long-term store for
-detailed sensor history.
-
-InfluxDB is not wired up by HEROS yet. The current live reporting/history flow
-still reads and writes only through the local HEROS archive.
+HEROS stores provider-aware daily reports in a persistent SQLite archive at
+`/config/heros-history/<entry_id>/archive.sqlite3`. InfluxDB and Modbus
+telemetry storage are outside the current implementation.
 
 Each stored report row now keeps both:
 
@@ -265,14 +262,13 @@ Each stored report row now keeps both:
 That lets HEROS reuse previously downloaded web-history days without fetching the
 same provider chart data again.
 
-Report and archive diagnostics should read that HA-served archive directly.
-They must not depend on browser `localStorage` copies of report history.
+Report and archive diagnostics use bounded backend SQLite queries. They must
+not depend on browser `localStorage` copies or full legacy JSON downloads.
 
-See [docs/REPORTING_STORAGE.md](C:/Dev/repos/heros/docs/REPORTING_STORAGE.md)
-for the current archive layout and the intended split between HEROS report
-storage and InfluxDB time-series retention.
+See [docs/ARCHIVE_SQLITE.md](docs/ARCHIVE_SQLITE.md)
+for the archive schema, migration, recovery, backup, export, and rollback.
 
-See [docs/REPORTING_PAYLOAD.md](C:/Dev/repos/heros/docs/REPORTING_PAYLOAD.md)
+See [docs/REPORTING_PAYLOAD.md](docs/REPORTING_PAYLOAD.md)
 for the compact reporting payload contract used by the Report page and embedded
 report card.
 
@@ -383,13 +379,6 @@ Open an issue at https://github.com/icpiot/heros/issues.
 
 Originally built with the Home Assistant community and Claude AI. Subsequent
 contributors are credited in the commit history.
-
-
-
-
-
-
-
 
 
 

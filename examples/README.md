@@ -101,8 +101,8 @@ The reporting card is designed to work without a manual download step.
 Expected flow:
 
 1. Configure the integration in Home Assistant.
-2. Set the **History backfill horizon** in the integration options.
-3. Leave HA running so the backend can backfill daily archive rows.
+2. Open HEROS Settings and choose an explicit archive date range.
+3. Use **Download range** to add the selected dates to the local archive.
 4. Open the report card and select:
    - battery scope
    - period
@@ -145,21 +145,21 @@ Copy the working file from `examples/www/` to your Home Assistant `www` folder:
 Then add it as a dashboard resource using a fixed filename and a cache-buster:
 
 ```yaml
-url: /local/community/heros/heros-policy-card.js?v=009
+url: /local/community/heros/heros-policy-card.js?v=011
 type: module
 ```
 
 Reporting card:
 
 ```yaml
-url: /local/community/heros/heros-report-card.js?v=635
+url: /local/community/heros/heros-report-card.js?v=706
 type: module
 ```
 
 Debug card:
 
 ```yaml
-url: /local/community/heros/heros-debug-card.js?v=058
+url: /local/community/heros/heros-debug-card.js?v=059
 type: module
 ```
 
@@ -187,21 +187,21 @@ To force Home Assistant and the browser to load a fresh custom-card build:
 Example next iteration:
 
 ```yaml
-url: /local/community/heros/heros-policy-card.js?v=009
+url: /local/community/heros/heros-policy-card.js?v=011
 type: module
 ```
 
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/heros/heros-report-card.js?v=635
+url: /local/community/heros/heros-report-card.js?v=706
 type: module
 ```
 
 Debug card next iteration:
 
 ```yaml
-url: /local/community/heros/heros-debug-card.js?v=058
+url: /local/community/heros/heros-debug-card.js?v=059
 type: module
 ```
 
