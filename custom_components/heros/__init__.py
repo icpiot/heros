@@ -2107,8 +2107,12 @@ def _register_services(hass: HomeAssistant) -> None:
         await store.async_upsert_repayment(RepaymentScheduleEntry(
             entry_id=call.data.get(ATTR_REPAYMENT_ID) or "",
             effective_start_date=call.data.get(ATTR_EFFECTIVE_START_DATE),
+            effective_end_date=call.data.get("effective_end_date"),
+            description=call.data.get("description") or "",
             amount=call.data.get(ATTR_REPAYMENT_AMOUNT),
             frequency=call.data.get(ATTR_REPAYMENT_FREQUENCY) or "weekly",
+            repayment_period=call.data.get("repayment_period") or "",
+            is_recurring=call.data.get("is_recurring", True),
             notes=call.data.get(ATTR_NOTES) or "",
         ))
 
@@ -2355,6 +2359,8 @@ def _register_services(hass: HomeAssistant) -> None:
         vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
         vol.Optional(ATTR_PRICING_TYPE, default="dynamic"): vol.In(["fixed", "dynamic"]),
         vol.Optional(ATTR_DAILY_CONNECTION_CHARGE): vol.Coerce(float),
+        vol.Optional("subscription_fee"): vol.Coerce(float),
+        vol.Optional("subscription_period", default="monthly"): vol.In(["monthly", "yearly"]),
         vol.Optional(ATTR_DYNAMIC_IMPORT_PRICE_ENTITY, default=""): cv.string,
         vol.Optional(ATTR_DYNAMIC_NEXT_IMPORT_PRICE_ENTITY, default=""): cv.string,
         vol.Optional(ATTR_DYNAMIC_EXPORT_PRICE_ENTITY, default=""): cv.string,
@@ -2510,8 +2516,12 @@ def _register_services(hass: HomeAssistant) -> None:
         schema=vol.Schema({
             vol.Optional(ATTR_REPAYMENT_ID): cv.string,
             vol.Required(ATTR_EFFECTIVE_START_DATE): cv.string,
+            vol.Optional("effective_end_date"): cv.string,
+            vol.Optional("description", default=""): cv.string,
             vol.Required(ATTR_REPAYMENT_AMOUNT): vol.Coerce(float),
             vol.Optional(ATTR_REPAYMENT_FREQUENCY, default="weekly"): vol.In(["weekly", "fortnightly", "monthly", "yearly"]),
+            vol.Optional("repayment_period"): vol.In(["weekly", "fortnightly", "monthly", "yearly"]),
+            vol.Optional("is_recurring", default=True): cv.boolean,
             vol.Optional(ATTR_NOTES, default=""): cv.string,
             **_entry_id_opt,
         }),

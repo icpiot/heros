@@ -16,6 +16,10 @@ def _date(value: date | str | None) -> date:
         return date.fromisoformat(value)
     raise ValueError("effective_start_date is required")
 
+def _optional_date(value: date | str | None) -> date | None:
+    if value in (None, ""):
+        return None
+    return _date(value)
 
 def _amount(value: float | int | str | None, label: str) -> float:
     try:
@@ -29,21 +33,34 @@ def _amount(value: float | int | str | None, label: str) -> float:
 
 @dataclass(frozen=True, slots=True)
 class RepaymentScheduleEntry:
-    """A repayment amount effective from a given date until superseded."""
+    """A repayment change with optional bounded validity and notes."""
 
     effective_start_date: date | str | None = None
+    effective_end_date: date | str | None = None
+    description: str = ""
     amount: float | int | str | None = None
     frequency: str = "weekly"
+    repayment_period: str = ""
+    is_recurring: bool = True
     entry_id: str = ""
     notes: str = ""
 
     def __post_init__(self) -> None:
         frequency = str(self.frequency or "weekly").strip().lower()
-        if frequency not in _FREQUENCIES:
-            raise ValueError(f"Unsupported repayment frequency: {self.frequency!r}")
-        object.__setattr__(self, "effective_start_date", _date(self.effective_start_date))
+        period = str(self.repayment_period or frequency).strip().lower()
+        if period not in _FREQUENCIES:
+            raise ValueError(f"Unsupported repayment period: {period!r}")
+        start = _date(self.effective_start_date)
+        end = _optional_date(self.effective_end_date)
+        if end is not None and end < start:
+            raise ValueError("effective_end_date cannot be before effective_start_date")
+        object.__setattr__(self, "effective_start_date", start)
+        object.__setattr__(self, "effective_end_date", end)
+        object.__setattr__(self, "description", str(self.description or "").strip())
         object.__setattr__(self, "amount", _amount(self.amount, "repayment amount"))
-        object.__setattr__(self, "frequency", frequency)
+        object.__setattr__(self, "frequency", period)
+        object.__setattr__(self, "repayment_period", period)
+        object.__setattr__(self, "is_recurring", bool(self.is_recurring))
         object.__setattr__(self, "entry_id", str(self.entry_id or uuid4().hex).strip())
         object.__setattr__(self, "notes", str(self.notes or "").strip())
 
@@ -51,15 +68,18 @@ class RepaymentScheduleEntry:
         return {
             "entry_id": self.entry_id,
             "effective_start_date": self.effective_start_date.isoformat(),
+            "effective_end_date": self.effective_end_date.isoformat() if self.effective_end_date else None,
+            "description": self.description,
             "amount": self.amount,
             "frequency": self.frequency,
+            "repayment_period": self.repayment_period,
+            "is_recurring": self.is_recurring,
             "notes": self.notes,
         }
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "RepaymentScheduleEntry":
         return cls(**payload)
-
 
 
 @dataclass(frozen=True, slots=True)

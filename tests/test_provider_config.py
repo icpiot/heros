@@ -3,6 +3,13 @@ from __future__ import annotations
 
 import inspect
 
+import pytest
+
+# Config-flow tests exercise Home Assistant's real config-entry and selector
+# APIs.  Skip this integration tier cleanly in the pure-logic runtime rather
+# than installing an incomplete global fake into sys.modules.
+pytest.importorskip("homeassistant.config_entries")
+
 from custom_components.heros.config_flow import (
     ByteWattConfigFlow,
     _provider_login_schema,

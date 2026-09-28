@@ -63,3 +63,32 @@ def test_roi_settings_rejects_duplicate_vpp_provider_date():
             VppRateEntry(provider="Synergy", effective_start_date="2026-09-06", cents_per_kwh=5),
             VppRateEntry(provider="synergy", effective_start_date="2026-09-06", cents_per_kwh=7),
         ))
+
+def test_repayment_extended_fields_round_trip_and_non_recurring_flag():
+    entry = RepaymentScheduleEntry(
+        effective_start_date="2026-09-06",
+        effective_end_date="2026-12-31",
+        description="Battery repayment",
+        amount=200,
+        repayment_period="monthly",
+        is_recurring=False,
+        notes="Review at year end",
+    )
+
+    restored = RepaymentScheduleEntry.from_dict(entry.to_dict())
+
+    assert restored.repayment_period == "monthly"
+    assert restored.frequency == "monthly"
+    assert restored.is_recurring is False
+    assert restored.effective_end_date == date(2026, 12, 31)
+    assert restored.description == "Battery repayment"
+    assert restored.notes == "Review at year end"
+
+
+def test_repayment_end_date_cannot_precede_start_date():
+    with pytest.raises(ValueError, match="effective_end_date"):
+        RepaymentScheduleEntry(
+            effective_start_date="2026-09-06",
+            effective_end_date="2026-09-05",
+            amount=200,
+        )

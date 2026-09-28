@@ -403,6 +403,9 @@ class PricingRateGroup:
             record if isinstance(record, PricingRateRecord) else PricingRateRecord.from_dict(record)
             for record in (self.records or ())
         )
+        record_ids = [record.record_id for record in records]
+        if len(record_ids) != len(set(record_ids)):
+            raise ValueError("Pricing records cannot share the same record_id")
         self._raise_for_overlaps(records)
         object.__setattr__(self, "group_id", _clean_text(self.group_id) or uuid4().hex)
         object.__setattr__(self, "label", _clean_text(self.label))
@@ -672,6 +675,9 @@ class PricingSchedule:
 
     def __post_init__(self) -> None:
         self.groups = sorted(self.groups, key=lambda item: item.effective_start_date or date.min)
+        group_ids = [group.group_id for group in self.groups]
+        if len(group_ids) != len(set(group_ids)):
+            raise ValueError("Pricing groups cannot share the same group_id")
         self._raise_for_duplicate_group_dates()
 
     def add_rule(self, rule: PricingRule) -> None:

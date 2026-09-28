@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -26,7 +27,6 @@ from .const import (
     DEVICE_NAME,
     DOMAIN,
 )
-from .const import CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS
 from .coordinator import ByteWattDataUpdateCoordinator
 from .reporting import build_forecast_snapshot, build_reporting_payload
 
@@ -123,16 +123,6 @@ def _forecast_history_source_summary(config_entry: ConfigEntry) -> dict[str, Any
     }
 
 
-def _history_backfill_days(config_entry: ConfigEntry) -> int:
-    """Return the configured archive horizon in days."""
-    raw_years = config_entry.options.get(CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS)
-    try:
-        years = int(raw_years)
-    except (TypeError, ValueError):
-        years = DEFAULT_HISTORY_BACKFILL_YEARS
-    return max(1, years) * 365
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -168,6 +158,15 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         self._attr_name = "Settings Target"
         self._attr_unique_id = f"{config_entry.entry_id}_settings_target"
         self._attr_icon = "mdi:battery-switch"
+
+    async def async_added_to_hass(self) -> None:
+        """Publish archive progress immediately instead of waiting for live polling."""
+        await super().async_added_to_hass()
+        signal = f"{DOMAIN}_{self._config_entry.entry_id}_history_updated"
+        self.async_on_remove(async_dispatcher_connect(self._hass, signal, self._handle_history_updated))
+
+    def _handle_history_updated(self) -> None:
+        self.async_write_ha_state()
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -333,11 +332,6 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
         coordinator_data = self.coordinator.data or {}
         aggregate_battery = coordinator_data.get("battery") or {}
         selected_battery = coordinator_data.get("selected_battery") or {}
-        raw_backfill_years = self._config_entry.options.get(CONF_HISTORY_BACKFILL_YEARS, DEFAULT_HISTORY_BACKFILL_YEARS)
-        try:
-            backfill_years = max(1, int(raw_backfill_years or DEFAULT_HISTORY_BACKFILL_YEARS))
-        except (TypeError, ValueError):
-            backfill_years = DEFAULT_HISTORY_BACKFILL_YEARS
         if selected_scope is not None and selected_scope.aggregate:
             history_scope_key = "all"
             current_scope_label = "All Batteries"
@@ -351,8 +345,11 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             history_scope_key = "all"
             current_scope_label = "All Batteries"
 
+        provider_key = self._config_entry.data.get("provider", "bytewatt")
+        archive_supported = provider_key in {"bytewatt", "foxess_v2"}
         history_hint = {
-            "enabled": True,
+            "enabled": archive_supported,
+            "archive_supported": archive_supported,
             "base_url": f"/local/heros-history/{self._config_entry.entry_id}/",
             "status": str(
                 self._hass.data.get(DOMAIN, {})
@@ -361,8 +358,6 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
             ).strip(),
             "current_scope": history_scope_key,
             "entry_id": self._config_entry.entry_id,
-            "backfill_years": backfill_years,
-            "backfill_days": _history_backfill_days(self._config_entry),
         }
         inventory_scopes: list[dict[str, Any]] = [{
             "scope_key": "all",
@@ -395,6 +390,7 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                     self._config_entry.entry_id,
                 )
                 history_summary = history_store.scope_summary_sync(history_scope_key)
+                history_hint["archive_state"] = history_store.archive_state_sync()
                 base_url = str(history_hint.get("base_url") or "").rstrip("/")
                 scope_summaries: list[dict[str, Any]] = []
                 for scope in inventory_scopes:
@@ -417,6 +413,13 @@ class ByteWattSettingsTargetSelect(CoordinatorEntity, SelectEntity):
                 history_hint["scope_summaries"] = scope_summaries
         except Exception:  # noqa: BLE001
             history_summary = {}
+        if ByteWattReportHistory is not None and "archive_state" not in history_hint:
+            try:
+                history_hint["archive_state"] = ByteWattReportHistory(
+                    self._hass, self._config_entry.entry_id
+                ).archive_state_sync()
+            except Exception:  # noqa: BLE001
+                history_hint["archive_state"] = {}
         if history_summary:
             base_url = str(history_hint.get("base_url") or "").rstrip("/")
             csv_filename = str(history_summary.get("csv_filename") or "").strip()

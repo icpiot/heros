@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
+import pytest
 import sys
 import types
 from datetime import datetime, timezone
@@ -94,74 +96,61 @@ def _valid_reporting_payload() -> dict[str, object]:
     }
 
 
+
+def test_concurrent_snapshot_writes_retain_all_records(tmp_path):
+    """Concurrent archive writers must merge records instead of dropping rows."""
+    history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
+    dates = [f"2026-07-{day:02d}" for day in range(1, 21)]
+
+    def store(record_date):
+        history._store_snapshot_sync(
+            scope_key="all",
+            label="All systems",
+            record_date=record_date,
+            reporting=_valid_reporting_payload(),
+        )
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        list(executor.map(store, dates))
+
+    summary = history.scope_summary_sync("all")
+    assert summary["record_count"] == len(dates)
+    assert summary["first_record_date"] == dates[0]
+    assert summary["last_record_date"] == dates[-1]
 def test_mark_missing_date_keeps_existing_valid_record(tmp_path):
     history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
-    history._store_snapshot_sync(
-        scope_key="all",
-        label="All systems",
-        record_date="2026-07-08",
-        reporting=_valid_reporting_payload(),
-    )
-
-    history._mark_missing_date_sync(
-        scope_key="all",
-        label="All systems",
-        record_date="2026-07-08",
-        reason="no_reporting_data",
-    )
-
-    payload = json.loads((tmp_path / "www" / "heros-history" / "entry-1" / "history.json").read_text(encoding="utf-8"))
-    scope = payload["scopes"]["all"]
-    assert "2026-07-08" in scope["records"]
-    assert "2026-07-08" not in scope.get("missing_dates", {})
+    history._store_snapshot_sync("all", "All systems", "2026-07-08", _valid_reporting_payload())
+    history._mark_missing_date_sync("all", "All systems", "2026-07-08", "no_reporting_data")
+    assert history._record_dates_sync("all") == {"2026-07-08"}
+    assert "2026-07-08" not in history._missing_dates_sync("all")
 
 
 def test_mark_missing_date_removes_blank_record(tmp_path):
-    history_dir = tmp_path / "www" / "heros-history" / "entry-1"
-    history_dir.mkdir(parents=True, exist_ok=True)
-    history_file = history_dir / "history.json"
-    history_file.write_text(
-        json.dumps(
-            {
-                "version": 1,
-                "scopes": {
-                    "all": {
-                        "label": "All systems",
-                        "records": {
-                            "2026-07-08": {
-                                "aggregate": True,
-                                "label": "All systems",
-                                "reporting_date": "2026-07-08",
-                                "meta": {},
-                                "power_diagram": {
-                                    "date": "2026-07-08",
-                                    "meta": {},
-                                    "summary": {},
-                                    "time": [],
-                                    "series": {},
-                                },
-                            }
-                        },
-                        "missing_dates": {},
-                    }
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
-
+    history_file = tmp_path / "www" / "heros-history" / "entry-1" / "history.json"
+    history_file.parent.mkdir(parents=True)
+    legacy = {"version": 1, "scopes": {"all": {"label": "All systems",
+        "records": {"2026-07-08": {"power_diagram": {"time": [], "series": {}}}},
+        "missing_dates": {}}}}
+    history_file.write_text(json.dumps(legacy), encoding="utf-8")
     history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
-    history._mark_missing_date_sync(
-        scope_key="all",
-        label="All systems",
-        record_date="2026-07-08",
-        reason="no_reporting_data",
-    )
+    history._mark_missing_date_sync("all", "All systems", "2026-07-08", "no_reporting_data")
+    assert history._record_dates_sync("all") == set()
+    assert history._missing_dates_sync("all")["2026-07-08"]["reason"] == "no_reporting_data"
+    assert json.loads(history_file.read_text(encoding="utf-8")) == legacy
 
-    payload = json.loads(history_file.read_text(encoding="utf-8"))
-    scope = payload["scopes"]["all"]
-    assert "2026-07-08" not in scope["records"]
-    assert "2026-07-08" in scope["missing_dates"]
+
+def test_archive_state_round_trip_preserves_existing_records(tmp_path):
+    history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
+    history._store_snapshot_sync("all", "All systems", "2026-07-08", _valid_reporting_payload())
+    with history.store.connect() as conn:
+        digest_before = conn.execute("SELECT payload_sha256 FROM reports").fetchone()[0]
+    state = history._update_archive_state_sync({"status": "running", "last_attempt_status": "stored"})
+    with history.store.connect() as conn:
+        digest_after = conn.execute("SELECT payload_sha256 FROM reports").fetchone()[0]
+    assert state["status"] == "running"
+    assert history.archive_state_sync()["last_attempt_status"] == "stored"
+    assert history._record_dates_sync("all") == {"2026-07-08"}
+    assert digest_before == digest_after
 
 
 def test_scope_summary_reports_counts_dates_and_archive_filenames(tmp_path):
@@ -198,14 +187,44 @@ def test_scope_summary_reports_counts_dates_and_archive_filenames(tmp_path):
     assert summary["first_record_date"] == "2026-07-08"
     assert summary["last_record_date"] == "2026-07-09"
     assert summary["missing_count"] == 1
-    assert summary["csv_filename"] == "all.csv"
-    assert summary["history_filename"] == "history.json"
+    assert summary["explicit_missing_count"] == 1
+    assert summary["calendar_start_date"] == "2026-07-08"
+    assert summary["calendar_end_date"] == "2026-07-10"
+    assert summary["calendar_day_count"] == 3
+    assert summary["unrecorded_gap_count"] == 0
+    assert summary["stored_coverage_percent"] == 66.7
+    assert summary["csv_filename"] == ""
+    assert summary["history_filename"] == ""
     assert summary["provider_payload_present"] is True
     assert summary["provider_payload_key_count"] == 4
     assert summary["provider_payload_keys"] == ["gridDetailList", "ppvinverterPv", "soc", "time"]
     assert summary["raw_provider_present"] is True
     assert summary["last_updated"]
 
+
+
+def test_scope_summary_counts_unrecorded_calendar_gaps(tmp_path):
+    history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
+    for record_date in ("2026-07-08", "2026-07-10"):
+        reporting = _valid_reporting_payload()
+        reporting["power_diagram"] = {
+            **reporting["power_diagram"],
+            "date": record_date,
+        }
+        history._store_snapshot_sync(
+            scope_key="all",
+            label="All systems",
+            record_date=record_date,
+            reporting=reporting,
+        )
+
+    summary = history.scope_summary_sync("all")
+
+    assert summary["record_count"] == 2
+    assert summary["missing_count"] == 0
+    assert summary["calendar_day_count"] == 3
+    assert summary["unrecorded_gap_count"] == 1
+    assert summary["stored_coverage_percent"] == 66.7
 
 def test_build_reporting_payload_preserves_zero_total_values():
     payload = build_reporting_payload(
@@ -259,35 +278,36 @@ def test_forecast_snapshot_captures_mapped_entity_state(tmp_path):
     assert snapshot["values"]["power_now"]["state"] == "1.2"
 
 
-def test_report_history_stores_forecast_snapshot_in_json_and_csv(tmp_path):
+def test_report_history_stores_forecast_snapshot_in_sqlite(tmp_path):
     history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
     reporting = _valid_reporting_payload()
-    reporting["forecast"] = {
-        "provider": "forecast_solar",
-        "saved_at": "2026-08-20T10:15:00+00:00",
-        "values": {
-            "generation_today": {
-                "entity_id": "sensor.forecast_today",
-                "state": "18.4",
-                "unit": "kWh",
-            }
-        },
-    }
+    reporting["forecast"] = {"provider": "forecast_solar", "values": {
+        "generation_today": {"entity_id": "sensor.forecast_today", "state": "18.4"}}}
+    history._store_snapshot_sync("all", "All systems", "2026-08-20", reporting)
+    assert history.store.report("all", "2026-08-20")["forecast"] == reporting["forecast"]
+    export_path = tmp_path / "export.json"
+    assert history.store.export_legacy_json(export_path) == 1
+    exported = json.loads(export_path.read_text(encoding="utf-8"))
+    assert exported["scopes"]["all"]["records"]["2026-08-20"]["forecast"] == reporting["forecast"]
 
-    history._store_snapshot_sync(
-        scope_key="all",
-        label="All systems",
-        record_date="2026-08-20",
-        reporting=reporting,
-    )
 
+def test_sqlite_online_backup_restores_committed_reports(tmp_path):
+    history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
+    history._store_snapshot_sync("all", "All systems", "2026-07-08", _valid_reporting_payload())
+    backup = tmp_path / "backup.sqlite3"
+    history.store.backup(backup)
+    assert backup.exists()
+    assert history.store.integrity_check() == "ok"
+    from custom_components.heros.archive_store import ArchiveStore
+    assert ArchiveStore(backup).report("all", "2026-07-08") == _valid_reporting_payload()
+
+
+def test_migration_failure_preserves_legacy_file(tmp_path):
+    history = ByteWattReportHistory(_FakeHass(tmp_path), "entry-1")
     history_file = tmp_path / "www" / "heros-history" / "entry-1" / "history.json"
-    payload = json.loads(history_file.read_text(encoding="utf-8"))
-    row = payload["scopes"]["all"]["records"]["2026-08-20"]
-    assert row["forecast"]["provider"] == "forecast_solar"
-
-    csv_file = tmp_path / "www" / "heros-history" / "entry-1" / "all.csv"
-    csv_text = csv_file.read_text(encoding="utf-8")
-    assert "forecast_provider" in csv_text
-    assert "forecast_solar" in csv_text
-    assert "sensor.forecast_today" in csv_text
+    history_file.parent.mkdir(parents=True)
+    original = b'{"scopes":' + b"\x00" * 64
+    history_file.write_bytes(original)
+    with pytest.raises(RuntimeError, match="migration incomplete"):
+        history._store_snapshot_sync("all", "All systems", "2026-07-08", _valid_reporting_payload())
+    assert history_file.read_bytes() == original

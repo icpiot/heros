@@ -263,22 +263,16 @@ def test_coordinator_retries_inverter_inventory_when_only_one_system_is_cached()
     assert "Expanded inverter inventory" in source
 
 
-def test_history_backfill_forwards_scope_to_provider_fetch():
-    source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "heros", "__init__.py"
-    ).read_text(encoding="utf-8")
-
-    assert 'history_sys_sn = None if scope_key == "all" else scope_key' in source
-    assert "sys_sn=history_sys_sn" in source
+def test_history_download_forwards_scope_to_provider_fetch():
+    source = Path(__file__).resolve().parents[1].joinpath("custom_components", "heros", "__init__.py").read_text(encoding="utf-8")
+    assert 'sys_sn=None if scope == "all" else scope' in source
+    assert 'station_id=station or None' in source
 
 
-def test_history_backfill_uses_fox_history_for_today_and_live_for_bytewatt():
-    source = Path(__file__).resolve().parents[1].joinpath(
-        "custom_components", "heros", "__init__.py"
-    ).read_text(encoding="utf-8")
-
-    assert 'today_date = dt_util.now().date().isoformat()' in source
-    assert 'include_realtime=day == today_date and entry_data.get("provider") != PROVIDER_FOXESS_V2' in source
+def test_history_download_uses_fox_history_for_today_and_live_for_bytewatt():
+    source = Path(__file__).resolve().parents[1].joinpath("custom_components", "heros", "__init__.py").read_text(encoding="utf-8")
+    assert 'include_realtime=day == dt_util.now().date().isoformat()' in source
+    assert 'and entry_data.get("provider") != PROVIDER_FOXESS_V2' in source
 
 
 def test_live_battery_summary_keeps_per_battery_mppt_source_fields():
