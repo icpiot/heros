@@ -24,3 +24,13 @@ setup-page*.txt
 test-*.json
 test-*.png
 test-*.txt
+
+# Local HA credentials and pytest/Codex artifacts.
+.ha_*_token
+.tmp-pytest-*
+.codex_test.py
+heros-v594-*.js
+heros-v595-*.js
+heros-panels.js
+test-write.tmp
+visual-112.png
