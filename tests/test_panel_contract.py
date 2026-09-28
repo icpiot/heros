@@ -20,6 +20,7 @@ LATEST_REPORT_BUILD_PATH = ROOT / "examples" / "www" / "LATEST_REPORT_BUILD.txt"
 README_PATH = ROOT / "README.md"
 EXAMPLES_README_PATH = ROOT / "examples" / "README.md"
 REPORT_CARD_WRAPPER_PATH = ROOT / "examples" / "www" / "heros-report-card.js"
+REPORT_CARD_SOURCE_PATH = ROOT / "examples" / "www" / "heros-report-card.009.js"
 
 
 def test_panel_build_matches_registered_cache_version():
@@ -45,6 +46,20 @@ def test_panel_uses_provider_neutral_entity_namespace():
     assert "|bytewatt" not in panel_source.lower()
 
 
+def test_minimalist_theme_is_registered_and_has_light_tokens():
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    css_source = (ROOT / "examples" / "www" / "heros-panel.css").read_text(encoding="utf-8")
+    minimalist_css_source = (ROOT / "examples" / "www" / "heros-minimalist.css").read_text(encoding="utf-8")
+    assert '{ value: "minimalist", label: "Minimalist" }' in panel_source
+    assert ".panel.shell.theme-minimalist" in css_source
+    assert 'heros-minimalist.css?v=${HEROS_PANEL_BUILD}' in panel_source
+    assert ".panel.shell.theme-minimalist .pricing" in minimalist_css_source
+    assert "@media (max-width: 700px)" in minimalist_css_source
+    assert "#f8fafc" in css_source
+    assert "#e2e8f0" in css_source
+    assert 'font-family: "Plus Jakarta Sans"' in css_source
+
+
 def test_panel_reads_configuration_from_home_assistant_panel_property():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     assert "this._config = panel?.config || this._config" in panel_source
@@ -59,7 +74,7 @@ def test_report_mounts_versioned_component_after_module_load():
     assert "isReport: true," in panel_source
 
 def test_analysis_reports_route_to_distinct_renderer_with_period_navigation():
-    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = REPORT_CARD_SOURCE_PATH.read_text(encoding="utf-8")
 
     for view in ("trend", "energy-flow", "self-sufficiency", "battery-compare", "battery-balance", "battery-flow"):
         assert f'"{view}"' in report_card_source
@@ -91,13 +106,20 @@ def test_analysis_reports_route_to_distinct_renderer_with_period_navigation():
     assert "font-size:.88rem; white-space:nowrap" in report_card_source
     assert "expected archive days represented" in report_card_source
     assert "Period Compare" in report_card_source
-    assert "exact source-to-destination routing is not inferred" in report_card_source
-    assert "Self-sufficiency is calculated as household demand minus grid imports" in report_card_source
+    assert "Financial report calculations" not in report_card_source
+    for view in ("profit", "cost-summary", "savings", "load-shifting", "tariff-vs-solar", "export-revenue", "self-consumption-value"):
+        assert f'"{view}"' in report_card_source
+    assert "financial-report__table" in report_card_source
+    assert "Self-sufficiency uses classified solar export" in report_card_source
     assert "Balance needs two or more provider battery rows" in report_card_source
+    assert 'const historicalSelection = anchorText !== this._todayDateString();' in report_card_source
+    assert 'record?.meta?.storage === "local_archive"' in report_card_source
+    assert 'Historical archive snapshot.' in report_card_source
+    assert 'const fleetSoc = validSoc.length' in report_card_source
 
 
 def test_report_card_historical_soc_uses_the_rendered_battery_series():
-    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
+    report_card_source = REPORT_CARD_SOURCE_PATH.read_text(encoding="utf-8")
 
     assert "const finalHistoricalSeriesValue = (key) => {" in report_card_source
     assert 'const seriesSoc = finalHistoricalSeriesValue("bat");' in report_card_source
@@ -235,7 +257,7 @@ def test_examples_readme_report_url_matches_report_build_marker():
 def test_report_card_wrapper_import_matches_latest_report_build_chain():
     wrapper_source = REPORT_CARD_WRAPPER_PATH.read_text(encoding="utf-8")
     latest_report_build = LATEST_REPORT_BUILD_PATH.read_text(encoding="utf-8")
-    wrapper_build = re.search(r'report-card\.008\.js\?v=(\d+)', wrapper_source)
+    wrapper_build = re.search(r'report-card\.009\.js\?v=(\d+)', wrapper_source)
     marker_build = re.search(r'report-card\.js\?v=(\d+)', latest_report_build)
 
     assert wrapper_build is not None
@@ -512,71 +534,25 @@ def test_forecast_setup_keeps_shared_battery_selector_visible():
     assert '${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}' in panel_source
 
 
-def test_report_page_uses_embedded_report_card_and_documents_storage_layers():
+def test_report_page_embeds_report_card_without_legacy_storage_claims():
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
-    report_page = re.search(
-        r"  _reportPage\(\) \{\n(?P<body>.*?)\n  \}\n\n  _solarPage",
-        panel_source,
-        re.DOTALL,
-    )
-
+    report_page = re.search(r"  _reportPage\(\) \{\n(?P<body>.*?)\n  \}\n\n  _solarPage", panel_source, re.DOTALL)
     assert report_page is not None
     body = report_page.group("body")
-
     assert 'data-embedded="report"' in body
-    assert "<h2>Archive Snapshot</h2>" in body
-    assert "<h2>Archive Scope Coverage</h2>" in body
-    assert "<h2>Archive Status</h2>" in body
-    assert "<h2>Storage Strategy</h2>" in body
-    assert "No archive rows are stored for this scope yet." in body
-    assert "Open Scope CSV" in body
-    assert "Open History JSON" in body
-    assert "Payload source" in body
-    assert "Payload storage" in body
-    assert "Diagram source" in body
-    assert "Stored provider payload" in body
-    assert "Provider payload keys" in body
-    assert "Provider payload fields" in body
-    assert "Stored raw provider subset" in body
-    assert "Archive health" in body
-    assert "Archive age" in body
-    assert "Archive freshness" in body
-    assert "Archive lag" in body
-    assert "Archive completeness" in body
-    assert "Known archive days" in body
-    assert "Archive coverage" in body
-    assert "Archive range" in body
-    assert "All systems + battery scopes" in body
-    assert "Report Context" in body
-    assert "Archive Health" in body
-    assert "Archive Files" in body
-    assert "Backfill" in body
-    assert "Stored report rows" in body
-    assert "Missing report dates" in body
-    assert "First stored date" in body
-    assert "Last stored date" in body
-    assert "Scope updated" in body
-    assert "Scope CSV" in body
-    assert "Scope CSV URL" in body
-    assert "History JSON" in body
-    assert "History JSON URL" in body
-    assert "InfluxDB will hold detailed sensor history for long-range analysis" in body
-    assert "www/heros-history/<entry_id>/history.json" in body
+    assert "Report Catalog" in body
+    assert "InfluxDB" not in body
+    assert "history.json" not in body
+    assert "www/heros-history" not in body
 
 
-def test_report_card_exposes_backend_vs_fallback_source_banner():
-    report_card_source = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
-
-    assert "synthesized_live_entities" in report_card_source
-    assert "ephemeral_live_state" in report_card_source
-    assert "live_entity_synthesis" in report_card_source
-    assert "backend_reporting" in report_card_source
-    assert "local_archive" in report_card_source
-    assert "provider_power_diagram" in report_card_source
-    assert "synthesized_from_backend_snapshot" in report_card_source
-    assert "Report Loading" in report_card_source
-    assert "Refreshing Live Data" in report_card_source
-    assert "Backend Reporting Active" in report_card_source
+def test_report_card_uses_bounded_sqlite_query():
+    card = (ROOT / "examples" / "www" / "heros-report-card.008.js").read_text(encoding="utf-8")
+    assert "Archived report loaded for" in card
+    assert "No stored report history found yet" in card
+    assert 'type: "heros/archive_query"' in card
+    assert 'await this._hass.callWS({' in card
+    assert 'await fetch(url' not in card
 
 
 def test_report_card_keeps_render_frozen_while_selector_only_opens():
@@ -731,18 +707,16 @@ def test_report_card_supports_archived_date_selection_from_history():
     assert "history.json" in report_card_source
 
 
-def test_debug_card_reads_archive_from_ha_without_browser_history_cache():
-    debug_card_source = (ROOT / "examples" / "www" / "heros-debug-card.js").read_text(encoding="utf-8")
-
-    assert "history.json" in debug_card_source
-    assert "heros-debug-history" not in debug_card_source
-    assert "_writeLocalHistory" not in debug_card_source
-    assert "_readLocalHistory" not in debug_card_source
-    assert "_lastNonEmptyReporting" in debug_card_source
-    assert "last non-empty Home Assistant state" in debug_card_source
-    assert "Reporting source" in debug_card_source
-    assert "Copy raw attributes" in debug_card_source
-    assert "Copy raw reporting" in debug_card_source
+def test_debug_card_reads_bounded_sqlite_archive():
+    card = (ROOT / "examples" / "www" / "heros-debug-card.js").read_text(encoding="utf-8")
+    assert 'type: "heros/archive_query"' in card
+    assert 'await this._hass.callWS({' in card
+    assert 'await fetch(url' not in card
+    assert "heros-debug-history" not in card
+    assert "_writeLocalHistory" not in card
+    assert "_readLocalHistory" not in card
+    assert "Copy raw attributes" in card
+    assert "Copy raw reporting" in card
 
 
 def test_foxess_v2_uses_a_compact_stable_setup_page():
@@ -802,6 +776,3 @@ def test_debug_card_exposes_foxess_v2_api_query_controls():
     assert "MPPT / inverter realtime" in debug_card_source
     assert "Battery realtime" in debug_card_source
     assert "Plant extra info" in debug_card_source
-
-
-

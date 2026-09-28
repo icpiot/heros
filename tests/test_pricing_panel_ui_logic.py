@@ -588,6 +588,7 @@ def test_pricing_panel_ui_new_group_keeps_stable_group_id():
 
         const draft = panel._pricingUiGroupDraft;
         panel.shadowRoot = {
+          querySelector() { return null; },
           querySelectorAll() {
             return [
               { dataset: { pricingGroupField: "group_id" }, value: draft.group_id },

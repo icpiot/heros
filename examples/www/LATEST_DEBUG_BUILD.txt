@@ -1,1 +1,1 @@
-heros-debug-card.js?v=058
+heros-debug-card.js?v=059

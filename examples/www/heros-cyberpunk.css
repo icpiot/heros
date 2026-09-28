@@ -1,0 +1,184 @@
+/* Cyberpunk visual layer. Keep the neon palette, but make repeated controls
+   use one geometry and one readable surface treatment across every page. */
+.panel.shell.theme-cyberpunk {
+  --cyber-text: #effcff;
+  --cyber-muted: #a9c8d8;
+  --cyber-border: rgba(0, 229, 255, .34);
+  --cyber-border-strong: rgba(0, 229, 255, .62);
+  --cyber-surface: #07101d;
+  --cyber-surface-strong: #0d1b2d;
+  --cyber-surface-subtle: #10243a;
+  --cyber-accent: #00e5ff;
+  --cyber-accent-strong: #ff4de8;
+  --cyber-button-height: 32px;
+  --cyber-button-clip: polygon(3% 0%, 97% 0%, 100% 14%, 100% 86%, 97% 100%, 3% 100%, 0% 86%, 0% 14%);
+  color: var(--cyber-text);
+  background:
+    linear-gradient(rgba(0, 229, 255, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, .035) 1px, transparent 1px),
+    #050b14;
+  background-size: 28px 28px;
+}
+.panel.shell.theme-cyberpunk::before,
+.panel.shell.theme-cyberpunk::after { opacity: .75; }
+
+/* One shared control geometry. */
+.panel.shell.theme-cyberpunk button,
+.panel.shell.theme-cyberpunk a.panel-nav__item,
+.panel.shell.theme-cyberpunk .theme-pill,
+.panel.shell.theme-cyberpunk input:not([type="checkbox"]):not([type="radio"]),
+.panel.shell.theme-cyberpunk select,
+.panel.shell.theme-cyberpunk textarea,
+.panel.shell.theme-cyberpunk .date-picker__button {
+  box-sizing: border-box;
+  min-height: var(--cyber-button-height);
+  height: var(--cyber-button-height);
+  border: 1px solid var(--cyber-border);
+  border-radius: 7px;
+  clip-path: var(--cyber-button-clip);
+  background: var(--cyber-surface);
+  color: var(--cyber-text);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+}
+.panel.shell.theme-cyberpunk button,
+.panel.shell.theme-cyberpunk a.panel-nav__item,
+.panel.shell.theme-cyberpunk .theme-pill {
+  padding: 0 12px;
+  cursor: pointer;
+  line-height: 30px;
+}
+.panel.shell.theme-cyberpunk button:hover,
+.panel.shell.theme-cyberpunk button:focus-visible,
+.panel.shell.theme-cyberpunk a.panel-nav__item:hover,
+.panel.shell.theme-cyberpunk a.panel-nav__item:focus-visible,
+.panel.shell.theme-cyberpunk .theme-pill:hover,
+.panel.shell.theme-cyberpunk .theme-pill:focus-visible {
+  border-color: var(--cyber-border-strong);
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, .12);
+  outline: none;
+}
+.panel.shell.theme-cyberpunk .panel-nav__item.is-active,
+.panel.shell.theme-cyberpunk .theme-pill.is-active {
+  border-color: var(--cyber-accent);
+  background: linear-gradient(135deg, var(--cyber-accent), var(--cyber-accent-strong));
+  color: #06111f;
+  box-shadow: 0 0 18px rgba(0, 229, 255, .24);
+}
+
+/* Shared page surfaces and compact page headers. */
+.panel.shell.theme-cyberpunk .panel-card,
+.panel.shell.theme-cyberpunk .overview-tile,
+.panel.shell.theme-cyberpunk .battery-tile,
+.panel.shell.theme-cyberpunk .solar-tile,
+.panel.shell.theme-cyberpunk .history-tile,
+.panel.shell.theme-cyberpunk .report-scope-card,
+.panel.shell.theme-cyberpunk .report-catalog__group {
+  border: 1px solid var(--cyber-border);
+  border-radius: 12px;
+  background: var(--cyber-surface);
+  color: var(--cyber-text);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
+}
+.panel.shell.theme-cyberpunk .panel-card__header {
+  min-height: 0;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 229, 255, .18);
+}
+.panel.shell.theme-cyberpunk .panel-card__header h2,
+.panel.shell.theme-cyberpunk .panel-card h2,
+.panel.shell.theme-cyberpunk .cards h2 { color: var(--cyber-text); }
+.panel.shell.theme-cyberpunk .panel-card p,
+.panel.shell.theme-cyberpunk .panel-card small,
+.panel.shell.theme-cyberpunk .status__meta,
+.panel.shell.theme-cyberpunk .overview-tile small { color: var(--cyber-muted); }
+.panel.shell.theme-cyberpunk .pricing__hero,
+.panel.shell.theme-cyberpunk .history__hero { min-height: 0; padding: 18px; gap: 6px; }
+.panel.shell.theme-cyberpunk .pricing__hero p,
+.panel.shell.theme-cyberpunk .history__hero p { margin: 0; line-height: 1.45; }
+
+/* Cyberpunk navigation keeps the neon edge without mixing pill and tab forms. */
+.panel.shell.theme-cyberpunk .panel-nav { gap: 6px; margin-bottom: 16px; }
+.panel.shell.theme-cyberpunk .panel-nav__item {
+  border-radius: 7px;
+  clip-path: var(--cyber-button-clip);
+  background: var(--cyber-surface);
+  border-color: var(--cyber-border);
+  box-shadow: none;
+}
+
+/* Fields, date selectors, status rows, and switches use the same dark surface. */
+.panel.shell.theme-cyberpunk input:not([type="checkbox"]):not([type="radio"]),
+.panel.shell.theme-cyberpunk select,
+.panel.shell.theme-cyberpunk textarea,
+.panel.shell.theme-cyberpunk .shared-selector__control,
+.panel.shell.theme-cyberpunk .date-picker__button {
+  padding: 0 10px;
+  background: var(--cyber-surface-strong);
+  border-color: var(--cyber-border);
+}
+.panel.shell.theme-cyberpunk .date-picker__button { min-width: 140px; width: 140px; justify-content: space-between; }
+.panel.shell.theme-cyberpunk .pricing-date-input-wrap,
+.panel.shell.theme-cyberpunk .settings-archive-date {
+  width: 140px;
+  min-width: 140px;
+  height: 34px;
+}
+.panel.shell.theme-cyberpunk .settings-archive-date {
+  display: block;
+  position: relative;
+}
+.panel.shell.theme-cyberpunk .settings-archive-date__display {
+  width: 100%;
+  padding: 0 30px 0 10px;
+}
+.panel.shell.theme-cyberpunk .settings-archive-date__picker {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 30px;
+  height: 34px;
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--cyber-muted);
+}
+.panel.shell.theme-cyberpunk .settings-archive-date__native {
+  width: 30px;
+  height: 34px;
+}
+.panel.shell.theme-cyberpunk .date-picker__icon { color: var(--cyber-accent); }
+.panel.shell.theme-cyberpunk .settings-toggle,
+.panel.shell.theme-cyberpunk .settings-archive-statusbar,
+.panel.shell.theme-cyberpunk .settings-archive-controls { color: var(--cyber-muted); }
+.panel.shell.theme-cyberpunk .toggle-row__switch {
+  border-color: var(--cyber-border);
+  background: var(--cyber-surface-strong);
+  box-shadow: none;
+}
+.panel.shell.theme-cyberpunk .toggle-row__switch.is-active {
+  border-color: var(--cyber-accent);
+  background: rgba(0, 229, 255, .18);
+}
+.panel.shell.theme-cyberpunk .toggle-row__switch.is-active::after { background: var(--cyber-accent); }
+
+/* Tables and history lists share one readable row treatment. */
+.panel.shell.theme-cyberpunk .entity-list li,
+.panel.shell.theme-cyberpunk .key-list li,
+.panel.shell.theme-cyberpunk .settings-metric {
+  border: 1px solid rgba(0, 229, 255, .16);
+  border-radius: 8px;
+  background: var(--cyber-surface-subtle);
+}
+.panel.shell.theme-cyberpunk .settings-metric.is-active {
+  border-color: var(--cyber-accent);
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, .2);
+}
+
+@media (max-width: 700px) {
+  .panel.shell.theme-cyberpunk { padding: 12px; }
+  .panel.shell.theme-cyberpunk .panel-nav { gap: 4px; }
+  .panel.shell.theme-cyberpunk .panel-nav__item { padding: 0 9px; }
+  .panel.shell.theme-cyberpunk .date-picker__button { width: 140px; min-width: 140px; }
+}

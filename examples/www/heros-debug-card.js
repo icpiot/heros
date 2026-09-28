@@ -1,4 +1,4 @@
-const HEROS_DEBUG_CARD_BUILD = "058";
+const HEROS_DEBUG_CARD_BUILD = "059";
 
 class ByteWattDebugCard extends HTMLElement {
   setConfig(config) {
@@ -421,25 +421,7 @@ class ByteWattDebugCard extends HTMLElement {
   }
 
   _historyUrl() {
-    const history = this._history();
-    const explicitBase = String(history?.base_url || "").trim();
-    const entryId = String(history?.entry_id || "").trim();
-    const base = explicitBase
-      ? explicitBase.replace(/\/+$/, "")
-      : entryId
-        ? `/local/heros-history/${entryId}`
-        : "";
-    if (!base) return "";
-    return `${base}/history.json`;
-  }
-
-  _historyBackfillDays() {
-    const history = this._history();
-    const rawDays = Number(history?.backfill_days ?? 0);
-    if (Number.isFinite(rawDays) && rawDays > 0) return Math.max(1, Math.floor(rawDays));
-    const rawYears = Number(history?.backfill_years ?? 0);
-    if (Number.isFinite(rawYears) && rawYears > 0) return Math.max(1, Math.floor(rawYears * 365));
-    return 365;
+    return this._historyEntryId() ? "HEROS SQLite archive" : "";
   }
 
   _historyScopes() {
@@ -625,10 +607,6 @@ class ByteWattDebugCard extends HTMLElement {
 
   _historyScopeSummaries() {
     const scopes = this._historyScopes();
-    const expectedCount = this._historyBackfillDays();
-    const today = this._todayLocalDate();
-    const expectedStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    expectedStart.setDate(expectedStart.getDate() - (expectedCount - 1));
     const inventoryScopes = Array.isArray(this._history()?.inventory_scopes) ? this._history().inventory_scopes : [];
     const merged = new Map();
     const addScope = (scopeKey, label, aggregate) => {
@@ -639,9 +617,7 @@ class ByteWattDebugCard extends HTMLElement {
         stored_count: 0,
         missing_count: 0,
         known_count: 0,
-        expected_count: expectedCount,
-        remaining_count: expectedCount,
-        coverage_label: `0/${expectedCount}`,
+        coverage_label: "0/0",
         first_date: "",
         latest_date: "",
         active: false,
@@ -660,14 +636,11 @@ class ByteWattDebugCard extends HTMLElement {
       const knownCount = new Set([...recordDates, ...missingDates]).size;
       const storedCount = recordDates.length;
       const missingCount = missingDates.length;
-      const remainingCount = Math.max(expectedCount - knownCount, 0);
       const range = this._historyRange(recordDates.map((record_date) => ({ record_date })));
       current.stored_count = storedCount;
       current.missing_count = missingCount;
       current.known_count = knownCount;
-      current.expected_count = expectedCount;
-      current.remaining_count = remainingCount;
-      current.coverage_label = `${knownCount}/${expectedCount}`;
+      current.coverage_label = knownCount ? String(storedCount) + "/" + String(knownCount) : "0/0";
       current.first_date = range.first;
       current.latest_date = range.latest;
       current.active = scopeKey === this._historyScopeKey();
@@ -679,7 +652,6 @@ class ByteWattDebugCard extends HTMLElement {
       const knownCount = new Set([...recordDates, ...missingDates]).size;
       const storedCount = recordDates.length;
       const missingCount = missingDates.length;
-      const remainingCount = Math.max(expectedCount - knownCount, 0);
       const range = this._historyRange(recordDates.map((record_date) => ({ record_date })));
       merged.set(this._historyScopeKey(), {
         scope_key: this._historyScopeKey(),
@@ -688,9 +660,7 @@ class ByteWattDebugCard extends HTMLElement {
         stored_count: storedCount,
         missing_count: missingCount,
         known_count: knownCount,
-        expected_count: expectedCount,
-        remaining_count: remainingCount,
-        coverage_label: `${knownCount}/${expectedCount}`,
+        coverage_label: knownCount ? String(storedCount) + "/" + String(knownCount) : "0/0",
         first_date: range.first,
         latest_date: range.latest,
         active: true,
@@ -821,7 +791,7 @@ class ByteWattDebugCard extends HTMLElement {
               <div class="history-overview">
                 <div class="history-overview-head">
                   <div class="history-overview-title">Archive Coverage Overview</div>
-                  <div class="history-overview-subtitle">Stored rows vs the configured ${this._historyBackfillDays()} day history horizon</div>
+                  <div class="history-overview-subtitle">Stored rows and known missing dates in the archive</div>
                 </div>
                 <div class="history-overview-grid">
                   ${scopeSummaries
@@ -832,7 +802,7 @@ class ByteWattDebugCard extends HTMLElement {
                             <div class="history-overview-card-title">${this._escape(scope.label)}</div>
                             <div class="history-overview-card-badge">${this._escape(scope.coverage_label)}</div>
                           </div>
-                          <div class="history-overview-card-meta">stored ${scope.stored_count} | missing ${scope.missing_count} | remaining ${scope.remaining_count}</div>
+                          <div class="history-overview-card-meta">stored ${scope.stored_count} | missing ${scope.missing_count} | known ${scope.known_count}</div>
                           <div class="history-overview-card-meta">${this._escape(scope.first_date && scope.latest_date ? `${formatHistoryDate(scope.first_date)} -> ${formatHistoryDate(scope.latest_date)}` : "No stored rows yet")}</div>
                         </div>
                       `,
@@ -905,16 +875,19 @@ class ByteWattDebugCard extends HTMLElement {
   }
 
   async _reloadHistory() {
-    const url = this._historyUrl();
-    if (!url || this._historyLoading) return;
+    const entryId = this._historyEntryId();
+    if (!entryId || !this._hass || this._historyLoading) return;
     this._historyLoading = true;
     this._historyLoadError = "";
     try {
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const data = await response.json();
+      const selected = this._selectedHistoryDateKey() || this._formatLocalDate(this._todayLocalDate());
+      const year = Number(selected.slice(0, 4));
+      if (!Number.isFinite(year) || year < 2000 || year > 2100) throw new Error("Invalid archive year");
+      const data = await this._hass.callWS({
+        type: "heros/archive_query", entry_id: entryId,
+        scope_key: this._historyScopeKey(),
+        start_date: `${year - 1}-01-01`, end_date: `${year}-12-31`,
+      });
       this._historyData = data;
     } catch (error) {
       this._historyLoadError = String(error?.message || error);
@@ -1197,7 +1170,7 @@ class ByteWattDebugCard extends HTMLElement {
     const reporting = this._reporting();
     const history = this._history();
     const reportingMeta = reporting.meta || {};
-    const historyKey = `${this._historyUrl()}|${this._historyScopeKey()}`;
+    const historyKey = `${this._historyEntryId()}|${this._historyScopeKey()}|${this._selectedHistoryDateKey().slice(0, 4)}`;
     if (historyKey !== this._historySourceKey) {
       this._historySourceKey = historyKey;
       this._historyData = null;
@@ -1919,5 +1892,4 @@ window.customCards.push({
   name: "HEROS Debug Card",
   description: `HEROS debug card build ${HEROS_DEBUG_CARD_BUILD}.`,
 });
-
 

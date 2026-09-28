@@ -1,0 +1,1220 @@
+/* Minimalist visual layer. Loaded with the panel shell and scoped so the
+   Pricing review can be refined without changing the other themes. */
+
+/* Shared component tokens. Every page uses these primitives so a future
+   theme can change the controls in one place. */
+.panel.shell.theme-minimalist {
+  --minimal-text: #0f172a;
+  --minimal-muted: #64748b;
+  --minimal-border: #dbe4ef;
+  --minimal-border-strong: #cbd5e1;
+  --minimal-surface: #ffffff;
+  --minimal-surface-subtle: #f8fafc;
+  --minimal-accent: #2563eb;
+  --minimal-selected: #cbd5e1;
+  --minimal-danger: #be123c;
+  --heros-panel-surface: #ffffff;
+  --heros-panel-surface-strong: #f8fafc;
+  --heros-panel-border: #dbe4ef;
+  --heros-panel-muted: #64748b;
+  --heros-panel-accent: #2563eb;
+  --heros-panel-accent-strong: #1d4ed8;
+  --heros-panel-text: #0f172a;
+  --minimal-button-height: 32px;
+  --minimal-button-radius: 6px;
+  color: var(--minimal-text);
+  background: #f8fafc;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.panel.shell.theme-minimalist::before,
+.panel.shell.theme-minimalist::after { display: none; }
+
+/* One button shape, size, and treatment across navigation, actions, and
+   record editors. Active navigation remains the sole filled accent state. */
+.panel.shell.theme-minimalist button,
+.panel.shell.theme-minimalist a.panel-nav__item,
+.panel.shell.theme-minimalist .pricing-rule__button,
+.panel.shell.theme-minimalist .roi-history-actions button,
+.panel.shell.theme-minimalist .theme-pill {
+  box-sizing: border-box;
+  min-height: var(--minimal-button-height);
+  height: var(--minimal-button-height);
+  padding: 0 12px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: var(--minimal-button-radius);
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 30px;
+  text-decoration: none;
+}
+.panel.shell.theme-minimalist button:hover,
+.panel.shell.theme-minimalist button:focus-visible,
+.panel.shell.theme-minimalist a.panel-nav__item:hover,
+.panel.shell.theme-minimalist a.panel-nav__item:focus-visible,
+.panel.shell.theme-minimalist .pricing-rule__button:hover,
+.panel.shell.theme-minimalist .theme-pill:hover {
+  border-color: var(--minimal-accent);
+  background: #eff6ff;
+  color: #1d4ed8;
+  box-shadow: none;
+  transform: none;
+}
+.panel.shell.theme-minimalist .panel-nav__item.is-active,
+.panel.shell.theme-minimalist .theme-pill.is-active {
+  border-color: #94a3b8;
+  background: var(--minimal-selected);
+  color: #0f172a;
+  box-shadow: none;
+}
+
+.panel.shell.theme-minimalist .status--minimalist-selection {
+  display: block;
+  margin: 10px 0 14px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector {
+  max-width: 560px;
+}
+
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector__control {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector__menu {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .12);
+}
+
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector__option {
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector__option:hover,
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector__option:focus,
+.panel.shell.theme-minimalist .status--minimalist-selection .shared-selector__option.is-selected {
+  background: var(--minimal-selected);
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .theme-preview {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--minimal-border);
+}
+
+.panel.shell.theme-minimalist .theme-preview h3 {
+  margin: 0 0 10px;
+  color: var(--minimal-text);
+  font-size: 13px;
+}
+
+.panel.shell.theme-minimalist .theme-preview__samples,
+.panel.shell.theme-minimalist .theme-preview__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.panel.shell.theme-minimalist .theme-preview__sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--minimal-muted);
+  font-size: 11px;
+}
+
+.panel.shell.theme-minimalist .theme-preview__swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: 4px;
+  background: var(--minimal-surface);
+}
+
+.panel.shell.theme-minimalist .theme-preview__swatch--selected { background: var(--minimal-selected); }
+.panel.shell.theme-minimalist .theme-preview__swatch--border { background: var(--minimal-border); }
+.panel.shell.theme-minimalist .theme-preview__swatch--accent { background: #40c982; }
+.panel.shell.theme-minimalist .theme-preview__controls { margin-top: 12px; }
+.panel.shell.theme-minimalist .theme-preview__button {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: var(--minimal-button-radius);
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 26px;
+}
+.panel.shell.theme-minimalist .theme-preview__button.is-selected {
+  border-color: #94a3b8;
+  background: var(--minimal-selected);
+}
+.panel.shell.theme-minimalist .theme-preview__value {
+  color: var(--minimal-text);
+  font-size: 13px;
+}
+.panel.shell.theme-minimalist .theme-preview__mini-card { margin-top:12px; padding:12px; border:1px solid var(--minimal-border); border-radius:8px; background:var(--minimal-surface); color:var(--minimal-text); }
+.panel.shell.theme-minimalist .theme-preview__mini-head { display:flex; justify-content:space-between; gap:12px; font-size:13px; }
+.panel.shell.theme-minimalist .theme-preview__mini-head span,
+.panel.shell.theme-minimalist .theme-preview__eyebrow,
+.panel.shell.theme-minimalist .theme-preview__body { color:var(--minimal-muted); font-size:11px; }
+.panel.shell.theme-minimalist .theme-preview__eyebrow { margin:10px 0 4px; font-weight:800; letter-spacing:.08em; }
+.panel.shell.theme-minimalist .theme-preview__body { margin:0; }
+.panel.shell.theme-minimalist .theme-preview__divider { height:1px; margin:10px 0; background:var(--minimal-border); }
+.panel.shell.theme-minimalist .theme-preview__form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.panel.shell.theme-minimalist .theme-preview__form-grid label { display:grid; gap:4px; color:var(--minimal-muted); font-size:10px; font-weight:700; }
+.panel.shell.theme-minimalist .theme-preview__form-grid input,
+.panel.shell.theme-minimalist .theme-preview__form-grid select { width:100%; height:30px; min-height:30px; padding:0 8px; border:1px solid var(--minimal-border-strong); border-radius:5px; background:var(--minimal-surface); color:var(--minimal-text); font:inherit; font-size:11px; box-sizing:border-box; }
+.panel.shell.theme-minimalist .theme-preview__mini-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.panel.shell.theme-minimalist .theme-preview__mini-actions button { height:28px; min-height:28px; padding:0 9px; border:1px solid var(--minimal-border-strong); border-radius:5px; background:var(--minimal-selected); color:var(--minimal-text); font:inherit; font-size:11px; font-weight:700; }
+.panel.shell.theme-minimalist .theme-preview__mini-actions .is-ghost { background:transparent; }
+.panel.shell.theme-minimalist .theme-preview__mini-actions .is-danger { color:#b42318; }
+.panel.shell.theme-minimalist .theme-preview__metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:10px; }
+.panel.shell.theme-minimalist .theme-preview__metrics span { display:grid; gap:2px; padding:7px; border:1px solid var(--minimal-border); border-radius:5px; }
+.panel.shell.theme-minimalist .theme-preview__metrics small { color:var(--minimal-muted); font-size:10px; }
+.panel.shell.theme-minimalist .theme-preview__metrics strong { font-size:12px; }
+.panel.shell.theme-minimalist .theme-preview__mini-table { margin-top:10px; border:1px solid var(--minimal-border); border-radius:5px; overflow:hidden; font-size:10px; }
+.panel.shell.theme-minimalist .theme-preview__mini-table > div { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; padding:6px 7px; border-top:1px solid var(--minimal-border); }
+.panel.shell.theme-minimalist .theme-preview__mini-table > div:first-child { border-top:0; background:var(--minimal-surface-subtle); color:var(--minimal-muted); }
+.panel.shell.theme-minimalist .theme-preview__status { margin-top:7px; padding:6px 8px; border:1px solid var(--minimal-border); border-radius:5px; color:var(--minimal-text); font-size:10px; }
+.panel.shell.theme-minimalist .theme-preview__status.is-warning { border-color:#d6a72c; }
+@media (max-width:700px) { .panel.shell.theme-minimalist .theme-preview__form-grid { grid-template-columns:1fr; } .panel.shell.theme-minimalist .theme-preview__mini-table { overflow:auto; } }
+.panel.shell.theme-minimalist .pricing-rule__button--delete,
+.panel.shell.theme-minimalist [data-roi-delete-installation],
+.panel.shell.theme-minimalist [data-roi-delete-repayment],
+.panel.shell.theme-minimalist [data-vpp-delete-rate],
+.panel.shell.theme-minimalist [data-pricing-ui-delete-group],
+.panel.shell.theme-minimalist [data-pricing-ui-delete-rule] { color: var(--minimal-danger); }
+
+/* Common page surfaces and headings. */
+.panel.shell.theme-minimalist .panel-card,
+.panel.shell.theme-minimalist .overview-tile,
+.panel.shell.theme-minimalist .battery-tile,
+.panel.shell.theme-minimalist .solar-tile,
+.panel.shell.theme-minimalist .history-tile,
+.panel.shell.theme-minimalist .report-scope-card,
+.panel.shell.theme-minimalist .report-catalog__group {
+  border: 1px solid var(--minimal-border);
+  border-radius: 10px;
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+.panel.shell.theme-minimalist .panel-card__header {
+  min-height: 0;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #eef2f7;
+}
+.panel.shell.theme-minimalist .panel-card__header h2,
+.panel.shell.theme-minimalist .panel-card h2,
+.panel.shell.theme-minimalist .cards h2 { color: var(--minimal-text); }
+.panel.shell.theme-minimalist .panel-card p,
+.panel.shell.theme-minimalist .panel-card small,
+.panel.shell.theme-minimalist .status__meta,
+.panel.shell.theme-minimalist .overview-tile small { color: var(--minimal-muted); }
+
+/* Inputs and date controls share the same compact field treatment. */
+.panel.shell.theme-minimalist input:not([type="checkbox"]):not([type="radio"]),
+.panel.shell.theme-minimalist input[type="date"],
+.panel.shell.theme-minimalist select,
+.panel.shell.theme-minimalist textarea,
+.panel.shell.theme-minimalist .shared-selector__control,
+.panel.shell.theme-minimalist .date-picker__button {
+  box-sizing: border-box;
+  min-height: 34px;
+  height: 34px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: 6px;
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+}
+.panel.shell.theme-minimalist .pricing .roi-settings-field input[type="date"] {
+  width: 136px;
+  min-width: 136px;
+  padding: 0 10px;
+}
+.panel.shell.theme-minimalist .date-picker__button {
+  min-width: 140px;
+  width: 140px;
+  justify-content: space-between;
+  padding: 0 10px;
+  line-height: 32px;
+}
+.panel.shell.theme-minimalist .pricing-date-input-wrap,
+.panel.shell.theme-minimalist .settings-archive-date {
+  width: 140px;
+  min-width: 140px;
+  height: 34px;
+}
+.panel.shell.theme-minimalist .settings-archive-date {
+  display: block;
+  position: relative;
+}
+.panel.shell.theme-minimalist .settings-archive-date__display {
+  width: 100%;
+  padding: 0 30px 0 10px;
+}
+.panel.shell.theme-minimalist .settings-archive-date__picker {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 30px;
+  height: 34px;
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--minimal-muted);
+}
+.panel.shell.theme-minimalist .settings-archive-date__native {
+  width: 30px;
+  height: 34px;
+}
+.panel.shell.theme-minimalist input[data-pricing-date-input],
+.panel.shell.theme-minimalist input[data-roi-installation-date],
+.panel.shell.theme-minimalist input[data-vpp-effective-date],
+.panel.shell.theme-minimalist .settings-archive-date__display {
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: 6px;
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  font: inherit;
+  font-size: 12px;
+}
+.panel.shell.theme-minimalist .pricing-date-input-wrap {
+  position: relative;
+  display: block;
+  width: 140px;
+  min-width: 140px;
+}
+.panel.shell.theme-minimalist .pricing-date-input-wrap input {
+  width: 100% !important;
+  padding-right: 30px;
+}
+.panel.shell.theme-minimalist .pricing-date-input-icon {
+  position: absolute;
+  top: 0;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  color: var(--minimal-muted);
+  font-size: 13px;
+  pointer-events: none;
+}
+.panel.shell.theme-minimalist .date-picker__icon { color: var(--minimal-muted); font-size: 13px; }
+.panel.shell.theme-minimalist .date-picker__native { width: 1px; height: 1px; }
+
+/* Policy keeps its functional status colors, but its surfaces and controls
+   use the same restrained palette as every other page. */
+.panel.shell.theme-minimalist .policy-section-separator,
+.panel.shell.theme-minimalist .policy-section-bar { background: var(--minimal-border); box-shadow: none; }
+.panel.shell.theme-minimalist .policy__stack > article:has(.policy-charge-form),
+.panel.shell.theme-minimalist .policy__stack > article:has(> .key-list--compact) {
+  display: none;
+}
+.panel.shell.theme-minimalist .policy-record-section--charge {
+  border-color: var(--minimal-border) !important;
+  box-shadow: none !important;
+}
+.panel.shell.theme-minimalist .policy-toggle-pill,
+.panel.shell.theme-minimalist .policy-disabled-panel,
+.panel.shell.theme-minimalist .policy-immediate-feedback,
+.panel.shell.theme-minimalist .policy-charge-warning {
+  border-color: var(--minimal-border);
+  border-radius: 8px;
+  background: var(--minimal-surface-subtle);
+  color: var(--minimal-muted);
+  box-shadow: none;
+}
+.panel.shell.theme-minimalist .policy-live-tile span,
+.panel.shell.theme-minimalist .battery-tile span,
+.panel.shell.theme-minimalist .solar-tile span,
+.panel.shell.theme-minimalist .history-tile span { color: var(--minimal-muted); }
+.panel.shell.theme-minimalist .overview-tile strong,
+.panel.shell.theme-minimalist .battery-tile strong,
+.panel.shell.theme-minimalist .solar-tile strong,
+.panel.shell.theme-minimalist .history-tile strong { color: var(--minimal-text); }
+
+@media (max-width: 700px) {
+  .panel.shell.theme-minimalist { padding: 12px; }
+  .panel.shell.theme-minimalist .panel-nav { gap: 4px; }
+  .panel.shell.theme-minimalist .panel-nav__item { min-height: 32px; height: 32px; padding: 0 9px; line-height: 30px; }
+  .panel.shell.theme-minimalist .hero__connection-status { margin-left: 0; }
+  .panel.shell.theme-minimalist .date-picker__button { min-width: 140px; width: 140px; }
+}
+
+/* These rules intentionally come last: the base panel stylesheet defines
+   rounded neon navigation, while the Minimalist contract is a compact 32px
+   rectangular control everywhere. */
+.panel.shell.theme-minimalist .panel-nav__item,
+.panel.shell.theme-minimalist .panel-nav__item.is-active,
+.panel.shell.theme-minimalist .theme-pill,
+.panel.shell.theme-minimalist .theme-pill.is-active {
+  min-height: var(--minimal-button-height);
+  height: var(--minimal-button-height);
+  padding: 0 12px;
+  border-radius: var(--minimal-button-radius);
+  line-height: 30px;
+}
+
+/* Settings switches use the same neutral selected state as Minimalist
+   buttons; only the thumb position communicates on versus off. */
+.panel.shell.theme-minimalist .toggle-row__switch {
+  width: 54px;
+  height: 30px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: 999px;
+  background: var(--minimal-surface);
+  box-shadow: none;
+}
+.panel.shell.theme-minimalist .toggle-row__switch::after {
+  background: var(--minimal-muted);
+}
+.panel.shell.theme-minimalist .toggle-row__switch.is-active {
+  border-color: #94a3b8;
+  background: var(--minimal-selected);
+}
+.panel.shell.theme-minimalist .toggle-row__switch.is-active::after {
+  background: var(--minimal-text);
+}
+.panel.shell.theme-minimalist .pricing {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 24px;
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .pricing .panel-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.panel.shell.theme-minimalist .pricing__hero,
+.panel.shell.theme-minimalist .pricing .roi-settings-card,
+.panel.shell.theme-minimalist .pricing .electricity-rates-card {
+  padding: 24px;
+}
+
+.panel.shell.theme-minimalist .pricing__hero .panel-card__header,
+.panel.shell.theme-minimalist .pricing .panel-card__header {
+  min-height: 0;
+  margin-bottom: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.panel.shell.theme-minimalist .pricing .panel-card__header h2 {
+  font-size: 18px;
+  line-height: 1.35;
+  letter-spacing: -.01em;
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .pricing .panel-card__header > span {
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: .08em;
+}
+
+.panel.shell.theme-minimalist .pricing > article > p,
+.panel.shell.theme-minimalist .pricing .roi-settings-card > p,
+.panel.shell.theme-minimalist .pricing .electricity-rates-card > p {
+  max-width: 760px;
+  margin: 0 0 24px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-section-heading {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-section-heading h3,
+.panel.shell.theme-minimalist .pricing .roi-repayment-history__title {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-section-heading h3 {
+  margin: 2px 0 0;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-add-toggle,
+.panel.shell.theme-minimalist .pricing .roi-settings-actions .panel-nav__item,
+.panel.shell.theme-minimalist .pricing .electricity-rates-card .roi-add-toggle {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-add-toggle:hover,
+.panel.shell.theme-minimalist .pricing .roi-settings-actions .panel-nav__item:hover {
+  background: #334155;
+  border-color: #334155;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-actions .pricing-rule__button--ghost {
+  background: #ffffff;
+  color: #334155;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-grid {
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-field {
+  gap: 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-field input,
+.panel.shell.theme-minimalist .pricing .roi-settings-field select,
+.panel.shell.theme-minimalist .pricing .roi-settings-field textarea,
+.panel.shell.theme-minimalist .pricing .pricing-record-form input,
+.panel.shell.theme-minimalist .pricing .pricing-record-form select {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 32px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-field input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  height: 20px;
+  margin-top: 7px;
+  accent-color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-actions {
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-repayment-history {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-repayment-history__head,
+.panel.shell.theme-minimalist .pricing .roi-repayment-history__row {
+  min-width: 680px;
+  grid-template-columns: 1.1fr 1.5fr 1fr 1fr 1fr 1.25fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-repayment-history__head {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-repayment-history__row {
+  border-top: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-repayment-history__row:hover {
+  background: #f8fafc;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-history-actions button,
+.panel.shell.theme-minimalist .pricing .roi-history-actions a {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 11px;
+  line-height: 26px;
+  text-decoration: none;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-history-actions button:hover,
+.panel.shell.theme-minimalist .pricing .roi-history-actions a:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .pricing .pricing-rule,
+.panel.shell.theme-minimalist .pricing .pricing-record-list-section {
+  border-color: #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.panel.shell.theme-minimalist .pricing .pricing-record-section__heading {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+/* Match the supplied Finance & ROI reference: the section action sits on the
+   same line as its heading and the history table uses the available card
+   width instead of a narrow, horizontally scrolling column. */
+.panel.shell.theme-minimalist .pricing .roi-settings-card > .panel-card__header > span {
+  display: none;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section[aria-label="Installation costs"] > .roi-repayment-history__title {
+  display: none;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section[aria-label="Repayment schedule"] > .roi-repayment-history__title {
+  display: none;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-installation-history,
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-repayment-history {
+  width: 100%;
+  max-width: none;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-repayment-history__head,
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-repayment-history__row {
+  min-width: 0;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(180px, 1.25fr) minmax(120px, 1fr) minmax(140px, auto) !important;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-repayment-history__head {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-repayment-history__row {
+  min-height: 40px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-installation-history + .roi-repayment-history__title {
+  margin-top: 26px;
+}
+
+.panel.shell.theme-minimalist .pricing [data-roi-start-installation]::before,
+.panel.shell.theme-minimalist .pricing [data-roi-start-repayment]::before,
+.panel.shell.theme-minimalist .pricing [data-roi-start-vpp]::before {
+  content: "+";
+  margin-right: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Installation history actions are inline text links in the reference table,
+   rather than compact filled controls. */
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-history-actions button,
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-history-actions a {
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-installation-history .roi-history-actions [data-roi-delete-installation] {
+  color: #e11d48;
+}
+
+/* Match the template shell: one compact identity row followed by a simple
+   horizontal text navigation instead of the standard rounded-button header. */
+.panel.shell.theme-minimalist .hero {
+  display: block;
+  margin-bottom: 0;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.panel.shell.theme-minimalist .hero__copy {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 0 12px;
+}
+
+.panel.shell.theme-minimalist .hero__title-row {
+  display: contents;
+}
+
+.panel.shell.theme-minimalist .hero__copy h1 {
+  grid-column: 1;
+  margin: 0;
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+.panel.shell.theme-minimalist .hero__badge {
+  grid-column: 2;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: .7rem;
+}
+
+.panel.shell.theme-minimalist .hero__copy > p {
+  grid-column: 3;
+  grid-row: 1;
+  margin: 0;
+  font-size: .78rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.panel.shell.theme-minimalist .hero__connection-status {
+  grid-column: 4;
+  grid-row: 1;
+  padding: 5px 10px;
+  background: #f1f5f9;
+  border-color: #dbe4ef;
+  color: #0f172a;
+  font-size: .75rem;
+}
+
+.panel.shell.theme-minimalist .panel-nav {
+  display: flex;
+  gap: 0;
+  margin: 0 0 16px;
+  padding: 0;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item {
+  min-height: 36px;
+  height: 36px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  color: #475569;
+  font-size: .78rem;
+  font-weight: 500;
+}
+
+.panel.shell.theme-minimalist .panel-nav__icon {
+  display: none;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item.is-active {
+  color: #0f172a;
+  background: var(--minimal-selected);
+  border-color: #94a3b8;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+/* Keep every top-level page link on the same flat surface. Only the active
+   page receives the selected shade; report and mapping must not inherit the
+   older gradient or shadow treatment. */
+.panel.shell.theme-minimalist .panel-nav__item,
+.panel.shell.theme-minimalist .panel-nav__item:hover,
+.panel.shell.theme-minimalist .panel-nav__item:focus,
+.panel.shell.theme-minimalist .panel-nav__item:focus-visible {
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item.is-active,
+.panel.shell.theme-minimalist .panel-nav__item.is-active:hover,
+.panel.shell.theme-minimalist .panel-nav__item.is-active:focus,
+.panel.shell.theme-minimalist .panel-nav__item.is-active:focus-visible {
+  background: var(--minimal-selected);
+  border-color: #94a3b8;
+  box-shadow: none;
+}
+
+.panel.shell.theme-minimalist .report,
+.panel.shell.theme-minimalist .forecast,
+.panel.shell.theme-minimalist .report__stack,
+.panel.shell.theme-minimalist .forecast__mapping-card,
+.panel.shell.theme-minimalist .forecast__hero {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Report uses a Home Assistant card wrapper and an inner panel that carry
+   the legacy gradient/shadow treatment. Keep them on the same flat surface
+   as the other minimalist pages. */
+.panel.shell.theme-minimalist .report-card,
+.panel.shell.theme-minimalist .report-card .panel,
+.panel.shell.theme-minimalist .report-card .data-source-banner,
+.panel.shell.theme-minimalist .report-card .report-scope-card {
+  background: var(--minimal-surface) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+.panel.shell.theme-minimalist [data-embedded="report"],
+.panel.shell.theme-minimalist heros-report-card {
+  display: block;
+  background: #ffffff !important;
+  border: 1px solid var(--minimal-border) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.panel.shell.theme-minimalist .report-card .report-scope-card {
+  border-color: var(--minimal-border);
+}
+
+.panel.shell.theme-minimalist .report-card button.active {
+  background: var(--minimal-selected) !important;
+  border-color: #94a3b8 !important;
+  box-shadow: none !important;
+  color: var(--minimal-text) !important;
+}
+
+/* History shares the same compact page-hero treatment as Pricing. */
+.panel.shell.theme-minimalist .history__hero {
+  gap: 6px;
+  min-height: 0;
+  padding: 24px;
+}
+.panel.shell.theme-minimalist .history__hero .panel-card__header {
+  margin-bottom: 8px;
+  padding-bottom: 14px;
+}
+.panel.shell.theme-minimalist .history__hero p {
+  margin: 0;
+  max-width: 980px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .panel.shell.theme-minimalist .hero__copy {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .panel.shell.theme-minimalist .hero__copy > p {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 6px;
+    white-space: normal;
+  }
+
+  .panel.shell.theme-minimalist .hero__connection-status {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* Keep the long HEROS title, version, and connection pill from colliding.
+   The template gives the title row its own line and places the subtitle below. */
+@media (min-width: 761px) {
+  .panel.shell.theme-minimalist .hero__copy {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .panel.shell.theme-minimalist .hero__copy h1 {
+    grid-column: 1;
+    grid-row: 1;
+    white-space: normal;
+  }
+
+  .panel.shell.theme-minimalist .hero__badge {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .panel.shell.theme-minimalist .hero__connection-status {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .panel.shell.theme-minimalist .hero__copy > p {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: 4px;
+  }
+}
+
+/* All Pricing history tables share the same six anchored tracks. Sections
+   with fewer fields leave the unused tracks empty so headings and actions do
+   not shift from one section to another. */
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-repayment-history {
+  overflow-x: auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-repayment-history__head,
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-repayment-history__row {
+  min-width: 0 !important;
+  grid-template-columns: minmax(140px, 1.1fr) minmax(190px, 1.5fr) minmax(120px, 1fr) minmax(110px, 1fr) minmax(100px, 1fr) minmax(140px, auto) !important;
+  gap: 12px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-repayment-history__head > :last-child,
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-repayment-history__row > .roi-history-actions {
+  grid-column: 6;
+  justify-self: end;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions button,
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions a {
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+/* Electricity rule tables have four fields (rate, days, time, actions),
+   while finance history uses six. Keep their actions in the visible fourth
+   track instead of inheriting the finance grid's off-screen sixth track. */
+.panel.shell.theme-minimalist .pricing .electricity-rate-history__head,
+.panel.shell.theme-minimalist .pricing .electricity-rate-history__row {
+  min-width: 0 !important;
+  grid-template-columns: minmax(130px, 1fr) minmax(170px, 1.35fr) minmax(150px, 1.15fr) minmax(132px, auto) !important;
+}
+
+.panel.shell.theme-minimalist .pricing .electricity-rate-history,
+.panel.shell.theme-minimalist .pricing .electricity-group-history {
+  max-width: 100% !important;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-repayment-history {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.panel.shell.theme-minimalist .pricing .electricity-rate-history__head > :last-child,
+.panel.shell.theme-minimalist .pricing .electricity-rate-history__row > .roi-history-actions {
+  grid-column: 4;
+  justify-self: end;
+}
+
+.panel.shell.theme-minimalist .pricing .electricity-group-history__head,
+.panel.shell.theme-minimalist .pricing .electricity-group-history__row {
+  min-width: 0 !important;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.35fr) minmax(120px, 1fr) minmax(120px, 1fr) minmax(150px, auto) !important;
+}
+
+.panel.shell.theme-minimalist .pricing .electricity-group-history__head > :last-child,
+.panel.shell.theme-minimalist .pricing .electricity-group-history__row > .roi-history-actions {
+  grid-column: 5;
+  justify-self: end;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions button:hover,
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions a:hover {
+  background: transparent;
+  color: #0f172a;
+  text-decoration: underline;
+}
+
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions [data-roi-delete-installation],
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions [data-roi-delete-repayment],
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions [data-vpp-delete-rate],
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions [data-pricing-ui-delete-group],
+.panel.shell.theme-minimalist .pricing .roi-settings-section .roi-history-actions [data-pricing-ui-delete-rule] {
+  color: #e11d48;
+}
+
+.panel.shell.theme-minimalist .pricing .vpp-settings-section > .roi-repayment-history__title {
+  display: none;
+}
+
+/* Minimalist identity row matches the supplied sample exactly: brand mark,
+   HEROS label, version, separator, wording, and connection at the far right. */
+.panel.shell.theme-minimalist .hero {
+  padding: 0 0 14px;
+}
+
+.panel.shell.theme-minimalist .hero__copy {
+  display: block;
+}
+
+.panel.shell.theme-minimalist .hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+}
+
+.panel.shell.theme-minimalist .hero__brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 7px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.panel.shell.theme-minimalist .hero__copy h1 {
+  flex: 0 0 auto;
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.panel.shell.theme-minimalist .hero__badge {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.panel.shell.theme-minimalist .hero__separator {
+  color: #cbd5e1;
+  font-size: 16px;
+}
+
+.panel.shell.theme-minimalist .hero__copy > p {
+  flex: 0 1 auto;
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.panel.shell.theme-minimalist .hero__connection-status {
+  margin-left: auto;
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-color: #dbe4ef;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.panel.shell.theme-minimalist .hero__connection-dot {
+  width: 8px;
+  height: 8px;
+  flex-basis: 8px;
+}
+
+@media (max-width: 760px) {
+  .panel.shell.theme-minimalist .hero__title-row {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .panel.shell.theme-minimalist .hero__copy > p {
+    white-space: normal;
+  }
+
+  .panel.shell.theme-minimalist .hero__connection-status {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .panel.shell.theme-minimalist .pricing__hero,
+  .panel.shell.theme-minimalist .pricing .roi-settings-card,
+  .panel.shell.theme-minimalist .pricing .electricity-rates-card {
+    padding: 16px;
+  }
+
+  .panel.shell.theme-minimalist .pricing .roi-section-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .panel.shell.theme-minimalist .pricing .roi-section-heading .roi-add-toggle {
+    width: 100%;
+  }
+
+  .panel.shell.theme-minimalist .pricing .roi-settings-actions {
+    flex-wrap: wrap;
+  }
+
+  .panel.shell.theme-minimalist .pricing .roi-settings-actions .panel-nav__item {
+    flex: 1 1 150px;
+  }
+}
+
+/* Archive Download uses the same compact field, date, and action treatment
+   as Pricing. Keep the calendar inside the date field and keep the actions
+   readable instead of inheriting the report navigation styling. */
+.panel.shell.theme-minimalist .settings-archive-statusbar {
+  border-color: var(--minimal-border);
+  border-radius: 8px;
+  background: var(--minimal-surface-subtle);
+  color: var(--minimal-muted);
+  box-shadow: none;
+}
+.panel.shell.theme-minimalist .settings-archive-statusbar strong { color: var(--minimal-text); }
+.panel.shell.theme-minimalist .settings-archive-controls {
+  display: grid;
+  grid-template-columns: minmax(130px, .8fr) minmax(150px, 1fr) minmax(150px, 1fr);
+  align-items: end;
+  gap: 16px;
+  margin-top: 16px;
+}
+.panel.shell.theme-minimalist .settings-archive-controls label {
+  min-width: 150px;
+  gap: 6px;
+  color: var(--minimal-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.panel.shell.theme-minimalist .settings-archive-controls select,
+.panel.shell.theme-minimalist .settings-archive-controls input.settings-archive-date__display {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: 6px;
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+}
+.panel.shell.theme-minimalist .settings-archive-date {
+  grid-template-columns: minmax(0, 1fr) 34px;
+  min-height: 34px;
+}
+.panel.shell.theme-minimalist .settings-archive-date__display { border-radius: 6px 0 0 6px; }
+.panel.shell.theme-minimalist .settings-archive-date__picker {
+  min-height: 34px;
+  border-color: var(--minimal-border-strong);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: var(--minimal-surface-subtle);
+  color: var(--minimal-muted);
+}
+.panel.shell.theme-minimalist .settings-archive-date__native {
+  width: 34px;
+  height: 34px;
+}
+.panel.shell.theme-minimalist .settings-archive-controls__actions {
+  grid-column: 1 / -1;
+  gap: 8px;
+  margin-top: 2px;
+}
+.panel.shell.theme-minimalist .settings-archive-controls__actions button {
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--minimal-border-strong);
+  border-radius: 6px;
+  background: var(--minimal-surface);
+  color: var(--minimal-text);
+  box-shadow: none;
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .panel.shell.theme-minimalist .settings-archive-controls {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .panel.shell.theme-minimalist .settings-archive-controls > label { width: 100%; }
+  .panel.shell.theme-minimalist .settings-archive-controls__actions { width: 100%; grid-column: 1; }
+}
+
+/* Electricity group fields stay compact and use an explicit ISO date entry. */
+.panel.shell.theme-minimalist .pricing .electricity-group-editor .roi-settings-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.panel.shell.theme-minimalist .pricing .electricity-group-editor input,
+.panel.shell.theme-minimalist .pricing .electricity-group-editor select { min-width: 0; width: 100%; box-sizing: border-box; }
+@media (max-width: 720px) {
+  .panel.shell.theme-minimalist .pricing .electricity-group-editor .roi-settings-grid { grid-template-columns: 1fr; }
+}

@@ -1,4 +1,4 @@
-const HEROS_POLICY_CARD_BUILD = "009";
+const HEROS_POLICY_CARD_BUILD = "011";
 
 class ByteWattPolicyCard extends HTMLElement {
   setConfig(config) {
@@ -7,6 +7,7 @@ class ByteWattPolicyCard extends HTMLElement {
       throw new Error("variant is required: battery_policy or feedin_policy");
     }
     this._config = this._withDefaults({ ...config, variant });
+    this.classList.toggle("theme-minimalist", this._config.theme === "minimalist");
     this._drafts = this._drafts || {};
     this._immediateDrafts = this._immediateDrafts || {};
     this._immediateState = this._immediateState || {};
@@ -1018,6 +1019,154 @@ class ByteWattPolicyCard extends HTMLElement {
           .summary-meta {
             font-size: 0.68rem !important;
           }
+        }
+
+        /* The policy editor is an embedded card, so it needs its own theme
+           bridge instead of inheriting the outer panel's page CSS. */
+        :host(.theme-minimalist) ha-card {
+          background: #ffffff;
+          border: 1px solid #dbe4ef;
+          border-radius: 10px;
+          color: #0f172a;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) .shell { gap: 16px; padding: 18px; }
+        :host(.theme-minimalist) .header { gap: 10px; }
+        :host(.theme-minimalist) .title-icon {
+          width: 8px;
+          height: 24px;
+          border-radius: 4px;
+          color: transparent;
+          background: #2563eb;
+          border: 0;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) .title { color: #0f172a; font-size: 1.15rem; }
+        :host(.theme-minimalist) .version-badge,
+        :host(.theme-minimalist) .cache-button {
+          color: #334155;
+          background: #f1f5f9;
+          border: 1px solid #cbd5e1;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) .section {
+          gap: 14px;
+          border: 1px solid #dbe4ef;
+          border-radius: 10px;
+          background: #ffffff;
+          padding: 16px;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) .section-content {
+          display: grid;
+          grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+          gap: 16px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+        }
+        :host(.theme-minimalist) .section-side,
+        :host(.theme-minimalist) .section-side.immediate,
+        :host(.theme-minimalist) .immediate-panel {
+          background: #ffffff;
+          border: 0;
+          box-shadow: none;
+          padding: 0;
+        }
+        :host(.theme-minimalist) .section-side.immediate { margin-bottom: 0; }
+        :host(.theme-minimalist) .section-header { gap: 10px; }
+        :host(.theme-minimalist) .section-icon {
+          width: 6px;
+          height: 22px;
+          border-radius: 3px;
+          color: transparent;
+          background: #2563eb;
+        }
+        :host(.theme-minimalist) .section-title,
+        :host(.theme-minimalist) .field-title,
+        :host(.theme-minimalist) .field-title.compact { color: #0f172a; }
+        :host(.theme-minimalist) .section-divider { background: #dbe4ef; }
+        :host(.theme-minimalist) .copy,
+        :host(.theme-minimalist) .muted,
+        :host(.theme-minimalist) .status,
+        :host(.theme-minimalist) .schedule-note,
+        :host(.theme-minimalist) .schedule-empty { color: #64748b; }
+        :host(.theme-minimalist) .policy-cell,
+        :host(.theme-minimalist) .slot,
+        :host(.theme-minimalist) .summary-card {
+          background: #f8fafc;
+          border-color: #dbe4ef;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) .summary-card:hover { transform: none; box-shadow: none; }
+        :host(.theme-minimalist) .summary-label,
+        :host(.theme-minimalist) .summary-breakout-label,
+        :host(.theme-minimalist) .eyebrow,
+        :host(.theme-minimalist) .field-note { color: #64748b; }
+        :host(.theme-minimalist) .summary-value,
+        :host(.theme-minimalist) .summary-title,
+        :host(.theme-minimalist) .summary-breakout-value,
+        :host(.theme-minimalist) .slot-name { color: #0f172a; }
+        :host(.theme-minimalist) select,
+        :host(.theme-minimalist) input:not([type="checkbox"]) {
+          background: #ffffff;
+          border-color: #cbd5e1;
+          color: #0f172a;
+        }
+        :host(.theme-minimalist) button,
+        :host(.theme-minimalist) .chip {
+          background: #ffffff;
+          border-color: #cbd5e1;
+          color: #334155;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) button.primary,
+        :host(.theme-minimalist) button.purple,
+        :host(.theme-minimalist) button.green,
+        :host(.theme-minimalist) .chip.active {
+          background: #cbd5e1;
+          border-color: #94a3b8;
+          color: #0f172a;
+          box-shadow: none;
+        }
+        :host(.theme-minimalist) button.danger { background: #fff1f2; border-color: #fecdd3; color: #be123c; }
+        :host(.theme-minimalist) input[type="checkbox"][data-policy-toggle] {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 48px;
+          height: 26px;
+          margin: 0;
+          border: 1px solid #cbd5e1;
+          border-radius: 999px;
+          background: #f8fafc;
+          position: relative;
+          cursor: pointer;
+        }
+        :host(.theme-minimalist) input[type="checkbox"][data-policy-toggle]::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #64748b;
+          transition: transform 140ms ease;
+        }
+        :host(.theme-minimalist) input[type="checkbox"][data-policy-toggle]:checked {
+          background: #cbd5e1;
+          border-color: #94a3b8;
+        }
+        :host(.theme-minimalist) input[type="checkbox"][data-policy-toggle]:checked::after {
+          transform: translateX(22px);
+          background: #0f172a;
+        }
+        :host(.theme-minimalist) .status.success,
+        :host(.theme-minimalist) .status.error,
+        :host(.theme-minimalist) .status.info,
+        :host(.theme-minimalist) .pending-banner { background: #f8fafc; border-color: #dbe4ef; color: #475569; }
+        @media (max-width: 700px) {
+          :host(.theme-minimalist) .section-content { grid-template-columns: 1fr; }
         }
       </style>
       <ha-card>

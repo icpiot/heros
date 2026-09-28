@@ -1,5 +1,5 @@
 // Legacy contract markers: Archived report for ${this._escape(selectedDate)} is incomplete after; Archived report loaded for
-const HEROS_REPORT_CARD_BUILD = "681";
+const HEROS_REPORT_CARD_BUILD = "699";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HEROS_REPORT_CARD_TAG = `heros-report-card-${HEROS_REPORT_CARD_BUILD}`;
 const HEROS_REPORT_PERIODS = [
@@ -27,6 +27,13 @@ const HEROS_STATISTICAL_PERIODS = [
 const HEROS_ANALYSIS_VIEWS = new Set([
   "trend",
   "energy-flow",
+  "profit",
+  "cost-summary",
+  "savings",
+  "load-shifting",
+  "tariff-vs-solar",
+  "export-revenue",
+  "self-consumption-value",
   "self-sufficiency",
   "battery-compare",
   "battery-balance",
@@ -43,6 +50,8 @@ class ByteWattReportCard extends HTMLElement {
       settings_target: config?.settings_target || "select.heros_settings_target",
       ...config,
     };
+    this.classList.toggle("theme-minimalist", this._config.theme === "minimalist");
+    this.classList.toggle("theme-cyberpunk", this._config.theme === "cyberpunk");
     this._view = this._view || "power";
     this._historyRequestedKey = this._historyRequestedKey || "";
     this._activeSeries = this._activeSeries || {
@@ -368,7 +377,7 @@ class ByteWattReportCard extends HTMLElement {
     const inputType = options.inputType || "date";
     const max = options.max ? ` max="${this._escape(options.max)}"` : "";
     const label = options.label || "Choose report date";
-    return `<span class="date-picker"><button type="button" class="date-picker__button" data-date-picker-open="${this._escape(dataAttribute)}" aria-label="${this._escape(label)}"><span>${this._escape(value)}</span><span class="date-picker__icon" aria-hidden="true">&#128197;</span></button><input class="date-picker__native" type="${this._escape(inputType)}" ${this._escape(dataAttribute)} value="${this._escape(value)}"${max} tabindex="-1" aria-hidden="true"></span>`;
+    return `<span class="date-picker"><button type="button" class="date-picker__button" data-date-picker-open="${this._escape(dataAttribute)}" aria-label="${this._escape(label)}"><span>${this._escape(value)}</span><span class="date-picker__icon" aria-hidden="true">&#128197;</span></button><input class="date-picker__native" type="${this._escape(inputType)}" lang="en-CA" ${this._escape(dataAttribute)} value="${this._escape(value)}"${max} tabindex="-1" aria-hidden="true"></span>`;
   }
 
   _formatTimeLabel(date) {
@@ -3253,7 +3262,7 @@ const showLive = options.showLive !== false;
                   <button type="button" class="${this._view === "mode" ? "active" : ""}" data-view="mode">Mode Timeline</button>
                   <button type="button" class="${this._view === "operational" ? "active" : ""}" data-view="operational">Operational</button>
                   <button type="button" class="${this._view === "detail" ? "active" : ""}" data-view="detail">Daily Detail</button>
-                  <button type="button" class="${this._view === "tariff" ? "active" : ""}" data-view="tariff">Tariff Impact</button><button type="button" class="${this._view === "trend" ? "active" : ""}" data-view="trend">Trend</button><button type="button" class="${this._view === "energy-flow" ? "active" : ""}" data-view="energy-flow">Energy Flow</button><button type="button" class="${this._view === "self-sufficiency" ? "active" : ""}" data-view="self-sufficiency">Self-Sufficiency</button><button type="button" class="${this._view === "battery-compare" ? "active" : ""}" data-view="battery-compare">Battery Compare</button><button type="button" class="${this._view === "battery-balance" ? "active" : ""}" data-view="battery-balance">Battery Balance</button><button type="button" class="${this._view === "battery-flow" ? "active" : ""}" data-view="battery-flow">Battery Flow</button><button type="button" class="${this._view === "peak-demand" ? "active" : ""}" data-view="peak-demand">Peak Demand</button><button type="button" class="${this._view === "solar-capture" ? "active" : ""}" data-view="solar-capture">Solar Capture</button><button type="button" class="${this._view === "forecast-accuracy" ? "active" : ""}" data-view="forecast-accuracy">Forecast Accuracy</button><button type="button" class="${this._view === "predicted-actual" ? "active" : ""}" data-view="predicted-actual">Predicted vs Actual</button><button type="button" class="${this._view === "solar-compare" ? "active" : ""}" data-view="solar-compare">Solar Compare</button><button type="button" class="${this._view === "scope-health" ? "active" : ""}" data-view="scope-health">Scope Health</button><button type="button" class="${this._view === "export-data" ? "active" : ""}" data-view="export-data">Export / Data</button><button type="button" class="${this._view === "day-compare" ? "active" : ""}" data-view="day-compare">Period Compare</button><button type="button" class="${this._view === "battery-export" ? "active" : ""}" data-view="battery-export">Battery Export</button><button type="button" class="${this._view === "export-compare" ? "active" : ""}" data-view="export-compare">Export Compare</button><button type="button" class="${this._view === "seasonal-trend" ? "active" : ""}" data-view="seasonal-trend">Seasonal Trend</button><button type="button" class="${this._view === "anomaly" ? "active" : ""}" data-view="anomaly">Anomaly</button><button type="button" class="${this._view === "exception" ? "active" : ""}" data-view="exception">Exception</button>
+                  <button type="button" class="${this._view === "tariff" ? "active" : ""}" data-view="tariff">Tariff Impact</button><button type="button" class="${this._view === "profit" ? "active" : ""}" data-view="profit">Profit</button><button type="button" class="${this._view === "cost-summary" ? "active" : ""}" data-view="cost-summary">Cost Summary</button><button type="button" class="${this._view === "savings" ? "active" : ""}" data-view="savings">Savings</button><button type="button" class="${this._view === "load-shifting" ? "active" : ""}" data-view="load-shifting">Load Shifting</button><button type="button" class="${this._view === "tariff-vs-solar" ? "active" : ""}" data-view="tariff-vs-solar">Tariff vs Solar</button><button type="button" class="${this._view === "export-revenue" ? "active" : ""}" data-view="export-revenue">Export Revenue</button><button type="button" class="${this._view === "self-consumption-value" ? "active" : ""}" data-view="self-consumption-value">Self-Consumption Value</button><button type="button" class="${this._view === "trend" ? "active" : ""}" data-view="trend">Trend</button><button type="button" class="${this._view === "energy-flow" ? "active" : ""}" data-view="energy-flow">Energy Flow</button><button type="button" class="${this._view === "self-sufficiency" ? "active" : ""}" data-view="self-sufficiency">Self-Sufficiency</button><button type="button" class="${this._view === "battery-compare" ? "active" : ""}" data-view="battery-compare">Battery Compare</button><button type="button" class="${this._view === "battery-balance" ? "active" : ""}" data-view="battery-balance">Battery Balance</button><button type="button" class="${this._view === "battery-flow" ? "active" : ""}" data-view="battery-flow">Battery Flow</button><button type="button" class="${this._view === "peak-demand" ? "active" : ""}" data-view="peak-demand">Peak Demand</button><button type="button" class="${this._view === "solar-capture" ? "active" : ""}" data-view="solar-capture">Solar Capture</button><button type="button" class="${this._view === "forecast-accuracy" ? "active" : ""}" data-view="forecast-accuracy">Forecast Accuracy</button><button type="button" class="${this._view === "predicted-actual" ? "active" : ""}" data-view="predicted-actual">Predicted vs Actual</button><button type="button" class="${this._view === "solar-compare" ? "active" : ""}" data-view="solar-compare">Solar Compare</button><button type="button" class="${this._view === "scope-health" ? "active" : ""}" data-view="scope-health">Scope Health</button><button type="button" class="${this._view === "export-data" ? "active" : ""}" data-view="export-data">Export / Data</button><button type="button" class="${this._view === "day-compare" ? "active" : ""}" data-view="day-compare">Period Compare</button><button type="button" class="${this._view === "battery-export" ? "active" : ""}" data-view="battery-export">Battery Export</button><button type="button" class="${this._view === "export-compare" ? "active" : ""}" data-view="export-compare">Export Compare</button><button type="button" class="${this._view === "seasonal-trend" ? "active" : ""}" data-view="seasonal-trend">Seasonal Trend</button><button type="button" class="${this._view === "anomaly" ? "active" : ""}" data-view="anomaly">Anomaly</button><button type="button" class="${this._view === "exception" ? "active" : ""}" data-view="exception">Exception</button>
                 </div>
               </div>
               <div class="chart-toolbar chart-toolbar--meta">
@@ -3388,6 +3397,13 @@ const showLive = options.showLive !== false;
     const definitions = {
       trend: ["Trend", "Daily solar and household demand across the selected period."],
       "energy-flow": ["Energy Flow", "Energy entering, stored by, used by, and leaving the system."],
+      profit: ["Profit", "Net energy value after import cost, supply charges, and export credit."],
+      "cost-summary": ["Cost Summary", "Import, supply, export credit, and net cost for the selected period."],
+      savings: ["Savings", "Avoided grid-only cost from solar generation and battery discharge."],
+      "load-shifting": ["Load Shifting", "Energy shifted away from grid imports through solar and battery use."],
+      "tariff-vs-solar": ["Tariff vs Solar", "The value of solar generation compared with buying the same energy from the grid."],
+      "export-revenue": ["Export Revenue", "Feed-in credit and exported energy for the selected period."],
+      "self-consumption-value": ["Self-Consumption Value", "The tariff value of solar energy used or stored on site."],
       "self-sufficiency": ["Self-Sufficiency", "The share of household demand supplied without grid imports."],
       "battery-compare": ["Battery Compare", "Side-by-side live state and power for the available battery units."],
       "battery-balance": ["Battery Balance", "State-of-charge spread and power sharing across battery units."],
@@ -3652,6 +3668,43 @@ const showLive = options.showLive !== false;
       const solarExport = dailyEnergy.reduce((sum, item) => sum + item.solarExport, 0);
       const batteryExport = dailyEnergy.reduce((sum, item) => sum + item.batteryExport, 0);
       content = `${metrics([["Generated", energy("solar_generation")], ["Household demand", energy("load_consumption")], ["Solar export", this._fmtEnergy(solarExport)], ["Battery export", this._fmtEnergy(batteryExport)], ["Net grid", this._fmtEnergy(totals.grid_consumption - totals.feed_in)]])}<div class="analysis-energy-flow"><div class="analysis-flow-column"><h3>Sources</h3><div class="analysis-flow-node is-solar"><span>Solar generation</span><strong>${energy("solar_generation")}</strong></div><div class="analysis-flow-node is-grid"><span>Grid import</span><strong>${energy("grid_consumption")}</strong></div><div class="analysis-flow-node is-battery"><span>Battery discharge</span><strong>${energy("battery_discharge")}</strong></div></div><div class="analysis-flow-hub"><span>Energy balance</span><strong>${this._fmtEnergy(totals.solar_generation + totals.grid_consumption + totals.battery_discharge)}</strong><small>available supply</small></div><div class="analysis-flow-column"><h3>Destinations</h3><div class="analysis-flow-node is-load"><span>Household demand</span><strong>${energy("load_consumption")}</strong></div><div class="analysis-flow-node is-battery"><span>Battery charge</span><strong>${energy("battery_charge")}</strong></div><div class="analysis-flow-node is-export"><span>Solar export</span><strong>${this._fmtEnergy(solarExport)}</strong></div><div class="analysis-flow-node is-export"><span>Battery export</span><strong>${this._fmtEnergy(batteryExport)}</strong></div><div class="analysis-flow-node is-export"><span>Total grid export</span><strong>${energy("feed_in")}</strong></div></div></div><p class="analysis-note">${coverage} Local household supply was ${this._fmtEnergy(localUse)}. Export attribution follows the web API source-classification rule; total export remains the reconciliation value.</p>`;
+    } else if (["profit", "cost-summary", "savings", "load-shifting", "tariff-vs-solar", "export-revenue", "self-consumption-value"].includes(kind)) {
+      const schedule = this._pricingScheduleForReport();
+      const tariffRecords = new Map(this._tariffRecordsForPeriod(anchorText, period));
+      const financialDays = this._tariffDatesForPeriod(anchorText, period).map((date) => {
+        const source = tariffRecords.get(date)?.reporting || tariffRecords.get(date) || rows.find((item) => item.date === date)?.record || null;
+        const tariff = this._tariffCostForDate(source, date, schedule);
+        const energyRow = dailyEnergy.find((item) => item.date === date) || {};
+        const solarUsed = Math.max(0, number(energyRow.solar) - number(energyRow.solarExport));
+        const batteryUsed = Math.max(0, number(energyRow.discharge) - number(energyRow.batteryExport));
+        return { date, tariff, solarUsed, batteryUsed, solar: number(energyRow.solar), load: number(energyRow.load), grid: number(energyRow.grid), feed: number(energyRow.feed) };
+      });
+      const sum = (key) => financialDays.reduce((total, item) => total + number(item.tariff?.[key]), 0);
+      const importCost = sum("import");
+      const exportCredit = sum("credit");
+      const supplyCost = financialDays.reduce((total, item) => total + number(item.tariff?.supply), 0);
+      const netCost = importCost + supplyCost - exportCredit;
+      const gridOnlyCost = sum("gridOnly") + supplyCost;
+      const avoidedCost = Math.max(0, gridOnlyCost - importCost);
+      const exportKwh = financialDays.reduce((total, item) => total + item.feed, 0);
+      const solarExportKwh = dailyEnergy.reduce((total, item) => total + number(item.solarExport), 0);
+      const batteryExportKwh = dailyEnergy.reduce((total, item) => total + number(item.batteryExport), 0);
+      const selfConsumedKwh = financialDays.reduce((total, item) => total + item.solarUsed, 0);
+      const batteryUsedKwh = financialDays.reduce((total, item) => total + item.batteryUsed, 0);
+      const selfConsumedValue = financialDays.reduce((total, item) => {
+        const localRate = item.tariff?.gridOnly && item.load > 0 ? item.tariff.gridOnly / item.load : 0;
+        return total + item.solarUsed * localRate;
+      }, 0);
+      const money = (value) => `$${this._fmtNumber(value, 2)}`;
+      const rowsMarkup = financialDays.filter((item) => item.tariff?.data || item.solar || item.load || item.feed).map((item, index) => `<div class="analysis-ranking__row"><b>${index + 1}</b><span>${this._escape(item.date)}</span><span>${money(item.tariff?.import || 0)}</span><span>${money(item.tariff?.credit || 0)}</span><strong>${money((item.tariff?.import || 0) + (item.tariff?.supply || 0) - (item.tariff?.credit || 0))}</strong></div>`).join("") || `<div class="analysis-empty">No financial source data is available for this period.</div>`;
+      const financialTable = `<div class="analysis-ranking financial-report__table"><div class="analysis-ranking__head"><span>Date</span><span>Import</span><span>Credit</span><span>Net cost</span></div>${rowsMarkup}</div>`;
+      if (kind === "profit") content = `${metrics([["Net energy value", money(exportCredit - importCost)], ["Export credit", money(exportCredit), "is-positive"], ["Import cost", money(importCost)], ["Supply charges", money(supplyCost)]])}${financialTable}<p class="analysis-note">Profit is export credit minus import cost and supply charges for the selected period. Missing tariff records remain visible through period coverage.</p>`;
+      else if (kind === "cost-summary") content = `${metrics([["Import cost", money(importCost)], ["Supply charges", money(supplyCost)], ["Export credit", money(exportCredit), "is-positive"], ["Net cost", money(netCost)]])}${financialTable}<p class="analysis-note">Net cost = import cost + supply charges - export credit. Values use the same saved tariff records as Tariff Impact.</p>`;
+      else if (kind === "savings") content = `${metrics([["Avoided grid-only cost", money(avoidedCost), "is-positive"], ["Actual import cost", money(importCost)], ["Grid-only estimate", money(gridOnlyCost)], ["Solar used locally", this._fmtEnergy(selfConsumedKwh)]])}${financialTable}<p class="analysis-note">Savings compares priced household demand against the cost of buying that demand from the grid, using the active tariff.</p>`;
+      else if (kind === "load-shifting") content = `${metrics([["Energy shifted", this._fmtEnergy(Math.max(0, avoidedCost > 0 ? selfConsumedKwh + batteryUsedKwh : 0)), "is-positive"], ["Solar used locally", this._fmtEnergy(selfConsumedKwh)], ["Battery supplied", this._fmtEnergy(batteryUsedKwh)], ["Grid import", this._fmtEnergy(totals.grid_consumption)]])}${financialTable}<p class="analysis-note">Load shifting shows solar used on site plus battery-supplied load that avoided a grid import.</p>`;
+      else if (kind === "tariff-vs-solar") content = `${metrics([["Solar generated", energy("solar_generation")], ["Solar used locally", this._fmtEnergy(selfConsumedKwh)], ["Grid-only value", money(gridOnlyCost)], ["Solar value", money(selfConsumedValue), "is-positive"]])}${financialTable}<p class="analysis-note">Solar value estimates what the on-site solar portion of household demand would have cost at the active import tariff.</p>`;
+      else if (kind === "export-revenue") content = `${metrics([["Export revenue", money(exportCredit), "is-positive"], ["Total exported", this._fmtEnergy(exportKwh)], ["Solar export", this._fmtEnergy(solarExportKwh)], ["Battery export", this._fmtEnergy(batteryExportKwh)]])}${financialTable}<p class="analysis-note">Export revenue is the feed-in credit for total grid export. Solar and battery export are shown separately using the HEROS source-classification rule.</p>`;
+      else content = `${metrics([["Self-consumed solar", this._fmtEnergy(selfConsumedKwh)], ["Self-consumption value", money(selfConsumedValue), "is-positive"], ["Solar generated", energy("solar_generation")], ["Capture rate", this._fmtPercent(totals.solar_generation > 0 ? selfConsumedKwh / totals.solar_generation * 100 : 0)]])}${financialTable}<p class="analysis-note">Self-consumption value uses solar generation retained on site and values it at the active import tariff.</p>`;
     } else if (kind === "self-sufficiency") {
       const demand = totals.load_consumption;
       const local = Math.max(0, demand - totals.grid_consumption);
@@ -4808,6 +4861,20 @@ const showLive = options.showLive !== false;
     this.shadowRoot.innerHTML = `
       <style>
         :host { display:block; width:100%; }
+        :host(.theme-minimalist) ha-card {
+          background:#ffffff;
+          border:1px solid #e2e8f0;
+          border-radius:12px;
+          box-shadow:0 1px 2px rgba(15,23,42,.04);
+          color:#0f172a;
+        }
+        :host(.theme-cyberpunk) ha-card {
+          background:#07101d;
+          border:1px solid rgba(0,229,255,.34);
+          border-radius:12px;
+          box-shadow:none;
+          color:#effcff;
+        }
 
         ha-card {
           background:
@@ -4820,6 +4887,148 @@ const showLive = options.showLive !== false;
           overflow: hidden;
         }
         .shell { display:grid; gap:12px; padding:14px; }
+        .shell.theme-minimalist {
+          --card-background-color:#ffffff;
+          --primary-text-color:#0f172a;
+          --text-primary-color:#ffffff;
+          --secondary-text-color:#64748b;
+          --divider-color:#e2e8f0;
+          --primary-color:#2563eb;
+          --heros-panel-text:#0f172a;
+          --heros-panel-muted:#64748b;
+          --heros-panel-border:#e2e8f0;
+          --heros-panel-surface:#ffffff;
+          --heros-panel-surface-strong:#f8fafc;
+          --heros-panel-accent:#2563eb;
+          --heros-panel-accent-strong:#1d4ed8;
+          color-scheme:light;
+          font-family:"Plus Jakarta Sans","Inter","Segoe UI",sans-serif;
+        }
+        .shell.theme-minimalist ha-card {
+          background:#ffffff;
+          border:1px solid #e2e8f0;
+          border-radius:12px;
+          box-shadow:0 1px 2px rgba(15,23,42,.04);
+        }
+        .shell.theme-minimalist .title-icon { background:#0f172a; border-radius:8px; box-shadow:none; }
+        .shell.theme-minimalist .version-badge { background:#f1f5f9; color:#475569; border-color:#cbd5e1; }
+        .shell.theme-minimalist [data-analysis-period],
+        .shell.theme-minimalist [data-operational-period],
+        .shell.theme-minimalist .chart-overview-toggle {
+          background:#ffffff; border-color:#cbd5e1; color:#334155;
+        }
+        .shell.theme-minimalist [data-analysis-period].active,
+        .shell.theme-minimalist [data-operational-period].active,
+        .shell.theme-minimalist .chart-overview-toggle.is-active { background:#0f172a; color:#ffffff; border-color:#0f172a; }
+        .shell.theme-minimalist .analysis-report__card,
+        .shell.theme-minimalist .analysis-report__frame,
+        .shell.theme-minimalist .analysis-metric,
+        .shell.theme-minimalist .analysis-trend,
+        .shell.theme-minimalist .analysis-energy-flow,
+        .shell.theme-minimalist .analysis-table,
+        .shell.theme-minimalist .analysis-balance,
+        .shell.theme-minimalist .analysis-battery-flow,
+        .shell.theme-minimalist .analysis-export-compare,
+        .shell.theme-minimalist .analysis-ranking,
+        .shell.theme-minimalist .analysis-solar-compare,
+        .shell.theme-minimalist .operational-report__trend,
+        .shell.theme-minimalist .operational-report__table { background:#ffffff; border-color:#e2e8f0; }
+        .shell.theme-minimalist .analysis-table__row.is-head { background:#f8fafc; color:#64748b; }
+        .shell.theme-minimalist .analysis-trend__plot,
+        .shell.theme-minimalist .analysis-solar-compare__canvas { background:#ffffff; border-color:#e2e8f0; }
+        .shell.theme-minimalist .analysis-battery-flow__side > div {
+          background:#f1f5f9;
+          border:1px solid #cbd5e1;
+          box-shadow:inset 0 1px 2px rgba(15,23,42,.08);
+        }
+        .shell.theme-minimalist .analysis-gauge > div,
+        .shell.theme-minimalist .analysis-battery-flow__battery { color:#ffffff; }
+        .shell.theme-minimalist .analysis-gauge span,
+        .shell.theme-minimalist .analysis-battery-flow__battery span,
+        .shell.theme-minimalist .analysis-battery-flow__battery small { color:#cbd5e1; }
+        .shell.theme-minimalist .analysis-report__bar i,
+        .shell.theme-minimalist .analysis-ranking i { background:#2563eb; }
+        .shell.theme-minimalist .analysis-trend__tooltip,
+        .shell.theme-minimalist .analysis-solar-compare__tooltip,
+        .shell.theme-minimalist .operational-report__bar .operational-report__tooltip { background:#0f172a; color:#ffffff; border-color:#334155; }
+        .shell.theme-cyberpunk {
+          --card-background-color:#07101d;
+          --primary-text-color:#effcff;
+          --text-primary-color:#06111f;
+          --secondary-text-color:#a9c8d8;
+          --divider-color:rgba(0,229,255,.34);
+          --primary-color:#00e5ff;
+          --heros-panel-text:#effcff;
+          --heros-panel-muted:#a9c8d8;
+          --heros-panel-border:rgba(0,229,255,.42);
+          --heros-panel-surface:#07101d;
+          --heros-panel-surface-strong:#0d1b2d;
+          --heros-panel-accent:#00e5ff;
+          --heros-panel-accent-strong:#ff4de8;
+          color-scheme:dark;
+          font-family:"Rajdhani","Inter","Segoe UI",sans-serif;
+        }
+        .shell.theme-cyberpunk ha-card { background:#07101d; border:1px solid rgba(0,229,255,.48); border-radius:12px; box-shadow:0 0 28px rgba(0,229,255,.12); }
+        .shell.theme-cyberpunk .title-icon { background:linear-gradient(135deg,#00e5ff,#ff4de8); color:#06111f; border-radius:8px; box-shadow:0 0 16px rgba(0,229,255,.3); }
+        .shell.theme-cyberpunk .version-badge { background:#0d1b2d; color:#00e5ff; border-color:rgba(0,229,255,.55); }
+        .shell.theme-cyberpunk .panel-tabs button,
+        .shell.theme-cyberpunk .period-tabs button,
+        .shell.theme-cyberpunk [data-analysis-period],
+        .shell.theme-cyberpunk [data-operational-period],
+        .shell.theme-cyberpunk .chart-overview-toggle,
+        .shell.theme-cyberpunk .download-btn,
+        .shell.theme-cyberpunk .date-nav,
+        .shell.theme-cyberpunk .date-picker__button,
+        .shell.theme-cyberpunk .report-chart-nav button,
+        .shell.theme-cyberpunk .stats-chart-nav button {
+          min-height:32px;
+          border:1px solid rgba(0,229,255,.42);
+          border-radius:7px;
+          background:#0d1b2d;
+          color:#effcff;
+          box-shadow:none;
+        }
+        .shell.theme-cyberpunk .panel-tabs button.active,
+        .shell.theme-cyberpunk .period-tabs button.active,
+        .shell.theme-cyberpunk [data-analysis-period].active,
+        .shell.theme-cyberpunk [data-operational-period].active,
+        .shell.theme-cyberpunk .chart-overview-toggle.is-active,
+        .shell.theme-cyberpunk .download-btn {
+          background:linear-gradient(135deg,#00e5ff,#ff4de8);
+          color:#06111f;
+          border-color:transparent;
+        }
+        .shell.theme-cyberpunk .panel-tabs button:hover,
+        .shell.theme-cyberpunk .panel-tabs button:focus-visible,
+        .shell.theme-cyberpunk .period-tabs button:hover,
+        .shell.theme-cyberpunk .period-tabs button:focus-visible,
+        .shell.theme-cyberpunk .date-nav:hover,
+        .shell.theme-cyberpunk .date-nav:focus-visible,
+        .shell.theme-cyberpunk .date-picker__button:hover,
+        .shell.theme-cyberpunk .date-picker__button:focus-visible { border-color:#00e5ff; box-shadow:0 0 12px rgba(0,229,255,.22); outline:none; }
+        .shell.theme-cyberpunk select,
+        .shell.theme-cyberpunk .date-input,
+        .shell.theme-cyberpunk [data-tariff-date] { background:#0d1b2d; border-color:rgba(0,229,255,.42); color:#effcff; }
+        .shell.theme-cyberpunk .aggregate-card,
+        .shell.theme-cyberpunk .stat-card,
+        .shell.theme-cyberpunk .hero-banner,
+        .shell.theme-cyberpunk .data-source-banner,
+        .shell.theme-cyberpunk .aggregate-table-panel,
+        .shell.theme-cyberpunk .analysis-report__card,
+        .shell.theme-cyberpunk .analysis-report__frame,
+        .shell.theme-cyberpunk .analysis-metric,
+        .shell.theme-cyberpunk .analysis-trend,
+        .shell.theme-cyberpunk .analysis-energy-flow,
+        .shell.theme-cyberpunk .analysis-table,
+        .shell.theme-cyberpunk .analysis-balance,
+        .shell.theme-cyberpunk .analysis-battery-flow,
+        .shell.theme-cyberpunk .analysis-export-compare,
+        .shell.theme-cyberpunk .analysis-ranking,
+        .shell.theme-cyberpunk .analysis-solar-compare,
+        .shell.theme-cyberpunk .operational-report__trend,
+        .shell.theme-cyberpunk .operational-report__table { background:#07101d; border-color:rgba(0,229,255,.34); box-shadow:none; }
+        .shell.theme-cyberpunk .analysis-table__row.is-head,
+        .shell.theme-cyberpunk .operational-report__row--head { background:#0d2438; color:#00e5ff; }
         .title-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
         .title-icon {
           width:34px; height:34px; border-radius:12px; display:flex; align-items:center; justify-content:center;
@@ -5203,7 +5412,7 @@ const showLive = options.showLive !== false;
         .analysis-battery-flow__battery { display:grid; place-items:center; gap:4px; min-height:130px; padding:14px; border:2px solid #60a5fa; border-radius:18px; background:linear-gradient(180deg,rgba(96,165,250,.18),rgba(7,20,35,.7)); text-align:center; }
         .analysis-battery-flow__battery span,.analysis-battery-flow__battery small { color:var(--secondary-text-color,#9ab2c7); font-size:.72rem; font-weight:750; } .analysis-battery-flow__battery strong { font-size:1.2rem; }
         .analysis-export-compare { display:grid; gap:4px; width:100%; max-width:100%; box-sizing:border-box; min-width:0; overflow-x:auto; padding:10px; border:1px solid rgba(0,229,255,.3); border-radius:14px; background:rgba(7,20,35,.55); } .analysis-export-compare__label { color:var(--secondary-text-color,#9ab2c7); font-size:.82rem; font-weight:700; padding-bottom:4px; } .analysis-export-compare__head,.analysis-export-compare__row { display:grid; grid-template-columns:32px minmax(150px,1.3fr) minmax(110px,1fr) 82px minmax(110px,1fr) 82px; gap:8px; align-items:center; width:100%; min-width:0; } .analysis-export-compare__head { color:var(--secondary-text-color,#9ab2c7); font-size:.7rem; font-weight:800; text-transform:uppercase; } .analysis-export-compare__row { min-height:28px; } .analysis-export-compare__row b { color:var(--heros-panel-accent,#00e5ff); } .analysis-export-compare__row span,.analysis-export-compare__row small { white-space:nowrap; min-width:0; font-size:.82rem; } .analysis-export-compare__row small { display:block; color:var(--secondary-text-color,#9ab2c7); font-size:.68rem; } .analysis-export-compare__row i { display:block; min-width:0; max-width:100%; height:10px; border-radius:99px; } .analysis-export-compare__row i.is-battery { background:linear-gradient(90deg,#00d9ff,#7c8cff); } .analysis-export-compare__row i.is-solar { background:linear-gradient(90deg,#ffd13c,#ff8f1f); } .analysis-export-compare__row strong { text-align:right; white-space:nowrap; }
-        .analysis-ranking { display:grid; gap:3px; padding:8px 10px; border:1px solid rgba(0,229,255,.3); border-radius:14px; background:rgba(7,20,35,.55); } .analysis-ranking__label { display:block; grid-column:1 / -1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--secondary-text-color,#9ab2c7); font-size:.82rem; font-weight:600; padding-bottom:3px; } .analysis-ranking > div { display:grid; grid-template-columns:32px 94px minmax(110px,2fr) 90px; gap:8px; align-items:center; min-height:20px; } .analysis-ranking > div:has(small) { grid-template-columns:32px minmax(100px,.8fr) 94px minmax(110px,2fr) 90px; } .analysis-ranking b { color:var(--heros-panel-accent,#00e5ff); white-space:nowrap; font-size:.82rem; } .analysis-ranking span, .analysis-ranking small { font-size:.88rem; white-space:nowrap; color:var(--secondary-text-color,#9ab2c7); } .analysis-ranking small { text-align:left; } .analysis-ranking i { display:block; height:12px; border-radius:99px; background:linear-gradient(90deg,#00d9ff,#ff4de8); } .analysis-ranking strong { text-align:right; } .analysis-compare-line { position:relative; height:54px; margin:12px 0; border-radius:99px; background:rgba(255,255,255,.09); overflow:visible; } .analysis-compare-line i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#ffd13c,#ff8f1f); } .analysis-compare-line b,.analysis-compare-line span { position:absolute; top:62px; font-size:.75rem; } .analysis-compare-line b { left:0; } .analysis-compare-line span { left:calc(50% - 22px); } .analysis-compare-line em { position:absolute; top:-7px; width:3px; height:68px; background:#fff; } .analysis-solar-compare { display:flex; align-items:flex-end; gap:10px; min-height:220px; padding:18px 8px; border:1px solid rgba(0,229,255,.3); border-radius:14px; background:rgba(7,20,35,.55); overflow-x:auto; } .analysis-solar-compare > div { display:grid; min-width:52px; flex:1; gap:8px; text-align:center; } .analysis-solar-compare strong { font-size:.67rem; } .analysis-solar-compare span { height:160px; display:flex; align-items:flex-end; justify-content:center; gap:4px; } .analysis-solar-compare i { width:13px; min-height:3px; border-radius:4px 4px 0 0; } .analysis-solar-compare .is-solar { background:#ffd13c; } .analysis-solar-compare .is-local { background:#40c982; } .analysis-solar-compare .is-export { background:#d72ab9; }
+        .analysis-ranking { display:grid; gap:3px; padding:8px 10px; border:1px solid rgba(0,229,255,.3); border-radius:14px; background:rgba(7,20,35,.55); } .analysis-ranking__label { display:block; grid-column:1 / -1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--secondary-text-color,#9ab2c7); font-size:.82rem; font-weight:600; padding-bottom:3px; } .analysis-ranking > div { display:grid; grid-template-columns:32px 94px minmax(110px,2fr) 90px; gap:8px; align-items:center; min-height:20px; } .analysis-ranking > div:has(small) { grid-template-columns:32px minmax(100px,.8fr) 94px minmax(110px,2fr) 90px; } .analysis-ranking b { color:var(--heros-panel-accent,#00e5ff); white-space:nowrap; font-size:.82rem; } .analysis-ranking span, .analysis-ranking small { font-size:.88rem; white-space:nowrap; color:var(--secondary-text-color,#9ab2c7); } .analysis-ranking small { text-align:left; } .analysis-ranking i { display:block; height:12px; border-radius:99px; background:linear-gradient(90deg,#00d9ff,#ff4de8); } .analysis-ranking strong { text-align:right; } .financial-report__table { gap:0; overflow-x:auto; } .financial-report__table > div { min-width:520px; grid-template-columns:34px minmax(110px,1fr) 95px 95px 95px; } .financial-report__table .analysis-ranking__head { padding:6px 0; color:var(--secondary-text-color,#9ab2c7); font-size:.75rem; font-weight:800; } .financial-report__table .analysis-ranking__row { padding:4px 0; border-top:1px solid rgba(0,229,255,.12); } .financial-report__table .analysis-ranking__row span:nth-of-type(n+2), .financial-report__table .analysis-ranking__row strong { text-align:right; } .financial-report__table .analysis-ranking__row span { font-size:.82rem; } .financial-report__table .analysis-ranking__head span { text-align:right; } .financial-report__table .analysis-ranking__head span:first-child { text-align:left; } .analysis-compare-line { position:relative; height:54px; margin:12px 0; border-radius:99px; background:rgba(255,255,255,.09); overflow:visible; } .analysis-compare-line i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#ffd13c,#ff8f1f); } .analysis-compare-line b,.analysis-compare-line span { position:absolute; top:62px; font-size:.75rem; } .analysis-compare-line b { left:0; } .analysis-compare-line span { left:calc(50% - 22px); } .analysis-compare-line em { position:absolute; top:-7px; width:3px; height:68px; background:#fff; } .analysis-solar-compare { display:flex; align-items:flex-end; gap:10px; min-height:220px; padding:18px 8px; border:1px solid rgba(0,229,255,.3); border-radius:14px; background:rgba(7,20,35,.55); overflow-x:auto; } .analysis-solar-compare > div { display:grid; min-width:52px; flex:1; gap:8px; text-align:center; } .analysis-solar-compare strong { font-size:.67rem; } .analysis-solar-compare span { height:160px; display:flex; align-items:flex-end; justify-content:center; gap:4px; } .analysis-solar-compare i { width:13px; min-height:3px; border-radius:4px 4px 0 0; } .analysis-solar-compare .is-solar { background:#ffd13c; } .analysis-solar-compare .is-local { background:#40c982; } .analysis-solar-compare .is-export { background:#d72ab9; }
         .analysis-solar-compare { position:relative; isolation:isolate; display:flex; align-items:flex-start; gap:8px; min-height:180px; padding:24px 8px 22px 74px; border:1px solid rgba(0,229,255,.3); border-radius:14px; background:rgba(7,20,35,.55); overflow-x:auto; overflow-y:hidden; }
         .analysis-solar-compare__canvas { position:relative; z-index:1; display:grid !important; grid-template-columns:repeat(var(--analysis-solar-compare-days, 1), 90px); grid-template-rows:150px auto; gap:8px; flex:none; width:max(calc(100% - 8px), var(--analysis-solar-compare-width, 0px)); min-width:max(calc(100% - 8px), var(--analysis-solar-compare-width, 0px)); min-height:150px; } .analysis-solar-compare__canvas::before { content:""; position:absolute; z-index:0; inset:0 0 auto; height:150px; box-sizing:border-box; border-bottom:1px solid rgba(0,229,255,.26); background:repeating-linear-gradient(to bottom,rgba(0,229,255,.16) 0,rgba(0,229,255,.16) 1px,transparent 1px,transparent 37.5px); pointer-events:none; } .analysis-solar-compare__y-title { position:absolute; z-index:2; left:8px; top:24px; width:12px; height:150px; display:flex; align-items:center; justify-content:center; writing-mode:vertical-rl; transform:rotate(180deg); color:var(--secondary-text-color,#9ab2c7); font-size:.66rem; font-weight:800; white-space:nowrap; } .analysis-solar-compare__x-title { position:absolute; z-index:2; left:74px; right:8px; top:210px; bottom:auto; color:var(--secondary-text-color,#9ab2c7); font-size:.75rem; font-weight:800; line-height:1; text-align:center; } .analysis-solar-compare__axis { position:absolute; z-index:2; left:28px; top:24px; bottom:auto; width:38px; height:150px; display:flex; flex-direction:column; justify-content:space-between; color:var(--secondary-text-color,#9ab2c7); font-size:.66rem; font-weight:800; text-align:right; pointer-events:none; }
         .analysis-solar-compare__canvas > .analysis-solar-compare__day { position:relative; z-index:1; display:grid; grid-template-rows:150px auto; min-width:90px; width:90px; gap:7px; text-align:center; outline:none; }
@@ -6086,12 +6295,79 @@ const showLive = options.showLive !== false;
         /* The Power and Statistical Diagram use one visible frame, axis domain, and legend text scale. */
         .legend-chip,.analysis-chart-legend { font-size:.875rem; }
         .stats-diagram--chart { margin-left:0; margin-right:0; }
+        /* Minimalist theme contract: report-card controls use the same
+           compact rectangular controls as the host panel. */
+        .minimalist-report-surface .date-picker__button,
+        .minimalist-report-surface .panel-tabs button,
+        .minimalist-report-surface .period-tabs button,
+        .minimalist-report-surface .chart-overview-toggle,
+        .minimalist-report-surface .chart-tools--date [data-tariff-period],
+        .minimalist-report-surface .operational-report [data-operational-period] {
+          box-sizing:border-box;
+          min-height:34px;
+          height:34px;
+          padding:0 10px;
+          border:1px solid #cbd5e1;
+          border-radius:6px;
+          background:#fff !important;
+          color:#0f172a !important;
+          box-shadow:none;
+          font-size:12px;
+          line-height:32px;
+        }
+        .minimalist-report-surface .panel-tabs button.active,
+        .minimalist-report-surface .period-tabs button.active,
+        .minimalist-report-surface .chart-tools--date [data-tariff-period].active,
+        .minimalist-report-surface .operational-report [data-operational-period].active {
+          border-color:#94a3b8 !important;
+          background:#cbd5e1 !important;
+          color:#0f172a !important;
+          box-shadow:none !important;
+          font-weight:800 !important;
+        }
+        .minimalist-report-surface .date-picker__icon { color:#64748b; }
+        .minimalist-report-surface .chart-tools--date .date-picker__button {
+          background:#ffffff !important;
+          background-color:#ffffff !important;
+          background-image:none !important;
+          color:#0f172a !important;
+          border-color:#cbd5e1 !important;
+          border-radius:6px !important;
+          box-shadow:none !important;
+        }
+        .minimalist-report-surface .parameter-group--date .date-picker__button {
+          background:#ffffff !important;
+          background-color:#ffffff !important;
+          background-image:none !important;
+          color:#0f172a !important;
+          border-color:#cbd5e1 !important;
+        }
+        .minimalist-report-surface .chart-header,
+        .minimalist-report-surface .analysis-report,
+        .minimalist-report-surface .operational-report,
+        .minimalist-report-surface .mode-report { color:#0f172a; }
+        .minimalist-report-surface .chart-legend .legend-group-label,
+        .minimalist-report-surface .chart-legend .legend-chip {
+          color:#334155 !important;
+          text-shadow:none !important;
+        }
+        .minimalist-report-surface .chart-legend .legend-chip {
+          background:#f1f5f9 !important;
+          border:1px solid #cbd5e1 !important;
+          box-shadow:none !important;
+        }
+        .minimalist-report-surface .tick-right,
+        .minimalist-report-surface .axis-title-soc {
+          fill:#15803d !important;
+          font-weight:800 !important;
+        }
+        .ring-label { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.15; }
 </style>
       <ha-card class="report-card">
-        <div class="shell">
+        <div class="shell minimalist-report-surface theme-${this._config?.theme === "minimalist" ? "minimalist" : "default"}">
           <div class="title-row">
             <div class="title-icon">&#9889;</div>
-            <div class="title">HEROS Report</div>
+            <div class="title">Reports</div>
                 ${this._config?.show_version_numbers !== false ? `<div class="version-badge">v${HEROS_REPORT_CARD_BUILD}</div>` : ""}
           </div>
           <div data-report-body>

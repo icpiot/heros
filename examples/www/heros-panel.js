@@ -1,14 +1,15 @@
-import "./heros-policy-card.js?v=009";
-import "./heros-debug-card.js?v=058";
+import "./heros-policy-card.js?v=011";
+import "./heros-debug-card.js?v=059";
+import "./heros-report-card.js?v=706";
 
-const HEROS_PANEL_BUILD = "769";
-const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=635";
+const HEROS_PANEL_BUILD = "926";
+const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=706";
 const HEROS_PANEL_TAG = `heros-panel-${HEROS_PANEL_BUILD}`;
 const HEROS_PANEL_THEME_KEY = "heros.panel.theme";
 const HEROS_PANEL_PAGE_KEY = "heros.panel.page";
 const HEROS_PANEL_PAGE_FRAGMENT_KEY = "heros_page";
 const HEROS_PANEL_BATTERY_KEY = "heros.panel.battery";
-const HEROS_PANEL_BATTERY_PREFERENCE_KEY = "heros.panel.battery.preference.v2";
+const HEROS_PANEL_BATTERY_PREFERENCE_KEY = "heros.panel.battery.preference.v4";
 const HEROS_PANEL_DEBUG_KEY = "heros.panel.debug";
 const HEROS_PANEL_SHOW_VERSIONS_KEY = "heros.panel.show_versions";
 const HEROS_PANEL_ENTRY_ID_KEY = "heros.panel.entry_id";
@@ -52,6 +53,7 @@ const HEROS_PANEL_THEMES = [
   { value: "sunrise", label: "Sunrise" },
   { value: "neon", label: "Neon" },
   { value: "cyberpunk", label: "Cyberpunk" },
+  { value: "minimalist", label: "Minimalist" },
 ];
 
 const HEROS_FALLBACK_HOSTS = new WeakSet();
@@ -73,50 +75,52 @@ const HEROS_REPORT_CATALOG = [
   {
     category: "Operational",
     items: [
-      { label: "Overview", built: true },
-      { label: "Operational", built: true },
-      { label: "Daily Detail", built: true },
-      { label: "Trend", built: true },
-      { label: "Battery Compare", built: true },
-      { label: "Battery Balance", built: true },
-      { label: "Battery Flow", built: true },
-      { label: "Peak Demand", built: true },
-      { label: "Mode Timeline", built: true },
+      { label: "Overview", built: true, view: "power" },
+      { label: "Operational", built: true, view: "operational" },
+      { label: "Daily Detail", built: true, view: "detail" },
+      { label: "Trend", built: true, view: "trend" },
+      { label: "Battery Compare", built: true, view: "battery-compare" },
+      { label: "Battery Balance", built: true, view: "battery-balance" },
+      { label: "Battery Flow", built: true, view: "battery-flow" },
+      { label: "Peak Demand", built: true, view: "peak-demand" },
+      { label: "Mode Timeline", built: true, view: "mode" },
     ],
   },
   {
     category: "Financial",
     items: [
-      { label: "Profit", built: false },
-      { label: "Cost Summary", built: false },
-      { label: "Energy Flow Value", built: true },
-      { label: "Savings", built: false },
-      { label: "Load Shifting", built: false },
-      { label: "Tariff Impact", built: true },
-      { label: "Tariff vs Solar", built: false },
-      { label: "Export Revenue", built: false },
-      { label: "Self-Consumption Value", built: false },
+      { label: "Profit", built: true, view: "profit" },
+      { label: "Cost Summary", built: true, view: "cost-summary" },
+      { label: "Energy Flow Value", built: true, view: "energy-flow" },
+      { label: "Savings", built: true, view: "savings" },
+      { label: "Load Shifting", built: true, view: "load-shifting" },
+      { label: "Tariff Impact", built: true, view: "tariff" },
+      { label: "Tariff vs Solar", built: true, view: "tariff-vs-solar" },
+      { label: "Export Revenue", built: true, view: "export-revenue" },
+      { label: "Self-Consumption Value", built: true, view: "self-consumption-value" },
     ],
   },
   {
     category: "Solar",
     items: [
-      { label: "Solar Capture", built: true },
-      { label: "Forecast Accuracy", built: true },
-      { label: "Self-Sufficiency", built: true },
-      { label: "Predicted vs Actual", built: true },
-      { label: "Solar Compare", built: true },
+      { label: "Solar Capture", built: true, view: "solar-capture" },
+      { label: "Forecast Accuracy", built: true, view: "forecast-accuracy" },
+      { label: "Self-Sufficiency", built: true, view: "self-sufficiency" },
+      { label: "Predicted vs Actual", built: true, view: "predicted-actual" },
+      { label: "Solar Compare", built: true, view: "solar-compare" },
     ],
   },
   {
     category: "Diagnostics",
     items: [
-      { label: "Scope Health", built: true },
-      { label: "Export / Data", built: true },
-      { label: "Period Compare", built: true },
-      { label: "Seasonal Trend", built: true },
-      { label: "Anomaly", built: true },
-      { label: "Exception", built: true },
+      { label: "Scope Health", built: true, view: "scope-health" },
+      { label: "Export / Data", built: true, view: "export-data" },
+      { label: "Period Compare", built: true, view: "day-compare" },
+      { label: "Battery Export", built: true, view: "battery-export" },
+      { label: "Export Compare", built: true, view: "export-compare" },
+      { label: "Seasonal Trend", built: true, view: "seasonal-trend" },
+      { label: "Anomaly", built: true, view: "anomaly" },
+      { label: "Exception", built: true, view: "exception" },
     ],
   },
 ];
@@ -583,7 +587,9 @@ class HerosPanel extends HTMLElement {
     this._pendingBatterySelection = "";
     this._batterySelectionPreference = this._loadBatterySelection();
     this._initialBatterySelectionApplied = false;
+    this._batterySelectionCorrectionInFlight = false;
     this._forecastSelectorHoldUntil = 0;
+    this._archiveDatePickerHoldUntil = 0;
     this._forecastSelectorOpenKey = "";
     this._forecastSaveStatus = null;
     this._forecastSetupDirty = false;
@@ -622,6 +628,8 @@ class HerosPanel extends HTMLElement {
     this._roiDraftDirty = false;
     this._roiSaveInFlight = false;
     this._roiForceRenderAfterLoad = false;
+    this._archiveDateDraft = { scope: "", start: "", end: "" };
+    this._archiveDownloadInFlight = null;
     this._policyChargeFileLoadKey = "";
     this._policyChargeFileLoading = false;
     this._policyChargeFileScheduleSet = null;
@@ -760,7 +768,9 @@ class HerosPanel extends HTMLElement {
       || Boolean(activeElement?.closest?.(".roi-settings-card"))
       || this._isPricingEditorHeld()
       || this._isForecastInteractionTarget(activeElement)
-      || this._isForecastSelectorHeld();
+      || this._isForecastSelectorHeld()
+      || this._isArchiveDatePickerHeld()
+      || Boolean(this._archiveDownloadInFlight);
   }
 
   _holdRenderWindow(duration = HEROS_INTERACTION_RENDER_HOLD_MS) {
@@ -777,12 +787,25 @@ class HerosPanel extends HTMLElement {
     this._holdRenderWindow(duration);
   }
 
+  _holdArchiveDatePickerWindow(duration = 15000) {
+    this._archiveDatePickerHoldUntil = Math.max(this._archiveDatePickerHoldUntil, Date.now() + duration);
+    this._holdRenderWindow(duration);
+  }
+
+  _isArchiveDatePickerHeld() {
+    if (Date.now() < this._archiveDatePickerHoldUntil) {
+      return true;
+    }
+    const activeElement = this.shadowRoot?.activeElement || this.shadowRoot?.ownerDocument?.activeElement;
+    return Boolean(activeElement?.matches?.("[data-archive-start], [data-archive-end]")
+      || activeElement?.closest?.("[data-archive-start], [data-archive-end]"));
+  }
+
   _openForecastSelector(key) {
     this._forecastSelectorOpenKey = String(key || "");
     this._holdForecastWindow();
     this._render();
   }
-
   _closeForecastSelector() {
     this._forecastSelectorOpenKey = "";
     this._holdForecastWindow(600);
@@ -1054,8 +1077,8 @@ class HerosPanel extends HTMLElement {
 
   _loadBatterySelection() {
     try {
-      localStorage.removeItem(HEROS_PANEL_BATTERY_KEY);
-      return String(localStorage.getItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY) || "").trim();
+      const stored = String(localStorage.getItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY) || "").trim();
+      return stored;
     } catch (error) {
       return "";
     }
@@ -1064,23 +1087,35 @@ class HerosPanel extends HTMLElement {
   _saveBatterySelection(option) {
     try {
       localStorage.removeItem(HEROS_PANEL_BATTERY_KEY);
-      localStorage.setItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY, String(option || "").trim());
+      localStorage.removeItem("heros.panel.battery.preference.v2");
+      const value = String(option || "").trim();
+      if (value) {
+        localStorage.setItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY, value);
+      } else {
+        localStorage.removeItem(HEROS_PANEL_BATTERY_PREFERENCE_KEY);
+      }
     } catch (error) {}
   }
 
   _applyInitialBatterySelectionPreference() {
-    if (this._initialBatterySelectionApplied || !this._hass || this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2") return;
+    if (!this._hass) return;
+    if (this._initialBatterySelectionApplied) return;
     const selector = this._hass.states?.[this._settingsTargetId()];
     const options = this._sharedBatterySelectorOptions(selector);
     if (!options.includes("All systems")) return;
+    this._initialBatterySelectionApplied = true;
     const saved = String(this._batterySelectionPreference || "").trim();
     const desired = options.includes(saved) ? saved : "All systems";
-    this._initialBatterySelectionApplied = true;
-    if (String(selector?.state || "").trim() === desired) return;
+    const current = String(selector?.state || "").trim();
+    if (current === desired) return;
     this._pendingBatterySelection = desired;
     this._holdBatterySelectorWindow(10000);
     this._syncEmbeddedSelectionStateInPlace();
-    void this._selectSharedBatteryOption(desired);
+    this._updateSharedBatterySelectorInPlace();
+    this._batterySelectionCorrectionInFlight = true;
+    void this._selectSharedBatteryOption(desired).finally(() => {
+      this._batterySelectionCorrectionInFlight = false;
+    });
   }
   _syncPageUrl(page) {
     try {
@@ -3711,23 +3746,32 @@ class HerosPanel extends HTMLElement {
       return defaults;
     }
     const form = {};
-    this.shadowRoot.querySelectorAll("[data-pricing-group-field]").forEach((field) => {
+    // There is a separate legacy pricing draft elsewhere in the panel. Read
+    // only the active Electricity Rates editor so its hidden fields cannot
+    // overwrite the visible group selection (for example Fixed -> Dynamic).
+    const editor = this.shadowRoot.querySelector(".electricity-group-editor");
+    (editor || this.shadowRoot).querySelectorAll("[data-pricing-group-field]").forEach((field) => {
       const key = field.dataset.pricingGroupField;
       if (key) {
         form[key] = String(field.value || "");
       }
     });
+    const draftGroupId = String(this._pricingUiGroupDraft?.group_id || "").trim();
+    const explicitPricingType = this.shadowRoot.querySelector(".electricity-group-editor [data-pricing-group-field=\"pricing_type\"]")?.value;
     return {
       ...defaults,
       ...form,
-      group_id: String(form.group_id || "").trim() || this._generateRuleId(),
+      group_id: String(form.group_id || draftGroupId || "").trim() || this._generateRuleId(),
       label: String(form.label || "").trim() || `Rates from ${form.effective_start_date || defaults.effective_start_date}`,
       provider: String(form.provider || "").trim(),
       effective_start_date: this._normalizePricingDate(form.effective_start_date || defaults.effective_start_date),
-      pricing_type: String(form.pricing_type || this._pricingGroupDraftType() || defaults.pricing_type).trim().toLowerCase(),
+      pricing_type: String(explicitPricingType || form.pricing_type || this._pricingGroupDraftType() || defaults.pricing_type).trim().toLowerCase(),
       daily_connection_charge: String(form.daily_connection_charge || "").trim(),
       subscription_fee: String(form.subscription_fee || "").trim(),
       subscription_period: String(form.subscription_period || "monthly").trim(),
+      dynamic_import_price_entity: String(form.dynamic_import_price_entity || "").trim(),
+      dynamic_next_import_price_entity: String(form.dynamic_next_import_price_entity || "").trim(),
+      dynamic_export_price_entity: String(form.dynamic_export_price_entity || "").trim(),
       other_charges: String(form.other_charges || "").trim(),
       notes: String(form.notes || "").trim(),
       rules: [],
@@ -3761,10 +3805,11 @@ class HerosPanel extends HTMLElement {
     const dayTypes = Array.from(this.shadowRoot.querySelectorAll(daySelector))
       .map((field) => String(field.dataset.pricingRuleDay || ""))
       .filter(Boolean);
+    const draftRuleId = String(this._pricingUiRuleDrafts?.[normalizedRecordType]?.rule_id || this._pricingUiRuleDraft?.rule_id || "").trim();
     return {
       ...defaults,
       ...form,
-      rule_id: String(form.rule_id || "").trim() || this._generateRuleId(),
+      rule_id: String(form.rule_id || draftRuleId || "").trim() || this._generateRuleId(),
       label: String(form.label || "").trim() || "Unnamed rate window",
       day_types: dayTypes.length ? dayTypes : defaults.day_types,
       start_time: String(form.start_time || defaults.start_time).trim(),
@@ -4121,7 +4166,7 @@ class HerosPanel extends HTMLElement {
         row[key] = String(field.value || "").trim();
       }
     });
-    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-policy-charge-row-day], [data-custom-buy-description-input]:checked"))
+    const dayTypes = Array.from(this.shadowRoot.querySelectorAll("[data-policy-charge-row-day], [data-custom-buy-description-input]"))
       .map((field) => String(field.dataset.policyChargeRowDay || ""))
       .filter(Boolean);
     return {
@@ -4408,10 +4453,17 @@ class HerosPanel extends HTMLElement {
   }
 
   async _handlePricingUiSaveGroup(updateActive = false) {
+    if (this._pricingUiSaveInFlight) return;
     const model = this._loadPricingUi();
     const previousModel = JSON.parse(JSON.stringify(model));
     const activeGroup = this._pricingUiActiveGroup(model);
     const group = this._readPricingUiGroupForm();
+    if (this._pricingUiForcedGroupType) {
+      group.pricing_type = this._pricingUiForcedGroupType;
+    }
+    if (!String(group.group_id || "").trim()) {
+      group.group_id = String(activeGroup?.group_id || this._pricingUiGroupDraft?.group_id || this._generateRuleId()).trim();
+    }
     if (updateActive && activeGroup?.group_id) {
       group.group_id = String(activeGroup.group_id || "");
       group.effective_start_date = String(activeGroup.effective_start_date || "");
@@ -4433,6 +4485,7 @@ class HerosPanel extends HTMLElement {
       this._render();
       return;
     }
+    this._pricingUiSaveInFlight = true;
     const nextGroups = Array.isArray(model.groups) ? [...model.groups] : [];
     const existingIndex = nextGroups.findIndex((item) => String(item.group_id || "") === String(group.group_id || ""));
     if (existingIndex >= 0) {
@@ -4449,6 +4502,7 @@ class HerosPanel extends HTMLElement {
     model.warning = "";
     this._savePricingUi(model);
     this._pricingUiGroupDraft = {};
+    this._pricingUiForcedGroupType = "";
     this._pricingGroupEditorOpen = false;
     this._clearPricingEditorUrl();
     this._pricingRecordEditorMode = "";
@@ -4475,7 +4529,7 @@ class HerosPanel extends HTMLElement {
   _handlePricingUiStartGroup() {
     const model = this._loadPricingUi();
     const activeGroup = this._pricingUiActiveGroup(model);
-    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup, group_id: "", label: "", provider: "", effective_start_date: "", rules: [] } : { ...this._pricingUiGroupDefaults(), group_id: "", rules: [] };
+    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup, group_id: this._generateRuleId(), label: "", provider: "", effective_start_date: "", rules: [] } : { ...this._pricingUiGroupDefaults(), group_id: this._generateRuleId(), rules: [] };
     this._pricingGroupEditorOpen = true;
     this._pricingRecordEditorMode = "";
     this._setPricingEditorUrl("modify");
@@ -4483,11 +4537,25 @@ class HerosPanel extends HTMLElement {
     this._render();
   }
 
+  _handlePricingUiNewGroup() {
+    this._handlePricingUiStartGroup();
+    this._pricingUiGroupDraft.group_id = this._generateRuleId();
+    return this._pricingUiGroupDraft;
+  }
+
   _handlePricingUiAddGroup() {
     return this._handlePricingUiSaveGroup(false);
   }
 
   _handlePricingUiUpdateGroup() {
+    const field = this.shadowRoot?.querySelector('.electricity-group-editor [data-pricing-group-field="pricing_type"]');
+    if (field) {
+      this._pricingUiForcedGroupType = String(field.value || "fixed").toLowerCase() === "dynamic" ? "dynamic" : "fixed";
+      this._pricingUiGroupDraft = {
+        ...(this._pricingUiGroupDraft || {}),
+        pricing_type: String(field.value || "fixed").toLowerCase() === "dynamic" ? "dynamic" : "fixed",
+      };
+    }
     return this._handlePricingUiSaveGroup(true);
   }
 
@@ -4509,16 +4577,22 @@ class HerosPanel extends HTMLElement {
 
   _handlePricingUiModifyGroup(groupId = "") {
     const model = this._loadPricingUi();
-    if (groupId) {
-      model.activeGroupId = String(groupId);
+    const requestedGroupId = String(groupId || "").trim();
+    const selectedGroup = requestedGroupId
+      ? (Array.isArray(model.groups) ? model.groups : []).find((item) => String(item?.group_id || "") === requestedGroupId)
+      : null;
+    if (requestedGroupId) {
+      model.activeGroupId = requestedGroupId;
     }
-    const activeGroup = this._pricingUiActiveGroup(model);
+    const activeGroup = selectedGroup || this._pricingUiActiveGroup(model);
     if (activeGroup?.group_id) {
       model.activeGroupId = String(activeGroup.group_id || "");
     }
     model.warning = "";
     this._savePricingUi(model);
-    this._pricingUiGroupDraft = activeGroup ? { ...activeGroup } : {};
+    this._pricingUiGroupDraft = activeGroup
+      ? { ...activeGroup, group_id: String(requestedGroupId || activeGroup.group_id || "") }
+      : {};
     if (activeGroup?.pricing_type) {
       this._savePricingGroupDraftType(activeGroup.pricing_type);
     }
@@ -4650,6 +4724,9 @@ class HerosPanel extends HTMLElement {
       return;
     }
     const rule = this._readPricingUiRuleForm(recordType);
+    if (!String(rule.rule_id || "").trim()) {
+      rule.rule_id = String(this._pricingUiRuleDrafts?.[rule.record_type]?.rule_id || this._pricingUiRuleDraft?.rule_id || this._generateRuleId()).trim();
+    }
     const warning = this._pricingUiValidationForRule(group, rule, rule.rule_id);
     if (warning) {
       model.warning = warning;
@@ -4734,8 +4811,13 @@ class HerosPanel extends HTMLElement {
       label: group.label,
       provider: group.provider,
       effective_start_date: this._normalizePricingDate(group.effective_start_date),
-      pricing_type: group.pricing_type,
+      pricing_type: String(this.shadowRoot?.querySelector('.electricity-group-editor [data-pricing-group-field="pricing_type"]')?.value || group.pricing_type || "fixed").toLowerCase(),
       daily_connection_charge: String(group.daily_connection_charge ?? "").trim() === "" ? undefined : Number(group.daily_connection_charge),
+      subscription_fee: String(group.subscription_fee ?? "").trim() === "" ? undefined : Number(group.subscription_fee),
+      subscription_period: group.subscription_period || "monthly",
+      dynamic_import_price_entity: group.dynamic_import_price_entity || "",
+      dynamic_next_import_price_entity: group.dynamic_next_import_price_entity || "",
+      dynamic_export_price_entity: group.dynamic_export_price_entity || "",
       other_charges: group.other_charges,
       notes: group.notes,
     }).catch((error) => {
@@ -5904,7 +5986,7 @@ class HerosPanel extends HTMLElement {
     const policyArtifacts = [
       {
         label: "Policy card source",
-        value: `<a href="/local/community/heros/heros-policy-card.js?v=008" target="_blank" rel="noreferrer">heros-policy-card.js</a>`,
+        value: `<a href="/local/community/heros/heros-policy-card.js?v=010" target="_blank" rel="noreferrer">heros-policy-card.js</a>`,
       },
       {
         label: "Older built policy card",
@@ -6015,48 +6097,6 @@ class HerosPanel extends HTMLElement {
 
           <article class="panel-card panel-card--wide">
             <div class="panel-card__header">
-              <h2>Discharge</h2>
-              <span>Discharge policy and timing</span>
-            </div>
-            <p>
-              Discharge control uses the selected execution cycle, discharge cutoff SOC, discharge
-              power, and scheduled start/end windows.
-            </p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(dischargeItems)}
-            </ul>
-          </article>
-
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Feed-in</h2>
-              <span>Export timing</span>
-            </div>
-            <p>
-              Feed-in settings control export behavior, including the feed-in cutoff SOC and the
-              configured feed-in time window.
-            </p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(feedinItems)}
-            </ul>
-          </article>
-
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
-              <h2>Off-grid</h2>
-              <span>Reserve protection</span>
-            </div>
-            <p>
-              Off-grid reserve settings keep battery capacity protected and define the wake-up and
-              cut-off SOC levels used by the inverter.
-            </p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList(offgridItems)}
-            </ul>
-          </article>
-
-          <article class="panel-card panel-card--wide">
-            <div class="panel-card__header">
               <h2>Battery Policy Editor</h2>
               <span>Modify and add settings</span>
             </div>
@@ -6094,7 +6134,9 @@ class HerosPanel extends HTMLElement {
       const items = group.items
         .map((item) => {
           const label = `${item.label}${item.built ? "" : " TBB"}`;
-          return `<span class="report-catalog__item${item.built ? " is-built" : " is-tbb"}">${this._escapeHtml(label)}</span>`;
+          return item.built
+            ? `<button type="button" class="report-catalog__item is-built" data-report-view="${this._escapeHtml(item.view || "")}">${this._escapeHtml(label)}</button>`
+            : `<span class="report-catalog__item is-tbb">${this._escapeHtml(label)}</span>`;
         })
         .join("");
       return `
@@ -6111,241 +6153,20 @@ class HerosPanel extends HTMLElement {
   }
 
   _reportPage() {
-    // Legacy contract marker: <h2>Archive Snapshot</h2>
-    // Legacy report contract markers: <h2>Archive Scope Coverage</h2> <h2>Archive Status</h2> <h2>Storage Strategy</h2> No archive rows are stored for this scope yet. Open Scope CSV Open History JSON Payload source Payload storage Diagram source Stored provider payload Provider payload keys Provider payload fields Stored raw provider subset Archive health Archive age Archive freshness Archive lag Archive completeness Known archive days Archive coverage Archive range All systems + battery scopes Report Context Archive Health Archive Files Backfill
-    const selector = this._settingsTargetState();
-    const reporting = selector?.attributes?.reporting || {};
-    const reportingMeta = reporting?.meta && typeof reporting.meta === "object" ? reporting.meta : {};
-    const history = selector?.attributes?.history && typeof selector.attributes.history === "object"
-      ? selector.attributes.history
-      : reportingMeta.history && typeof reportingMeta.history === "object"
-        ? reportingMeta.history
-        : {};
-    const archiveStatus = String(history.status || "").trim()
-      || String(this._hass?.states?.[this._settingsTargetId()]?.attributes?.history_status || "").trim()
-      || "Archive status not reported yet";
-    const scopeSummary = history.scope_summary && typeof history.scope_summary === "object"
-      ? history.scope_summary
-      : {};
-    const storedRowCount = Number(scopeSummary.record_count);
-    const missingRowCount = Number(scopeSummary.missing_count);
-    const hasStoredRows = Number.isFinite(storedRowCount) && storedRowCount > 0;
-    const hasMissingRows = Number.isFinite(missingRowCount) && missingRowCount > 0;
-    const normalizedStoredRows = Number.isFinite(storedRowCount) ? storedRowCount : 0;
-    const normalizedMissingRows = Number.isFinite(missingRowCount) ? missingRowCount : 0;
-    const totalKnownRows = (Number.isFinite(storedRowCount) ? storedRowCount : 0)
-      + (Number.isFinite(missingRowCount) ? missingRowCount : 0);
-    const knownArchiveDays = totalKnownRows > 0 ? String(totalKnownRows) : "Unavailable";
-    const archiveCoverage = totalKnownRows > 0
-      ? `${Math.round((normalizedStoredRows / totalKnownRows) * 100)} %`
-      : "Unavailable";
-    const archiveCompleteness = totalKnownRows > 0
-      ? `${normalizedStoredRows} stored / ${normalizedMissingRows} missing`
-      : "Unavailable";
-    const firstStoredDate = String(scopeSummary.first_record_date || "").trim();
-    const lastStoredDate = String(scopeSummary.last_record_date || "").trim();
-    const archiveRange = firstStoredDate && lastStoredDate
-      ? firstStoredDate === lastStoredDate
-        ? firstStoredDate
-        : `${firstStoredDate} -> ${lastStoredDate}`
-      : "Unavailable";
-    const lastUpdatedText = String(scopeSummary.last_updated || "").trim();
-    let archiveAge = "Unknown";
-    if (lastUpdatedText) {
-      const updatedAt = Date.parse(lastUpdatedText);
-      if (Number.isFinite(updatedAt)) {
-        const nowMs = Date.now();
-        const ageDays = Math.max(0, Math.floor((nowMs - updatedAt) / 86400000));
-        archiveAge = ageDays <= 0
-          ? "Updated today"
-          : ageDays === 1
-            ? "1 day old"
-            : ageDays <= 7
-              ? `${ageDays} days old`
-              : "Older than 7 days";
-      }
-    }
-    const reportingDate = String(reporting.reporting_date || reportingMeta.reporting_date || reporting?.power_diagram?.date || "").trim();
-    let archiveLag = "Unavailable";
-    if (reportingDate && lastStoredDate) {
-      const reportMs = Date.parse(`${reportingDate}T00:00:00Z`);
-      const storedMs = Date.parse(`${lastStoredDate}T00:00:00Z`);
-      if (Number.isFinite(reportMs) && Number.isFinite(storedMs)) {
-        const lagDays = Math.round((reportMs - storedMs) / 86400000);
-        archiveLag = lagDays <= 0
-          ? "0 days"
-          : lagDays === 1
-            ? "1 day"
-            : `${lagDays} days`;
-      }
-    }
-    const archiveFreshness = reportingDate && lastStoredDate
-      ? reportingDate === lastStoredDate
-        ? "Current"
-        : lastStoredDate < reportingDate
-          ? "Behind latest report"
-          : "Ahead of current report"
-      : lastStoredDate
-        ? "Archive only"
-        : "Unknown";
-    const archiveHealth = hasStoredRows
-      ? hasMissingRows
-        ? "Ready with gaps"
-        : "Ready"
-      : hasMissingRows
-        ? "Missing only"
-        : "Empty";
-    const payloadSource = String(reportingMeta.source || "backend_reporting")
-      .replaceAll("_", " ")
-      .trim();
-    const payloadStorage = String(reportingMeta.storage || "local_archive")
-      .replaceAll("_", " ")
-      .trim();
-    const diagramSource = String(reportingMeta.power_diagram_source || "provider_power_diagram")
-      .replaceAll("_", " ")
-      .trim();
-    const archiveItems = [
-      { section: true, label: "Report Context" },
-      { label: "Selected target", value: this._selectedSettingsTargetLabel() },
-      { label: "Reporting label", value: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems") },
-      { label: "Reporting date", value: String(reporting.reporting_date || reportingMeta.reporting_date || reporting?.power_diagram?.date || "Unavailable") },
-      { label: "Saved at", value: String(reportingMeta.saved_at || reporting.saved_at || "Unavailable") },
-      { label: "Payload source", value: payloadSource || "backend reporting" },
-      { label: "Payload storage", value: payloadStorage || "local archive" },
-      { label: "Diagram source", value: diagramSource || "provider power diagram" },
-      { label: "Stored provider payload", value: scopeSummary.provider_payload_present ? "Yes" : "No" },
-      { label: "Provider payload keys", value: scopeSummary.provider_payload_key_count !== undefined ? String(scopeSummary.provider_payload_key_count) : "Unavailable" },
-      { label: "Provider payload fields", value: Array.isArray(scopeSummary.provider_payload_keys) && scopeSummary.provider_payload_keys.length ? scopeSummary.provider_payload_keys.join(", ") : "Unavailable" },
-      { label: "Stored raw provider subset", value: scopeSummary.raw_provider_present ? "Yes" : "No" },
-      { section: true, label: "Archive Health" },
-      { label: "Archive status", value: archiveStatus },
-      { label: "Archive health", value: archiveHealth },
-      { label: "Archive age", value: archiveAge },
-      { label: "Archive freshness", value: archiveFreshness },
-      { label: "Archive lag", value: archiveLag },
-      { label: "Archive completeness", value: archiveCompleteness },
-      { label: "Known archive days", value: knownArchiveDays },
-      { label: "Archive coverage", value: archiveCoverage },
-      { label: "Stored report rows", value: scopeSummary.record_count !== undefined ? String(scopeSummary.record_count) : "Unavailable" },
-      { label: "Missing report dates", value: scopeSummary.missing_count !== undefined ? String(scopeSummary.missing_count) : "Unavailable" },
-      { label: "Archive range", value: archiveRange },
-      { label: "First stored date", value: String(scopeSummary.first_record_date || "Unavailable") },
-      { label: "Last stored date", value: String(scopeSummary.last_record_date || "Unavailable") },
-      { label: "Scope updated", value: String(scopeSummary.last_updated || "Unavailable") },
-      { section: true, label: "Archive Files" },
-      { label: "Archive base URL", value: String(history.base_url || "Unavailable") },
-      { label: "Archive scope", value: String(history.current_scope || "all") },
-      { label: "Scope CSV", value: String(scopeSummary.csv_filename || "Unavailable") },
-      { label: "Scope CSV URL", value: String(scopeSummary.csv_url || "Unavailable") },
-      { label: "History JSON", value: String(scopeSummary.history_filename || "Unavailable") },
-      { label: "History JSON URL", value: String(scopeSummary.history_url || "Unavailable") },
-      { section: true, label: "Backfill" },
-      { label: "Backfill years", value: history.backfill_years !== undefined ? String(history.backfill_years) : "Unavailable" },
-      { label: "Backfill days", value: history.backfill_days !== undefined ? String(history.backfill_days) : "Unavailable" },
-    ];
-    const archiveSnapshotItems = [
-      { label: "Health", value: archiveHealth },
-      { label: "Freshness", value: archiveFreshness },
-      { label: "Lag", value: archiveLag },
-      { label: "Age", value: archiveAge },
-      { label: "Completeness", value: archiveCompleteness },
-      { label: "Coverage", value: archiveCoverage },
-      { label: "Range", value: archiveRange },
-    ];
-    const expectedArchiveDays = Number(history.backfill_days);
-    const normalizedExpectedArchiveDays = Number.isFinite(expectedArchiveDays) && expectedArchiveDays > 0
-      ? Math.max(1, Math.floor(expectedArchiveDays))
-      : 0;
-    const backendScopeSummaries = Array.isArray(history.scope_summaries) ? history.scope_summaries : [];
-    const archiveScopeSummaries = backendScopeSummaries.length
-      ? backendScopeSummaries
-      : [{
-          scope_key: String(history.current_scope || "all"),
-          label: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems"),
-          aggregate: String(history.current_scope || "all") === "all",
-          ...scopeSummary,
-        }];
-    const archiveScopeOverviewCards = archiveScopeSummaries
-      .map((scope) => {
-        const scopeKey = String(scope?.scope_key || "").trim() || "all";
-        const scopeLabel = String(scope?.label || scopeKey || "All systems").trim() || "All systems";
-        const storedCount = Number(scope?.record_count);
-        const missingCount = Number(scope?.missing_count);
-        const normalizedStoredCount = Number.isFinite(storedCount) ? storedCount : 0;
-        const normalizedMissingCount = Number.isFinite(missingCount) ? missingCount : 0;
-        const knownCount = normalizedStoredCount + normalizedMissingCount;
-        const coverageLabel = normalizedExpectedArchiveDays > 0
-          ? `${knownCount}/${normalizedExpectedArchiveDays}`
-          : `${knownCount}`;
-        const firstDate = String(scope?.first_record_date || "").trim();
-        const lastDate = String(scope?.last_record_date || "").trim();
-        const dateRange = firstDate && lastDate
-          ? firstDate === lastDate
-            ? firstDate
-            : `${firstDate} -> ${lastDate}`
-          : normalizedStoredCount > 0
-            ? firstDate || lastDate || "Stored rows available"
-            : "No stored rows yet";
-        const isActiveScope = scopeKey === String(history.current_scope || "all").trim();
-        return `
-          <article class="report-scope-card${isActiveScope ? " report-scope-card--active" : ""}">
-            <div class="report-scope-card__head">
-              <h3>${this._escapeHtml(scopeLabel)}</h3>
-              <span>${this._escapeHtml(coverageLabel)}</span>
-            </div>
-            <p>${this._escapeHtml(dateRange)}</p>
-            <ul class="key-list key-list--compact">
-              ${this._valueList([
-                { label: "Stored", value: String(normalizedStoredCount) },
-                { label: "Missing", value: String(normalizedMissingCount) },
-                { label: "Scope key", value: scopeKey },
-              ])}
-            </ul>
-          </article>
-        `;
-      })
-      .join("");
-    const archiveSnapshotSummary = hasStoredRows
-      ? `${archiveHealth}. Lag ${archiveLag}. ${archiveCompleteness}. Coverage ${archiveCoverage}.`
-      : hasMissingRows
-        ? `No stored report rows yet. ${normalizedMissingRows} known missing day${normalizedMissingRows === 1 ? "" : "s"} in the archive window.`
-        : "No archive rows are stored for this scope yet.";
-    const archiveActionLinks = [
-      scopeSummary.csv_url
-        ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scopeSummary.csv_url))}" target="_blank" rel="noreferrer">Open Scope CSV</a>`
-        : "",
-      scopeSummary.history_url
-        ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scopeSummary.history_url))}" target="_blank" rel="noreferrer">Open History JSON</a>`
-        : "",
-    ].filter(Boolean).join("");
-    const storageItems = [
-      { label: "Local report archive", value: "Home Assistant www/heros-history/<entry_id>/history.json" },
-      { label: "Local scope CSVs", value: "One CSV per scope for exported daily report rows" },
-      { label: "Current purpose", value: "Power diagram snapshots, daily report rows, and archive backfill state" },
-      { label: "Long-term detailed data", value: "InfluxDB will hold detailed sensor history for long-range analysis" },
-      { label: "Influx role", value: "Detailed time-series retention beyond the compact HEROS archive" },
-      { label: "HEROS archive role", value: "Provider-aware report snapshots kept lightweight for the panel and exports" },
-    ];
     return `
       <section class="report">
-
-
         <section class="report__stack">
           <div class="report__embedded">
             <div class="panel-card__embedded" data-embedded="report"></div>
           </div>
-
           <article class="panel-card panel-card--wide report__catalog-card">
             <div class="panel-card__header">
               <h2>Report Catalog</h2>
               <span>Category-first menu</span>
             </div>
             <p>Built items keep their slot. Planned items remain marked <strong>TBB</strong>.</p>
-            <div class="report-catalog">
-              ${this._reportCatalog()}
-            </div>
+            <div class="report-catalog">${this._reportCatalog()}</div>
           </article>
-
         </section>
       </section>
     `;
@@ -7015,15 +6836,15 @@ class HerosPanel extends HTMLElement {
         </div>`
       : '<p class="roi-repayment-history__empty">No rate groups have been saved yet.</p>';
     const renderRuleCards = (rules, emptyLabel, emptyDescription) => rules.length
-      ? `<div class="roi-repayment-history electricity-rate-history" role="list" aria-label="Electricity rate history">
-          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>RATE</span><span>DAYS</span><span>TIME</span><span>ACTIONS</span></div>
+      ? `<div class="roi-repayment-history electricity-rate-history" role="list" aria-label="Electricity rate history" style="width:100%;max-width:none;overflow:visible;">
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions" style="min-width:0;display:grid;grid-template-columns:1fr;gap:4px;"><span>RATE / DAYS / TIME / ACTIONS</span></div>
           ${rules.map((rule) => {
             const isSellRule = String(rule.record_type || "buy") === "sell";
             const rate = isSellRule ? rule.export_rate : rule.import_rate;
             const rateText = rate !== null && rate !== undefined && String(rate) !== "" ? `${this._formatPricingRate(rate, "cents/kWh")}` : "Not set";
             const days = (Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected";
             const time = `${this._formatPricingTime(rule.start_time, "00:00")} – ${this._formatPricingTime(rule.end_time, "23:59")}`;
-            return `<div class="roi-repayment-history__row electricity-rate-history__row" role="listitem"><span><strong>${this._escapeHtml(String(rule.label || (isSellRule ? "Sell rate" : "Buy rate")))}</strong><small>${this._escapeHtml(rateText)}</small></span><span>${this._escapeHtml(days)}</span><span>${this._escapeHtml(time)}</span><span class="roi-history-actions"><button type="button" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify</button><button type="button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button></span></div>`;
+            return `<div class="roi-repayment-history__row electricity-rate-history__row" role="listitem" style="min-width:0;display:grid;grid-template-columns:1fr;gap:6px;"><span><strong>${this._escapeHtml(String(rule.label || (isSellRule ? "Sell rate" : "Buy rate")))}</strong><small>${this._escapeHtml(rateText)}</small></span><span>${this._escapeHtml(days)}</span><span>${this._escapeHtml(time)}</span><span class="roi-history-actions" style="grid-column:1;justify-self:start;"><button type="button" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify</button><button type="button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button></span></div>`;
           }).join("")}
         </div>`
       : `<p class="roi-repayment-history__empty">${emptyLabel} ${emptyDescription}</p>`;
@@ -7035,6 +6856,7 @@ class HerosPanel extends HTMLElement {
       const title = isSell ? "Sell rate record" : "Buy rate record";
       return (this._pricingRecordEditorMode === recordType && editableGroupId) ? `
         <div class="electricity-rate-editor pricing-record-form" data-pricing-record-editor="${recordType}">
+          <input type="hidden" data-pricing-record-type="${recordType}" data-pricing-rule-field="rule_id" value="${this._escapeHtml(String(draft.rule_id || ""))}" />
           <div class="roi-settings-grid electricity-rate-editor__grid">
             <label class="roi-settings-field"><span>${isSell ? "Description" : "Buy rate description"}</span>${isSell ? `<input type="text" data-pricing-record-type="${recordType}" data-pricing-rule-field="label" value="${this._escapeHtml(String(draft.label || ""))}" placeholder="Feed-in rate" />` : this._renderPurchaseTariffSelector(String(draft.label || ""))}</label>
             <label class="roi-settings-field"><span>${isSell ? "Sell rate" : "Import rate"} (cents/kWh)</span><input type="number" step="0.001" data-pricing-record-type="${recordType}" data-pricing-rule-field="${isSell ? "export_rate" : "import_rate"}" value="${this._escapeHtml(String(draft[isSell ? "export_rate" : "import_rate"] || ""))}" placeholder="0.000" /></label>
@@ -7048,22 +6870,22 @@ class HerosPanel extends HTMLElement {
     const renderGroupEditor = showGroupEditor ? `
       <div class="electricity-group-editor pricing-record-form">
         <div class="roi-settings-grid electricity-group-editor__grid">
-          <label class="roi-settings-field"><span>Pricing type</span><select data-pricing-group-field="pricing_type"><option value="fixed" ${String(groupDraft.pricing_type)==="fixed"?"selected":""}>Fixed</option><option value="dynamic" ${String(groupDraft.pricing_type)==="dynamic"?"selected":""}>Dynamic</option></select></label><label class="roi-settings-field"><span>Effective Date</span><input type="date" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" /></label>
+          <label class="roi-settings-field"><span>Pricing type</span><select data-pricing-group-field="pricing_type"><option value="fixed" ${String(groupDraft.pricing_type)==="fixed"?"selected":""}>Fixed</option><option value="dynamic" ${String(groupDraft.pricing_type)==="dynamic"?"selected":""}>Dynamic</option></select></label><label class="roi-settings-field"><span>Effective Date</span><span class="pricing-date-input-wrap"><input type="text" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" placeholder="yyyy-mm-dd" autocomplete="off" data-pricing-group-field="effective_start_date" value="${this._escapeHtml(this._normalizePricingDate(groupDraft.effective_start_date))}" /><span class="pricing-date-input-icon" aria-hidden="true">&#128197;</span></span></label>
           <label class="roi-settings-field"><span>Plan / Description</span><input type="text" data-pricing-group-field="label" value="${this._escapeHtml(String(groupDraft.label || ""))}" placeholder="Rates from date" /></label>
           <label class="roi-settings-field"><span>Provider</span><input type="text" data-pricing-group-field="provider" value="${this._escapeHtml(String(groupDraft.provider || ""))}" /></label><label class="roi-settings-field"><span>Daily supply charge (cents/day)</span><input type="number" step="0.001" min="0" data-pricing-group-field="daily_connection_charge" value="${this._escapeHtml(String(groupDraft.daily_connection_charge ?? ""))}" placeholder="0.000" /></label>${String(groupDraft.pricing_type || "dynamic") === "dynamic" ? `<label class="roi-settings-field"><span>Subscription fee</span><input type="number" step="0.01" min="0" data-pricing-group-field="subscription_fee" value="${this._escapeHtml(String(groupDraft.subscription_fee ?? ""))}" placeholder="0.00" /></label><label class="roi-settings-field"><span>Subscription period</span><select data-pricing-group-field="subscription_period"><option value="monthly" ${String(groupDraft.subscription_period)==="monthly"?"selected":""}>Monthly</option><option value="yearly" ${String(groupDraft.subscription_period)==="yearly"?"selected":""}>Yearly</option></select></label><label class="roi-settings-field"><span>Current import price entity</span><input type="text" data-pricing-group-field="dynamic_import_price_entity" value="${this._escapeHtml(String(groupDraft.dynamic_import_price_entity || ""))}" /></label><label class="roi-settings-field"><span>Next import price entity</span><input type="text" data-pricing-group-field="dynamic_next_import_price_entity" value="${this._escapeHtml(String(groupDraft.dynamic_next_import_price_entity || ""))}" /></label><label class="roi-settings-field"><span>Export price entity</span><input type="text" data-pricing-group-field="dynamic_export_price_entity" value="${this._escapeHtml(String(groupDraft.dynamic_export_price_entity || ""))}" /></label>` : ""}
         </div>
-        <input type="hidden" data-pricing-group-field="group_id" value="${this._escapeHtml(String(groupDraft.group_id || ""))}" />
+        <input type="hidden" data-pricing-group-field="group_id" value="${this._escapeHtml(String(groupDraft.group_id || editableGroupId || this._generateRuleId()))}" />
         <div class="roi-settings-actions"><button type="button" class="panel-nav__item pricing-rule__button" data-pricing-ui-${editableGroupId ? "update" : "add"}-group>${editableGroupId ? "Save group" : "Add group"}</button><button type="button" class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" data-pricing-ui-cancel-group>Cancel</button></div>
       </div>` : "";
     const repaymentEntries = Array.isArray(this._roiSettingsData?.repayments) ? [...this._roiSettingsData.repayments] : [];
     repaymentEntries.sort((left, right) => String(right?.effective_start_date || "").localeCompare(String(left?.effective_start_date || "")));
     const repaymentHistoryMarkup = repaymentEntries.length
       ? `<div class="roi-repayment-history" role="list" aria-label="Repayment history">
-          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>Effective date</span><span>Amount ($)</span><span>Frequency</span><span>Actions</span></div>
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>Effective date</span><span>Description</span><span>Amount ($)</span><span>Period</span><span>Recurring</span><span>Actions</span></div>
           ${repaymentEntries.map((entry) => {
             const amount = Number(entry?.amount);
             const displayAmount = Number.isFinite(amount) ? amount.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00";
-            return `<div class="roi-repayment-history__row" role="listitem"><span>${this._escapeHtml(String(entry?.effective_start_date || ""))}</span><strong>${this._escapeHtml(displayAmount)}</strong><span>${this._escapeHtml(String(entry?.frequency || "weekly"))}</span><span class="roi-history-actions"><button type="button" data-roi-edit-repayment="${this._escapeHtml(String(entry?.entry_id || ""))}">Modify</button><button type="button" data-roi-delete-repayment="${this._escapeHtml(String(entry?.entry_id || ""))}">Delete</button></span></div>`;
+            return `<div class="roi-repayment-history__row" role="listitem"><span>${this._escapeHtml(String(entry?.effective_start_date || ""))}</span><span>${this._escapeHtml(String(entry?.description || ""))}</span><strong>${this._escapeHtml(displayAmount)}</strong><span>${this._escapeHtml(String(entry?.repayment_period || entry?.frequency || "weekly"))}</span><span>${entry?.is_recurring === false ? "No" : "Yes"}</span><span class="roi-history-actions"><button type="button" data-roi-edit-repayment="${this._escapeHtml(String(entry?.entry_id || ""))}">Modify</button><button type="button" data-roi-delete-repayment="${this._escapeHtml(String(entry?.entry_id || ""))}">Delete</button></span></div>`;
           }).join("")}
         </div>`
       : `<p class="roi-repayment-history__empty">No repayment changes have been saved yet.</p>`;
@@ -7118,12 +6940,12 @@ class HerosPanel extends HTMLElement {
 
         <article class="panel-card roi-settings-card">
           <div class="panel-card__header"><h2>Finance & ROI</h2><span>HEROS</span></div>
-          <p>Record installation costs and each repayment change. A repayment applies from its effective date, so later changes remain available for ROI reporting.</p>${!this._roiSettingsData ? `<div class="pricing-loading" role="status">Loading saved ROI records...</div>` : ""}
+          <p>Record installation costs and each repayment change. A repayment applies from its effective date, so later changes remain available for ROI reporting.</p>${!this._roiSettingsData ? `<div class="pricing-loading" role="status">Refreshing saved ROI records...</div>` : ""}
           <section class="roi-settings-section" aria-label="Installation costs">
             <div class="roi-section-heading"><h3>Installation costs</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-installation>Add installation cost</button></div>
             <div class="roi-installation-editor is-hidden" data-roi-installation-editor>
               <div class="roi-settings-grid roi-settings-grid--installation">
-                <label class="roi-settings-field"><span>Effective Date</span><input type="date" data-roi-installation-date value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /></label>
+                <label class="roi-settings-field"><span>Effective Date</span><span class="pricing-date-input-wrap"><input type="text" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" placeholder="yyyy-mm-dd" autocomplete="off" data-roi-installation-date value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /><span class="pricing-date-input-icon" aria-hidden="true">&#128197;</span></span></label>
                 <label class="roi-settings-field"><span>Installation Description</span><input type="text" autocomplete="off" placeholder="Solar, Battery, Extra battery" data-roi-installation-description /></label>
                 <label class="roi-settings-field"><span>Amount ($)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-roi-installation-amount /></label>
               </div>
@@ -7132,11 +6954,15 @@ class HerosPanel extends HTMLElement {
             <h4 class="roi-repayment-history__title">Installation cost history</h4>${installationHistoryMarkup}
           </section>
           <section class="roi-settings-section" aria-label="Repayment schedule">
-            <div class="roi-section-heading"><h3>Repayment change</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-repayment>Add repayment change</button></div>
+            <div class="roi-section-heading"><h3>Repayment Costs</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-repayment>Add repayment change</button></div>
             <div class="roi-entry-editor is-hidden" data-roi-repayment-editor><div class="roi-settings-grid roi-settings-grid--three">
-              <label class="roi-settings-field pricing-effective-date-field"><span>Effective Date</span><input type="date" name="effective_start_date" data-pricing-date-input data-roi-repayment-start value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /></label>
+              <label class="roi-settings-field pricing-effective-date-field"><span>Effective Date</span><span class="pricing-date-input-wrap"><input type="text" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" placeholder="yyyy-mm-dd" autocomplete="off" name="effective_start_date" data-pricing-date-input data-roi-repayment-start value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /><span class="pricing-date-input-icon" aria-hidden="true">&#128197;</span></span></label>
+              <label class="roi-settings-field"><span>Description</span><input type="text" data-roi-repayment-description placeholder="Repayment change" /></label>
+              <label class="roi-settings-field"><span>End Date</span><span class="pricing-date-input-wrap"><input type="text" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" placeholder="yyyy-mm-dd" autocomplete="off" data-pricing-date-input data-roi-repayment-end /><span class="pricing-date-input-icon" aria-hidden="true">&#128197;</span></span></label>
               <label class="roi-settings-field"><span>Amount ($)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-roi-repayment-amount /></label>
+              <label class="roi-settings-field"><span>Recurring</span><input type="checkbox" data-roi-repayment-recurring checked /></label>
               <label class="roi-settings-field"><span>Frequency</span><select data-roi-repayment-frequency><option value="weekly">Weekly</option><option value="fortnightly">Fortnightly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
+              <label class="roi-settings-field"><span>Notes</span><input type="text" data-roi-repayment-notes placeholder="Optional notes" /></label>
             </div>
             <div class="roi-settings-actions"><button type="button" class="panel-nav__item" data-roi-save-repayment>Save repayment change</button><button type="button" class="panel-nav__item pricing-rule__button--ghost" data-roi-cancel-repayment>Cancel</button><span class="roi-save-status" data-roi-repayment-status aria-live="polite"></span></div></div>
             <h4 class="roi-repayment-history__title">Repayment history</h4>
@@ -7152,7 +6978,7 @@ class HerosPanel extends HTMLElement {
           <section class="roi-settings-section vpp-settings-section" aria-label="VPP rates">
             <div class="roi-section-heading"><h3>VPP rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-roi-start-vpp>Add VPP rate change</button></div>
             <div class="roi-entry-editor is-hidden" data-vpp-editor><div class="roi-settings-grid roi-settings-grid--three">
-              <label class="roi-settings-field pricing-effective-date-field"><span>Effective Date</span><input type="date" name="vpp_effective_start_date" data-pricing-date-input data-vpp-effective-date value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /></label>
+              <label class="roi-settings-field pricing-effective-date-field"><span>Effective Date</span><span class="pricing-date-input-wrap"><input type="text" inputmode="numeric" pattern="\\d{4}-\\d{2}-\\d{2}" placeholder="yyyy-mm-dd" autocomplete="off" name="vpp_effective_start_date" data-pricing-date-input data-vpp-effective-date value="${this._escapeHtml(this._normalizePricingDate(activeGroup.effective_start_date))}" /><span class="pricing-date-input-icon" aria-hidden="true">&#128197;</span></span></label>
               <label class="roi-settings-field"><span>Provider</span><input type="text" autocomplete="organization" placeholder="Provider name" data-vpp-provider /></label>
               <label class="roi-settings-field"><span>Cents p/kWh</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" data-vpp-cents-per-kwh /></label>
             </div>
@@ -7170,12 +6996,12 @@ class HerosPanel extends HTMLElement {
             ${renderGroupEditor}
             <div class="pricing-rule-list">${groupCards}</div>
           </section>
-          <section class="roi-settings-section electricity-rates-section ${String(activeGroup.pricing_type || "dynamic") === "dynamic" ? "is-dynamic-hidden" : ""}" aria-label="Buy Rates">
+          <section class="roi-settings-section electricity-rates-section" aria-label="Buy Rates">
             <div class="roi-section-heading"><h3>Buy Rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-record="buy">Add buy rate</button></div>
             ${renderRateEditor("buy")}
             <div class="pricing-rule-list pricing-rule-list--attached">${buyRuleCards}</div>
           </section>
-          <section class="roi-settings-section electricity-rates-section ${String(activeGroup.pricing_type || "dynamic") === "dynamic" ? "is-dynamic-hidden" : ""}" aria-label="Sell Rates">
+          <section class="roi-settings-section electricity-rates-section" aria-label="Sell Rates">
             <div class="roi-section-heading"><h3>Sell Rates</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-record="sell">Add sell rate</button></div>
             ${renderRateEditor("sell")}
             <div class="pricing-rule-list pricing-rule-list--attached">${sellRuleCards}</div>
@@ -7185,32 +7011,131 @@ class HerosPanel extends HTMLElement {
     `;
   }
 
+  _captureArchiveDateDraft(field) {
+    if (!field) return;
+    const draft = this._archiveDateDraft && typeof this._archiveDateDraft === "object"
+      ? this._archiveDateDraft
+      : { scope: "", start: "", end: "" };
+    if (field.dataset.archiveStart !== undefined) draft.start = String(field.value || "");
+    if (field.dataset.archiveEnd !== undefined) draft.end = String(field.value || "");
+    if (field.dataset.archiveScope !== undefined) draft.scope = String(field.value || "all");
+    this._archiveDateDraft = draft;
+  }
+
   _archiveSettingsContent() {
     const selector = this._settingsTargetState();
     const reporting = selector?.attributes?.reporting || {};
     const reportingMeta = reporting?.meta && typeof reporting.meta === "object" ? reporting.meta : {};
     const history = selector?.attributes?.history && typeof selector.attributes.history === "object" ? selector.attributes.history : (reportingMeta.history && typeof reportingMeta.history === "object" ? reportingMeta.history : {});
-    const scope = history.scope_summary && typeof history.scope_summary === "object" ? history.scope_summary : {};
-    const stored = Number(scope.record_count); const missing = Number(scope.missing_count);
-    const storedCount = Number.isFinite(stored) ? stored : 0; const missingCount = Number.isFinite(missing) ? missing : 0;
-    const known = storedCount + missingCount;
-    const coverage = known ? `${Math.round(storedCount / known * 100)} %` : "Unavailable";
-    const health = storedCount ? (missingCount ? "Ready with gaps" : "Ready") : (missingCount ? "Missing only" : "Empty");
-    const rangeStart = String(scope.first_record_date || "").trim(); const rangeEnd = String(scope.last_record_date || "").trim();
-    const range = rangeStart && rangeEnd ? (rangeStart === rangeEnd ? rangeStart : `${rangeStart} -> ${rangeEnd}`) : "Unavailable";
-    const summary = storedCount ? `${health}. ${storedCount} stored / ${missingCount} missing. Coverage ${coverage}.` : missingCount ? `No stored report rows yet. ${missingCount} known missing day${missingCount === 1 ? "" : "s"}.` : "No archive rows are stored for this scope yet.";
-    const actions = [
-      scope.csv_url ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scope.csv_url))}" target="_blank" rel="noreferrer">Open Scope CSV</a>` : "",
-      scope.history_url ? `<a class="panel-nav__item pricing-rule__button pricing-rule__button--ghost" href="${this._escapeHtml(String(scope.history_url))}" target="_blank" rel="noreferrer">Open History JSON</a>` : "",
-    ].filter(Boolean).join("");
-    const scopes = Array.isArray(history.scope_summaries) && history.scope_summaries.length ? history.scope_summaries : [{ scope_key: String(history.current_scope || "all"), label: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems"), ...scope }];
-    const scopeCards = scopes.map((item) => { const itemStored = Number(item?.record_count); const itemMissing = Number(item?.missing_count); const storedValue = Number.isFinite(itemStored) ? itemStored : 0; const missingValue = Number.isFinite(itemMissing) ? itemMissing : 0; const first = String(item?.first_record_date || "").trim(); const last = String(item?.last_record_date || "").trim(); const itemRange = first && last ? (first === last ? first : `${first} -> ${last}`) : "No stored rows yet"; return `<article class="report-scope-card"><div class="report-scope-card__head"><h3>${this._escapeHtml(String(item?.label || item?.scope_key || "All systems"))}</h3><span>${storedValue}/${storedValue + missingValue}</span></div><p>${this._escapeHtml(itemRange)}</p><ul class="key-list key-list--compact">${this._valueList([{ label:"Stored", value:String(storedValue) }, { label:"Missing", value:String(missingValue) }])}</ul></article>`; }).join("");
+    const archiveState = history.archive_state && typeof history.archive_state === "object" ? history.archive_state : {};
+    const archiveDateDraft = this._archiveDateDraft && typeof this._archiveDateDraft === "object" ? this._archiveDateDraft : {};
+    const selectedScope = String(archiveDateDraft.scope || archiveState.last_scope || history.current_scope || "all");
+    const scopeSummaries = Array.isArray(history.scope_summaries) ? history.scope_summaries : [];
+    const fallbackScope = history.scope_summary && typeof history.scope_summary === "object" ? history.scope_summary : {};
+    const scope = scopeSummaries.find((item) => String(item?.scope_key || "") === selectedScope) || fallbackScope;
+    const stored = Number(scope.record_count);
+    const explicitMissing = Number(scope.explicit_missing_count ?? scope.missing_count);
+    const calendarDays = Number(scope.calendar_day_count);
+    const unrecordedGaps = Number(scope.unrecorded_gap_count);
+    const storedCount = Number.isFinite(stored) ? stored : 0;
+    const explicitMissingCount = Number.isFinite(explicitMissing) ? explicitMissing : 0;
+    const calendarDayCount = Number.isFinite(calendarDays) ? calendarDays : 0;
+    const unrecordedGapCount = Number.isFinite(unrecordedGaps) ? unrecordedGaps : 0;
+    const storedCoverage = Number(scope.stored_coverage_percent);
+    const coverage = calendarDayCount
+      ? `${storedCount}/${calendarDayCount} days (${Number.isFinite(storedCoverage) ? storedCoverage.toFixed(1) : (storedCount / calendarDayCount * 100).toFixed(1)} % stored)`
+      : "Unavailable";
+    const health = storedCount ? (unrecordedGapCount ? "Partial archive" : (explicitMissingCount ? "Ready with unavailable days" : "Ready")) : (explicitMissingCount ? "Unavailable only" : "Empty");
+    const rangeStart = String(archiveDateDraft.start || scope.first_record_date || archiveState.requested_start_date || "").trim();
+    const rangeEnd = String(archiveDateDraft.end || scope.last_record_date || archiveState.requested_end_date || "").trim();
+    const storedStart = String(scope.first_record_date || "").trim();
+    const storedEnd = String(scope.last_record_date || "").trim();
+    const storedRange = storedStart && storedEnd ? (storedStart === storedEnd ? storedStart : storedStart + " -> " + storedEnd) : "Unavailable";
+    const requestedStart = String(archiveState.requested_start_date || "").trim();
+    const requestedEnd = String(archiveState.requested_end_date || "").trim();
+    const requestedRange = requestedStart && requestedEnd ? (requestedStart === requestedEnd ? requestedStart : requestedStart + " -> " + requestedEnd) : "Unavailable";
+    const summary = storedCount
+      ? `${health}. ${storedCount} stored across ${calendarDayCount || storedCount} calendar days; ${unrecordedGapCount} unrecorded gap${unrecordedGapCount === 1 ? "" : "s"}; ${explicitMissingCount} provider-unavailable day${explicitMissingCount === 1 ? "" : "s"}. Stored coverage ${coverage}.`
+      : explicitMissingCount
+        ? `No stored report rows yet. ${explicitMissingCount} provider-unavailable day${explicitMissingCount === 1 ? "" : "s"}.`
+        : "No archive rows are stored for this scope yet."
+    const actions = "";
+    const scopes = scopeSummaries.length ? scopeSummaries : [{ scope_key: String(history.current_scope || "all"), label: String(reporting.label || this._selectedSettingsTargetLabel() || "All systems"), ...fallbackScope }];
+    const scopeCards = scopes.map((item) => {
+      const itemStored = Number(item?.record_count);
+      const itemExplicitMissing = Number(item?.explicit_missing_count ?? item?.missing_count);
+      const itemCalendarDays = Number(item?.calendar_day_count);
+      const itemGaps = Number(item?.unrecorded_gap_count);
+      const storedValue = Number.isFinite(itemStored) ? itemStored : 0;
+      const explicitMissingValue = Number.isFinite(itemExplicitMissing) ? itemExplicitMissing : 0;
+      const calendarDayValue = Number.isFinite(itemCalendarDays) ? itemCalendarDays : 0;
+      const gapValue = Number.isFinite(itemGaps) ? itemGaps : 0;
+      const first = String(item?.first_record_date || "").trim();
+      const last = String(item?.last_record_date || "").trim();
+      const itemRange = first && last ? (first === last ? first : `${first} -> ${last}`) : "No stored rows yet";
+      const coverageLabel = calendarDayValue ? `${storedValue}/${calendarDayValue}` : "0/0";
+      return `<article class="report-scope-card"><div class="report-scope-card__head"><h3>${this._escapeHtml(String(item?.label || item?.scope_key || "All systems"))}</h3><span>${coverageLabel}</span></div><p>${this._escapeHtml(itemRange)}</p><ul class="key-list key-list--compact">${this._valueList([{ label:"Stored", value:String(storedValue) }, { label:"Unrecorded gaps", value:String(gapValue) }, { label:"Provider unavailable", value:String(explicitMissingValue) }])}</ul></article>`;
+    }).join("");
+    const scopeOptions = scopes.map((item) => `<option value="${this._escapeHtml(String(item?.scope_key || "all"))}" ${String(item?.scope_key || "all") === selectedScope ? "selected" : ""}>${this._escapeHtml(String(item?.label || item?.scope_key || "All systems"))}</option>`).join("");
+    const requestedDays = Number(archiveState.requested_days);
+    const processedDays = Number(archiveState.processed_days);
+    const lastAttemptDate = String(archiveState.last_attempt_date || "").trim();
+    const archiveWasPartial = archiveState.completed !== true
+      && Number.isFinite(requestedDays)
+      && Number.isFinite(processedDays)
+      && processedDays < requestedDays;
+    const historyStatusText = String(history.status || "").trim();
+    const historyLooksActive = archiveState.completed !== true
+      && /^(Downloading|Downloaded \d+\/|Refreshing archive)/i.test(historyStatusText);
+    const archiveIsRunning = Boolean(this._archiveDownloadInFlight)
+      || ["running", "cancelling"].includes(String(archiveState.status || ""))
+      || historyLooksActive;
+    const archiveHasGaps = unrecordedGapCount > 0 || explicitMissingCount > 0;
+    const archiveStatusValue = archiveIsRunning
+      ? String(archiveState.status || "running")
+      : ["cancelled", "interrupted", "failed"].includes(String(archiveState.status || ""))
+        ? String(archiveState.status)
+        : archiveWasPartial
+          ? "partial"
+          : archiveHasGaps
+            ? "gaps"
+            : String(archiveState.status || history.status || "Unavailable");
+    const archiveProgressText = Number.isFinite(requestedDays) && Number.isFinite(processedDays)
+      ? String(processedDays) + "/" + String(requestedDays) + " days"
+      : historyStatusText || "the requested range";
+    const archiveStatusMessage = archiveStatusValue === "running"
+      ? "Archive download in progress: " + archiveProgressText + (lastAttemptDate ? " (through " + lastAttemptDate + ")." : ".")
+      : archiveStatusValue === "cancelling"
+        ? "Cancelling after the current request finishes. Completed reports are retained."
+        : archiveStatusValue === "cancelled"
+          ? "Download cancelled. Completed reports are retained; missing dates can be resumed."
+          : archiveStatusValue === "interrupted"
+            ? "Download interrupted by a restart. HEROS will resume automatically."
+            : archiveStatusValue === "failed"
+              ? "Download finished with missing or failed dates; use Download missing data to retry them."
+      : archiveStatusValue === "paused_unavailable"
+        ? "Archive paused after repeated unavailable dates; review the last date and retry the range."
+        : archiveStatusValue === "partial"
+          ? "Archive stopped before the requested range was complete; review progress and retry the range."
+          : archiveStatusValue === "gaps"
+            ? "Archive has " + unrecordedGapCount + " unrecorded gaps and " + explicitMissingCount + " provider-unavailable days in its stored range. Download missing data to fill the gaps."
+          : archiveStatusValue === "completed" || archiveStatusValue === "complete" || archiveStatusValue === "ready"
+            ? "Archive is up to date for the last requested range."
+            : "Archive is ready for a download.";
+    const activeArchiveAction = String(archiveState.action || this._archiveDownloadInFlight?.action || "");
+    const archiveButton = (action, label, marker, extra = "") => archiveIsRunning && activeArchiveAction === action
+      ? `<button type="button" class="panel-nav__item ${extra}" data-archive-cancel="${action}">Cancel ${label.toLowerCase()}</button>`
+      : `<button type="button" class="panel-nav__item ${extra}" ${marker} ${archiveIsRunning ? "disabled" : ""}>${label}</button>`;
+    const archiveControls = history.archive_supported === false
+      ? `<p>Historical downloads are unavailable for this connection type.</p>`
+      : `<p>Download only the dates without a valid local record in the selected range. Use Refresh range to re-download every date.</p><div class="settings-archive-statusbar" data-archive-statusbar data-state="${this._escapeHtml(archiveStatusValue)}" role="status" aria-live="polite"><span>Archive status</span><strong data-archive-status>${this._escapeHtml(archiveStatusMessage)}</strong></div><div class="settings-archive-controls"><label>Scope<select data-archive-scope>${scopeOptions}</select></label><label>Start date<span class="settings-archive-date"><input class="settings-archive-date__display" type="text" aria-label="Start date (YYYY-MM-DD)" data-archive-start-display value="${this._escapeHtml(rangeStart)}" readonly /><span class="settings-archive-date__picker" aria-hidden="true">&#128197;</span><input class="settings-archive-date__native" type="date" aria-label="Choose start date" data-archive-start value="${this._escapeHtml(rangeStart)}" /></span></label><label>End date<span class="settings-archive-date"><input class="settings-archive-date__display" type="text" aria-label="End date (YYYY-MM-DD)" data-archive-end-display value="${this._escapeHtml(rangeEnd)}" readonly /><span class="settings-archive-date__picker" aria-hidden="true">&#128197;</span><input class="settings-archive-date__native" type="date" aria-label="Choose end date" data-archive-end value="${this._escapeHtml(rangeEnd)}" /></span></label><div class="settings-archive-controls__actions">${archiveButton("download_missing", "Download missing data", "data-archive-download")}${archiveButton("refresh_range", "Refresh range", "data-archive-refresh-missing")}${archiveButton("refresh_previous_2_months", "Refresh previous 2 months", "data-archive-monthly-refresh", "pricing-rule__button--ghost")}</div></div>`;
     return `
       <section class="grid grid--two settings-archive">
-        <article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Archive Snapshot</h2><span>Settings</span></div><p>${summary}</p>${actions ? `<div class="pricing-rule__actions--inline report-actions">${actions}</div>` : ""}<ul class="key-list key-list--compact">${this._valueList([{ label:"Health", value:health }, { label:"Stored report rows", value:String(storedCount) }, { label:"Missing report dates", value:String(missingCount) }, { label:"Coverage", value:coverage }, { label:"Range", value:range }])}</ul></article>
+        <article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Archive Snapshot</h2><span>Settings</span></div><p>${summary}</p>${actions ? `<div class="pricing-rule__actions--inline report-actions">${actions}</div>` : ""}<ul class="key-list key-list--compact">${this._valueList([{ label:"Health", value:health }, { label:"Stored report rows", value:String(storedCount) }, { label:"Unrecorded gaps", value:String(unrecordedGapCount) }, { label:"Provider unavailable", value:String(explicitMissingCount) }, { label:"Stored calendar coverage", value:coverage }, { label:"Range", value:storedRange }])}</ul></article>
         <article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Archive Scope Coverage</h2><span>All scopes</span></div><div class="report-scope-grid">${scopeCards}</div></article>
-        <article class="panel-card"><div class="panel-card__header"><h2>Archive Status</h2><span>Background storage</span></div><ul class="key-list key-list--compact">${this._valueList([{ label:"Archive status", value:String(history.status || "Unavailable") }, { label:"Current scope", value:String(history.current_scope || "all") }, { label:"History JSON", value:String(scope.history_filename || "Unavailable") }, { label:"Scope CSV", value:String(scope.csv_filename || "Unavailable") }, { label:"Backfill days", value:history.backfill_days === undefined ? "Unavailable" : String(history.backfill_days) }])}</ul></article>
-        <article class="panel-card"><div class="panel-card__header"><h2>Storage Strategy</h2><span>Local archive + Influx</span></div><p>HEROS keeps compact provider-aware daily report snapshots for the panel and exports. InfluxDB is the long-term detailed sensor store.</p><ul class="key-list key-list--compact">${this._valueList([{ label:"Local report archive", value:"Home Assistant www/heros-history/<entry_id>/history.json" }, { label:"Scope CSVs", value:"One CSV per report scope" }, { label:"Current purpose", value:"Power diagrams, daily rows, and archive state" }])}</ul></article>
+        <article class="panel-card panel-card--wide"><div class="panel-card__header"><h2>Archive Download</h2><span>Web API history</span></div>${archiveControls}</article>
+        <article class="panel-card"><div class="panel-card__header"><h2>Archive Status</h2><span>Background storage</span></div><ul class="key-list key-list--compact archive-status-list">${this._valueList([{ label:"Status", value:archiveStatusMessage }, { label:"Selected scope", value:selectedScope }, { label:"Requested range", value:requestedRange }, { label:"Progress", value:Number.isFinite(requestedDays) && Number.isFinite(processedDays) ? String(processedDays) + "/" + String(requestedDays) + " days" : "Unavailable" }, { label:"Stored in request", value:Number.isFinite(Number(archiveState.stored_days)) ? String(archiveState.stored_days) : "Unavailable" }, { label:"Unavailable in request", value:Number.isFinite(Number(archiveState.missing_days)) ? String(archiveState.missing_days) : "Unavailable" }, { label:"Archive database", value:String(scope.database_filename || "Unavailable") }, { label:"Last attempt", value:String(archiveState.last_attempt_date || "Unavailable") }, { label:"Last error", value:String(archiveState.last_attempt_error || "None") }, { label:"Monthly refresh", value:String(archiveState.monthly_refresh_range || "Scheduled") }])}</ul></article>
+        <article class="panel-card"><div class="panel-card__header"><h2>Storage Strategy</h2><span>SQLite archive</span></div><p>HEROS stores provider-aware daily reports in a persistent SQLite database. The older JSON files are retained for migration and rollback.</p><ul class="key-list key-list--compact">${this._valueList([{ label:"Archive path", value:"Home Assistant /config/heros-history/{entry ID}/archive.sqlite3" }, { label:"Current purpose", value:"Daily reports, coverage, and job status" }])}</ul></article>
       </section>
     `;
   }
@@ -7329,6 +7254,36 @@ class HerosPanel extends HTMLElement {
                 ${theme.label}
               </button>
             `).join("")}
+          </div>
+          <div class="theme-preview" aria-label="Theme colour preview">
+            <h3>Theme preview</h3>
+            <div class="theme-preview__samples">
+              <div class="theme-preview__sample"><span class="theme-preview__swatch theme-preview__swatch--surface"></span><span>Surface</span></div>
+              <div class="theme-preview__sample"><span class="theme-preview__swatch theme-preview__swatch--selected"></span><span>Selected page</span></div>
+              <div class="theme-preview__sample"><span class="theme-preview__swatch theme-preview__swatch--border"></span><span>Border</span></div>
+              <div class="theme-preview__sample"><span class="theme-preview__swatch theme-preview__swatch--accent"></span><span>Chart accent</span></div>
+            </div>
+            <div class="theme-preview__controls">
+              <button type="button" class="theme-preview__button">Button</button>
+              <button type="button" class="theme-preview__button is-selected">Selected button</button>
+              <strong class="theme-preview__value">123.4 kWh</strong>
+            </div>
+            <div class="theme-preview__mini-card">
+              <div class="theme-preview__mini-head"><strong>Reports</strong><span>Live values</span></div>
+              <p class="theme-preview__eyebrow">ENERGY SUMMARY</p>
+              <p class="theme-preview__body">Compact shared controls and readable status text.</p>
+              <div class="theme-preview__divider"></div>
+              <div class="theme-preview__form-grid">
+                <label>Text input<input value="Rates from" readonly /></label>
+                <label>Date<input value="2026-09-07" readonly /></label>
+                <label>Time<input value="06:30" readonly /></label>
+                <label>Mode<select><option>Dynamic</option></select></label>
+              </div>
+              <div class="theme-preview__mini-actions"><button type="button">Save</button><button type="button" class="is-ghost">Cancel</button><button type="button" class="is-danger">Delete</button></div>
+              <div class="theme-preview__metrics"><span><small>SoC</small><strong>82%</strong></span><span><small>Solar</small><strong>1.2 kW</strong></span><span><small>Grid</small><strong>0 W</strong></span></div>
+              <div class="theme-preview__mini-table"><div><b>Date</b><b>Description</b><b>Actions</b></div><div><span>2026-09-07</span><span>Solar</span><span>Modify · Delete</span></div><div><span>2026-09-01</span><span>Battery</span><span>Modify · Delete</span></div></div>
+              <div class="theme-preview__status">Info · Policy ready</div><div class="theme-preview__status is-warning">Pending · Commit changes</div>
+            </div>
           </div>
         </article>
       </section>
@@ -7462,22 +7417,24 @@ class HerosPanel extends HTMLElement {
     if (!this.shadowRoot) {
       return false;
     }
-    if (this._page !== "report" && this._page !== "debug") {
+    if (!["policy", "report", "debug"].includes(this._page)) {
       return false;
     }
-    const selector = this._page === "report"
-      ? '[data-embedded="report"]'
-      : '[data-embedded="debug"]';
-    const host = this.shadowRoot.querySelector(selector);
-    const element = host?.firstElementChild;
-    if (!host || !element) {
-      return false;
+    const selectors = this._page === "policy"
+      ? ['[data-embedded="battery-policy"]', '[data-embedded="feedin-policy"]']
+      : [this._page === "report" ? '[data-embedded="report"]' : '[data-embedded="debug"]'];
+    let updated = false;
+    selectors.forEach((selector) => {
+      const host = this.shadowRoot.querySelector(selector);
+      const element = host?.firstElementChild;
+      if (!host || !element) return;
+      if (this._hass) element.hass = this._hass;
+      updated = true;
+    });
+    if (this._page === "report") {
+      this._syncEmbeddedSelectionStateInPlace();
     }
-    this._syncEmbeddedSelectionStateInPlace();
-    if (this._hass) {
-      element.hass = this._hass;
-    }
-    return true;
+    return updated;
   }
 
   _syncEmbeddedSelectionStateInPlace() {
@@ -7517,6 +7474,7 @@ class HerosPanel extends HTMLElement {
           ...this._config,
           entity_prefix: prefix,
           settings_target: settingsTarget,
+          theme: this._theme,
           variant: "battery_policy",
         },
       },
@@ -7527,6 +7485,7 @@ class HerosPanel extends HTMLElement {
           ...this._config,
           entity_prefix: prefix,
           settings_target: settingsTarget,
+          theme: this._theme,
           variant: "feedin_policy",
         },
       },
@@ -7541,6 +7500,7 @@ class HerosPanel extends HTMLElement {
           overview_toggle_available: this._page === "report",
           overview_report_enabled: this._overviewReportEnabled(),
           show_version_numbers: this._showVersionNumbers,
+          theme: this._theme,
         },
       },
       {
@@ -7570,6 +7530,12 @@ class HerosPanel extends HTMLElement {
             currentElement.pendingSelection = this._pendingBatterySelection || "";
             currentElement.selectorOpen = hasPendingSelection;
             currentElement.onOverviewReportToggle = () => this._setOverviewReportEnabled(!this._overviewReportEnabled());
+            if (this._theme === "cyberpunk" && currentElement.shadowRoot && !currentElement.shadowRoot.querySelector("[data-heros-cyberpunk-report-overrides]")) {
+              const style = document.createElement("style");
+              style.dataset.herosCyberpunkReportOverrides = "";
+              style.textContent = `.panel-tabs button,.period-tabs button,[data-analysis-period],[data-operational-period],.chart-overview-toggle,.download-btn,.date-nav,.date-picker__button,.report-chart-nav button,.stats-chart-nav button{min-height:32px!important;border:1px solid rgba(0,229,255,.42)!important;border-radius:7px!important;clip-path:polygon(8% 0%,92% 0%,100% 20%,100% 80%,92% 100%,8% 100%,0% 80%,0% 20%)!important;background:#0d1b2d!important;color:#effcff!important;box-shadow:none!important}.panel-tabs button.active,.period-tabs button.active,[data-analysis-period].active,[data-operational-period].active,.chart-overview-toggle.is-active,.download-btn{background:linear-gradient(135deg,#00e5ff,#ff4de8)!important;color:#06111f!important;border-color:transparent!important}`;
+              currentElement.shadowRoot.appendChild(style);
+            }
           }
           if (this._hass) {
             currentElement.hass = this._hass;
@@ -7624,6 +7590,12 @@ class HerosPanel extends HTMLElement {
           element.pendingSelection = this._pendingBatterySelection || "";
           element.selectorOpen = hasPendingSelection;
           element.onOverviewReportToggle = () => this._setOverviewReportEnabled(!this._overviewReportEnabled());
+          if (this._theme === "cyberpunk" && element.shadowRoot && !element.shadowRoot.querySelector("[data-heros-cyberpunk-report-overrides]")) {
+            const style = document.createElement("style");
+            style.dataset.herosCyberpunkReportOverrides = "";
+            style.textContent = `.panel-tabs button,.period-tabs button,[data-analysis-period],[data-operational-period],.chart-overview-toggle,.download-btn,.date-nav,.date-picker__button,.report-chart-nav button,.stats-chart-nav button{min-height:32px!important;border:1px solid rgba(0,229,255,.42)!important;border-radius:7px!important;clip-path:polygon(8% 0%,92% 0%,100% 20%,100% 80%,92% 100%,8% 100%,0% 80%,0% 20%)!important;background:#0d1b2d!important;color:#effcff!important;box-shadow:none!important}.panel-tabs button.active,.period-tabs button.active,[data-analysis-period].active,[data-operational-period].active,.chart-overview-toggle.is-active,.download-btn{background:linear-gradient(135deg,#00e5ff,#ff4de8)!important;color:#06111f!important;border-color:transparent!important}`;
+            element.shadowRoot.appendChild(style);
+          }
         }
         if (this._hass) {
           element.hass = this._hass;
@@ -7881,6 +7853,10 @@ class HerosPanel extends HTMLElement {
     if (!this.shadowRoot) {
       return;
     }
+    // Archive date controls are local UI state. Capture them before replacing
+    // the shadow DOM so routine HA/provider updates cannot restore the default
+    // archive range while the user is choosing a date.
+    this.shadowRoot.querySelectorAll("[data-archive-scope], [data-archive-start], [data-archive-end]").forEach((field) => this._captureArchiveDateDraft(field));
     this._processPricingUrlAction();
     const preservedEmbeddedCards = this._preserveEmbeddedCardsForRender();
 
@@ -7896,10 +7872,23 @@ class HerosPanel extends HTMLElement {
         `
       : "";
     const availablePages = this._availablePages();
-
-    this.shadowRoot.innerHTML = `
-      <link rel="stylesheet" href="/local/community/heros/heros-panel.css?v=${HEROS_PANEL_BUILD}&layout=5">
-      <section class="panel shell theme-${this._theme}" data-theme="${this._theme}" style="${this._themeStyleVars()}">
+    const minimalistHeader = this._theme === "minimalist";
+    const heroMarkup = minimalistHeader
+      ? `
+        <header class="hero">
+          <div class="hero__copy">
+            <div class="hero__title-row">
+              <span class="hero__brand-mark" aria-hidden="true">H</span>
+              <h1>HEROS</h1>
+              ${this._showVersionNumbers ? `<div class="hero__badge">v${HEROS_PANEL_BUILD}</div>` : ""}
+              <span class="hero__separator" aria-hidden="true">|</span>
+              <p>Home Energy Reporting &amp; Optimisation System</p>
+              <div class="hero__connection-status is-${connectionStatus.key}" role="status" aria-live="polite" title="${this._escapeHtml(connectionStatus.detail)}"><span class="hero__connection-dot" aria-hidden="true"></span><span>${this._escapeHtml(connectionStatus.label)}</span></div>
+            </div>
+          </div>
+        </header>
+      `
+      : `
         <header class="hero">
           <div class="hero__copy">
             <div class="hero__title-row">
@@ -7910,6 +7899,30 @@ class HerosPanel extends HTMLElement {
             <p>${subtitle}</p>
           </div>
         </header>
+      `;
+    const statusMarkup = minimalistHeader
+      ? `
+        <section class="status status--minimalist-selection" aria-label="Battery selection">
+          ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
+        </section>
+      `
+      : `
+        <section class="status">
+          <div class="status__row">
+            ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
+            <div class="status__banner is-${connectionStatus.key}" title="${this._escapeHtml(connectionStatus.detail)}">${this._escapeHtml(connectionLabel)}</div>
+          </div>
+          ${statusMeta}
+          ${this._page === "forecast_setup" && this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2" ? this._renderFoxessSetupDisplayControls() : ""}
+        </section>
+      `;
+
+    this.shadowRoot.innerHTML = `
+      <link rel="stylesheet" href="/local/community/heros/heros-panel.css?v=${HEROS_PANEL_BUILD}&layout=7">
+      <link rel="stylesheet" href="/local/community/heros/heros-minimalist.css?v=${HEROS_PANEL_BUILD}&layout=1">
+      <link rel="stylesheet" href="/local/community/heros/heros-cyberpunk.css?v=${HEROS_PANEL_BUILD}&layout=1">
+      <section class="panel shell theme-${this._theme}" data-theme="${this._theme}" style="${this._themeStyleVars()}">
+        ${heroMarkup}
 
         <nav class="panel-nav" aria-label="HEROS (Home Energy Reporting & Optimisation System) sections">
           ${availablePages.map((page) => `
@@ -7924,14 +7937,7 @@ class HerosPanel extends HTMLElement {
           `).join("")}
         </nav>
 
-        <section class="status">
-          <div class="status__row">
-            ${this._page === "pricing" ? "" : this._renderSharedBatterySelector()}
-            <div class="status__banner is-${connectionStatus.key}" title="${this._escapeHtml(connectionStatus.detail)}">${this._escapeHtml(connectionLabel)}</div>
-          </div>
-          ${statusMeta}
-          ${this._page === "forecast_setup" && this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2" ? this._renderFoxessSetupDisplayControls() : ""}
-        </section>
+        ${statusMarkup}
 
         ${this._pageContent()}
       </section>
@@ -7946,12 +7952,14 @@ class HerosPanel extends HTMLElement {
   }
 
   _preserveEmbeddedCardsForRender() {
-    if (!this.shadowRoot || (this._page !== "report" && this._page !== "debug")) {
+    if (!this.shadowRoot || !["policy", "report", "debug"].includes(this._page)) {
       return null;
     }
-    const selectors = this._page === "report"
-      ? ['[data-embedded="report"]']
-      : ['[data-embedded="debug"]'];
+    const selectors = this._page === "policy"
+      ? ['[data-embedded="battery-policy"]', '[data-embedded="feedin-policy"]']
+      : this._page === "report"
+        ? ['[data-embedded="report"]']
+        : ['[data-embedded="debug"]'];
     const preserved = [];
     selectors.forEach((selector) => {
       const host = this.shadowRoot.querySelector(selector);
@@ -8007,7 +8015,7 @@ class HerosPanel extends HTMLElement {
       field.addEventListener("click", (event) => event.stopPropagation());
     });
 
-    this.shadowRoot.querySelectorAll("select, [data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day], [data-custom-buy-description-input]").forEach((field) => {
+    this.shadowRoot.querySelectorAll("select, [data-pricing-group-field], [data-pricing-rule-field], [data-pricing-rule-day], [data-pricing-field], [data-pricing-holiday-field], [data-policy-charge-field], [data-policy-charge-row-field], [data-policy-charge-row-day], [data-custom-buy-description-input], [data-archive-scope], [data-archive-start], [data-archive-end], [data-roi-repayment-recurring]").forEach((field) => {
       if (field.__herosNativeInputStopBound) {
         return;
       }
@@ -8019,9 +8027,29 @@ class HerosPanel extends HTMLElement {
       });
     });
 
+    this.shadowRoot.querySelectorAll("[data-archive-scope], [data-archive-start], [data-archive-end]").forEach((field) => {
+      if (field.__herosArchiveDraftBound) return;
+      field.__herosArchiveDraftBound = true;
+      const isDatePicker = field.dataset.archiveStart !== undefined || field.dataset.archiveEnd !== undefined;
+      const syncArchiveDraft = () => {
+        this._captureArchiveDateDraft(field);
+        if (!isDatePicker) return;
+        const display = this.shadowRoot.querySelector(field.dataset.archiveStart !== undefined ? "[data-archive-start-display]" : "[data-archive-end-display]");
+        if (display) display.value = field.value;
+        this._holdArchiveDatePickerWindow(30000);
+      };
+      if (isDatePicker) {
+        field.addEventListener("pointerdown", () => this._holdArchiveDatePickerWindow(30000));
+        field.addEventListener("focus", () => this._holdArchiveDatePickerWindow(30000));
+        field.addEventListener("blur", syncArchiveDraft);
+      }
+      field.addEventListener("input", syncArchiveDraft);
+      field.addEventListener("change", syncArchiveDraft);
+    });
+
     if (!this._criticalPressHandlersBound) {
       this._criticalPressHandlersBound = true;
-      const handleCriticalActivation = (event) => {
+      const handleCriticalActivation = async (event) => {
         const path = event.composedPath?.() || [];
       if (this._roiSaveInFlight) return;
         const returnToBuyRates = path.find((node) => node?.dataset?.returnToBuyRates !== undefined);
@@ -8040,7 +8068,56 @@ class HerosPanel extends HTMLElement {
       const customEdit = path.find((node) => node?.dataset?.customBuyDescriptionEdit !== undefined);
       if (customEdit) { const oldValue = customEdit.dataset.customBuyDescriptionEdit; const nextValue = window.prompt("Modify custom description", oldValue); if (nextValue && nextValue.trim()) { this._saveCustomBuyDescriptions(this._customBuyDescriptions().map((item) => item === oldValue ? nextValue.trim() : item)); this._render(); } return true; }
       const customDelete = path.find((node) => node?.dataset?.customBuyDescriptionDelete !== undefined);
-      if (customDelete) { this._saveCustomBuyDescriptions(this._customBuyDescriptions().filter((item) => item !== customDelete.dataset.customBuyDescriptionDelete)); this._render(); return true; }
+      if (customDelete) { const value = String(customDelete.dataset.customBuyDescriptionDelete || "").trim(); if (value && window.confirm(`Delete custom Buy description "${value}"?`)) { this._saveCustomBuyDescriptions(this._customBuyDescriptions().filter((item) => item !== value)); this._render(); } return true; }
+      const archiveCancel = path.find((node) => node?.dataset?.archiveCancel !== undefined);
+      if (archiveCancel) {
+        event.preventDefault(); event.stopPropagation();
+        const status = this.shadowRoot.querySelector("[data-archive-status]");
+        if (status) status.textContent = "Cancelling after the current request...";
+        try {
+          const state = this._settingsTargetState()?.attributes?.history?.archive_state || {};
+          await this._hass.callService("heros", "cancel_report_history", {
+            entry_id: this._entryId(), job_id: String(state.job_id || ""),
+          });
+        } catch (error) {
+          if (status) status.textContent = String(error?.message || error || "Cancellation failed");
+        }
+        return true;
+      }
+      const archiveDownload = path.find((node) => node?.dataset?.archiveDownload !== undefined);
+      const archiveRefreshMissing = path.find((node) => node?.dataset?.archiveRefreshMissing !== undefined);
+      const archiveMonthlyRefresh = path.find((node) => node?.dataset?.archiveMonthlyRefresh !== undefined);
+      if (archiveDownload || archiveRefreshMissing || archiveMonthlyRefresh) {
+        event.preventDefault(); event.stopPropagation();
+        const status = this.shadowRoot.querySelector("[data-archive-status]");
+        const scopeKey = String(this.shadowRoot.querySelector("[data-archive-scope]")?.value || "all");
+        const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        let start = String(this.shadowRoot.querySelector("[data-archive-start]")?.value || "");
+        let end = String(this.shadowRoot.querySelector("[data-archive-end]")?.value || "");
+        let force = Boolean(archiveRefreshMissing);
+        if (archiveMonthlyRefresh) {
+          const currentMonth = new Date(); currentMonth.setDate(1);
+          const previousEnd = new Date(currentMonth); previousEnd.setDate(0);
+          const previousStart = new Date(previousEnd); previousStart.setDate(1); previousStart.setMonth(previousStart.getMonth() - 1);
+          start = formatDate(previousStart); end = formatDate(previousEnd); force = true;
+        }
+        const statusBar = this.shadowRoot.querySelector("[data-archive-statusbar]");
+        const setArchiveStatus = (message, state) => { if (status) status.textContent = message; if (statusBar) { statusBar.dataset.state = state; statusBar.querySelector("[data-archive-status]")?.replaceChildren(document.createTextNode(message)); } };
+        if (this._archiveDownloadInFlight) { setArchiveStatus("Archive download already in progress; please wait for it to finish.", "running"); return true; }
+        if (!start || !end) { setArchiveStatus("Choose a start and end date first.", "error"); return true; }
+        const action = archiveMonthlyRefresh ? "refresh_previous_2_months" : force ? "refresh_range" : "download_missing";
+        this._archiveDownloadInFlight = { scopeKey, start, end, force, action };
+        setArchiveStatus(`Starting archive download: ${start} to ${end}...`, "running");
+        try {
+          await this._hass.callService("heros", "ensure_report_history", { entry_id: this._entryId(), scope_key: scopeKey, start_date: start, end_date: end, force, action });
+          this._archiveDownloadInFlight = null;
+          this._render();
+        } catch (error) {
+          this._archiveDownloadInFlight = null;
+          setArchiveStatus(String(error?.message || error || "Archive download failed"), "error");
+        }
+        return true;
+      }
       const pricingUiAddGroup = path.find((node) => node?.dataset?.pricingUiAddGroup !== undefined);
         if (pricingUiAddGroup) {
           event.preventDefault();
@@ -8239,6 +8316,22 @@ class HerosPanel extends HTMLElement {
         }
         event.preventDefault();
         this._setPage(button.dataset.page);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-report-view]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const view = String(button.dataset.reportView || "").trim();
+        if (!view) return;
+        const reportHost = this.shadowRoot.querySelector('[data-embedded="report"]');
+        const reportCard = reportHost?.firstElementChild;
+        const reportButton = reportCard?.shadowRoot?.querySelector(`[data-view="${CSS.escape(view)}"]`);
+        if (reportButton) {
+          reportButton.click();
+          reportCard.scrollIntoView?.({ block: "start", behavior: "smooth" });
+        }
       };
     });
 
@@ -8622,23 +8715,32 @@ class HerosPanel extends HTMLElement {
         const entry = (this._roiSettingsData?.repayments || []).find((item) => String(item?.entry_id || "") === String(editRepayment.dataset.roiEditRepayment));
         if (!entry) return;
         this._editingRepaymentId = String(entry.entry_id);
+        this.shadowRoot.querySelector("[data-roi-repayment-editor]")?.classList.remove("is-hidden");
         this.shadowRoot.querySelector("[data-roi-repayment-start]").value = this._normalizePricingDate(entry.effective_start_date);
         this.shadowRoot.querySelector("[data-roi-repayment-amount]").value = String(entry.amount ?? "");
         this.shadowRoot.querySelector("[data-roi-repayment-frequency]").value = String(entry.frequency || "weekly");
+        this.shadowRoot.querySelector("[data-roi-repayment-description]").value = String(entry.description || "");
+        this.shadowRoot.querySelector("[data-roi-repayment-end]").value = this._normalizePricingDate(entry.effective_end_date);
+        this.shadowRoot.querySelector("[data-roi-repayment-recurring]").checked = entry.is_recurring !== false;
+        this.shadowRoot.querySelector("[data-roi-repayment-notes]").value = String(entry.notes || "");
         this.shadowRoot.querySelector("[data-roi-save-repayment]").textContent = "Save repayment change";
         return;
       }
       const deleteRepayment = path.find((node) => node?.dataset?.roiDeleteRepayment);
       if (deleteRepayment) {
         event.preventDefault();
+        if (!window.confirm("Delete this repayment change?")) return;
         await this._hass.callService("heros", "roi_remove_repayment", { entry_id: this._entryId(), repayment_id: deleteRepayment.dataset.roiDeleteRepayment });
+        this._roiSettingsData = null;
         this._roiFileLoadKey = "";
-    this._roiDraftDirty = false;
-    this._roiSaveInFlight = false;
-    this._roiForceRenderAfterLoad = false;
+        this._roiDraftDirty = false;
+        this._roiSaveInFlight = false;
         this._roiForceRenderAfterLoad = true;
-        this._roiForceRenderAfterLoad = true;
-        this._ensureRoiSettingsLoaded();
+        this._render();
+        // HA writes the JSON snapshot asynchronously; reload after the write settles,
+        // then retry once so the deleted row cannot remain from a stale snapshot.
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 500);
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 1400);
         return;
       }
       const editVppRate = path.find((node) => node?.dataset?.vppEditRate);
@@ -8656,21 +8758,40 @@ class HerosPanel extends HTMLElement {
       const deleteVppRate = path.find((node) => node?.dataset?.vppDeleteRate);
       if (deleteVppRate) {
         event.preventDefault();
+        if (!window.confirm("Delete this VPP rate?")) return;
         await this._hass.callService("heros", "roi_remove_vpp_rate", { entry_id: this._entryId(), vpp_rate_id: deleteVppRate.dataset.vppDeleteRate });
+        this._roiSettingsData = null;
         this._roiFileLoadKey = "";
-    this._roiDraftDirty = false;
-    this._roiSaveInFlight = false;
-    this._roiForceRenderAfterLoad = false;
+        this._roiDraftDirty = false;
+        this._roiSaveInFlight = false;
         this._roiForceRenderAfterLoad = true;
-        this._roiForceRenderAfterLoad = true;
-        this._ensureRoiSettingsLoaded();
+        this._render();
+        // HA writes the JSON snapshot asynchronously; reload after the write settles,
+        // then retry once so the deleted row cannot remain from a stale snapshot.
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 500);
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 1400);
         return;
       }      const startInstallation = path.find((node) => node?.dataset?.roiStartInstallation !== undefined);
       if (startInstallation) { event.preventDefault(); const editor = this.shadowRoot.querySelector("[data-roi-installation-editor]"); if (editor) editor.classList.toggle("is-hidden"); return; }
       const editInstallation = path.find((node) => node?.dataset?.roiEditInstallation);
       if (editInstallation) { event.preventDefault(); const entry = (this._roiSettingsData?.installation_costs || []).find((item) => String(item?.entry_id || "") === String(editInstallation.dataset.roiEditInstallation)); if (!entry) return; this._editingInstallationId = String(entry.entry_id); this.shadowRoot.querySelector("[data-roi-installation-editor]")?.classList.remove("is-hidden"); this.shadowRoot.querySelector("[data-roi-installation-date]").value = this._normalizePricingDate(entry.effective_start_date); this.shadowRoot.querySelector("[data-roi-installation-description]").value = String(entry.description || ""); this.shadowRoot.querySelector("[data-roi-installation-amount]").value = String(entry.amount ?? ""); this.shadowRoot.querySelector("[data-roi-save-installation]").textContent = "Save installation cost"; return; }
       const deleteInstallation = path.find((node) => node?.dataset?.roiDeleteInstallation);
-      if (deleteInstallation) { event.preventDefault(); await this._hass.callService("heros", "roi_remove_installation_cost", { entry_id: this._entryId(), installation_cost_id: deleteInstallation.dataset.roiDeleteInstallation }); this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); return; }
+      if (deleteInstallation) {
+        event.preventDefault();
+        if (!window.confirm("Delete this installation cost?")) return;
+        await this._hass.callService("heros", "roi_remove_installation_cost", { entry_id: this._entryId(), installation_cost_id: deleteInstallation.dataset.roiDeleteInstallation });
+        this._roiSettingsData = null;
+        this._roiFileLoadKey = "";
+        this._roiDraftDirty = false;
+        this._roiSaveInFlight = false;
+        this._roiForceRenderAfterLoad = true;
+        this._render();
+        // HA writes the JSON snapshot asynchronously; reload after the write settles,
+        // then retry once so the deleted row cannot remain from a stale snapshot.
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 500);
+        setTimeout(() => { this._roiFileLoadKey = ""; this._roiForceRenderAfterLoad = true; this._ensureRoiSettingsLoaded(); }, 1400);
+        return;
+      }
       const roiCancelInstallation = path.find((node) => node?.dataset?.roiCancelInstallation !== undefined);
       if (roiCancelInstallation) {
         event.preventDefault();
@@ -8701,7 +8822,19 @@ class HerosPanel extends HTMLElement {
           if (status) status.textContent = "Enter a repayment amount before saving.";
           return;
         }
-        await this._hass.callService("heros", "roi_upsert_repayment", { entry_id: this._entryId(), effective_start_date: effectiveStartDate, repayment_amount: amount, repayment_frequency: frequency, repayment_id: this._editingRepaymentId || undefined });
+        const description = String(this.shadowRoot.querySelector("[data-roi-repayment-description]")?.value || "").trim();
+        const effectiveEndDate = String(this.shadowRoot.querySelector("[data-roi-repayment-end]")?.value || "");
+        const isRecurring = Boolean(this.shadowRoot.querySelector("[data-roi-repayment-recurring]")?.checked ?? true);
+        const notes = String(this.shadowRoot.querySelector("[data-roi-repayment-notes]")?.value || "").trim();
+        if (effectiveEndDate && effectiveEndDate < effectiveStartDate) { this._roiSaveInFlight = false; const status = this.shadowRoot.querySelector("[data-roi-repayment-status]"); if (status) status.textContent = "End Date must be on or after Start Date."; return; }
+        try {
+          await this._hass.callService("heros", "roi_upsert_repayment", { entry_id: this._entryId(), effective_start_date: effectiveStartDate, effective_end_date: effectiveEndDate || undefined, description, repayment_amount: amount, repayment_frequency: frequency, repayment_period: frequency, is_recurring: isRecurring, notes, repayment_id: this._editingRepaymentId || undefined });
+        } catch (error) {
+          this._roiSaveInFlight = false;
+          const status = this.shadowRoot.querySelector("[data-roi-repayment-status]");
+          if (status) status.textContent = String(error?.message || error || "Unable to save repayment change");
+          return;
+        }
         const status = this.shadowRoot.querySelector("[data-roi-repayment-status]");
         if (status) status.textContent = "Repayment change saved.";
         this._editingRepaymentId = "";
@@ -9208,9 +9341,6 @@ class HerosPanel extends HTMLElement {
   }
 
   async _selectSharedBatteryOption(option) {
-    if (this._batteryProviderKey(this._config?.battery_provider) === "foxess_v2") {
-      return;
-    }
     const target = this._settingsTargetId();
     if (!target) {
       return;
@@ -9516,23 +9646,6 @@ if (typeof customElements !== "undefined") {
 } else {
   startHerosPanelFallback();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

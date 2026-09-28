@@ -747,6 +747,13 @@
   letter-spacing: 0.01em;
   white-space: nowrap;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.report-catalog__item {
+  appearance: none;
+  text-align: left;
 }
 
 .report-catalog__item.is-built {
@@ -2367,6 +2374,43 @@
   accent-color: var(--heros-panel-accent);
 }
 
+.policy-toggle-pill input {
+  appearance: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--heros-panel-border);
+  border-radius: 999px;
+  background: var(--heros-panel-surface);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.policy-toggle-pill input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--heros-panel-muted);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.policy-toggle-pill input:checked {
+  border-color: var(--heros-panel-accent);
+  background: color-mix(in srgb, var(--heros-panel-accent) 26%, var(--heros-panel-surface));
+}
+
+.policy-toggle-pill input:checked::after {
+  background: var(--heros-panel-accent);
+  transform: translateX(18px);
+}
+
 .debug {
   display: grid;
   gap: 16px;
@@ -2683,7 +2727,152 @@
 .pricing .panel-nav__item, .settings-page .panel-nav__item { height: 32px; min-height: 32px; padding: 5px 10px; border-radius: 8px; font-size: 0.82rem; box-sizing: border-box; }
 .pricing .roi-history-actions button { height: 32px; min-height: 32px; box-sizing: border-box; }
 
-/* Pricing cleanup: align selector, history columns, and compact rate-group cards. */
+/* Repayment change: compact the editor controls for review without changing other pricing fields. */
+.pricing [data-roi-repayment-editor] [data-roi-save-repayment],
+.pricing [data-roi-repayment-editor] [data-roi-cancel-repayment] {
+  height:32px;
+  min-height:32px;
+  max-height:32px;
+  padding:2px 9px;
+  line-height:20px;
+}
+
+.panel.shell.theme-minimalist {
+  --heros-panel-surface: #ffffff;
+  --heros-panel-surface-strong: #f8fafc;
+  --heros-panel-border: #e2e8f0;
+  --heros-panel-muted: #64748b;
+  --heros-panel-accent: #2563eb;
+  --heros-panel-accent-strong: #1d4ed8;
+  --heros-panel-text: #0f172a;
+  color-scheme: light;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: "Plus Jakarta Sans", "Inter", "Segoe UI", sans-serif;
+}
+
+.panel.shell.theme-minimalist::before,
+.panel.shell.theme-minimalist::after {
+  display: none;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item,
+.panel.shell.theme-minimalist .theme-pill,
+.panel.shell.theme-minimalist button,
+.panel.shell.theme-minimalist select,
+.panel.shell.theme-minimalist input,
+.panel.shell.theme-minimalist textarea {
+  font-family: inherit;
+}
+
+.panel.shell.theme-minimalist .hero__badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item {
+  border-radius: 6px;
+  color: #475569;
+  background: transparent;
+  box-shadow: none;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item:hover,
+.panel.shell.theme-minimalist .panel-nav__item:focus {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.panel.shell.theme-minimalist .panel-nav__item.is-active {
+  color: #0f172a;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+}
+
+.panel.shell.theme-minimalist .panel-card,
+.panel.shell.theme-minimalist .pricing-rule,
+.panel.shell.theme-minimalist .pricing-record-list-section,
+.panel.shell.theme-minimalist .status,
+.panel.shell.theme-minimalist .cards > div,
+.panel.shell.theme-minimalist .grid > div {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .panel-card h2,
+.panel.shell.theme-minimalist .panel-card h3,
+.panel.shell.theme-minimalist .panel-card h4,
+.panel.shell.theme-minimalist .cards h2,
+.panel.shell.theme-minimalist .cards strong {
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .panel-card p,
+.panel.shell.theme-minimalist .panel-card small,
+.panel.shell.theme-minimalist .status__meta {
+  color: #64748b;
+}
+
+.panel.shell.theme-minimalist .pricing-rule__button,
+.panel.shell.theme-minimalist .pricing-form__actions .theme-pill {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  box-shadow: none;
+}
+
+.panel.shell.theme-minimalist .pricing-rule__button:hover,
+.panel.shell.theme-minimalist .pricing-form__actions .theme-pill:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist .theme-pill.is-active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.panel.shell.theme-minimalist table thead,
+.panel.shell.theme-minimalist .pricing-record-section__heading {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.panel.shell.theme-minimalist table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.panel.shell.theme-minimalist input,
+.panel.shell.theme-minimalist select,
+.panel.shell.theme-minimalist textarea {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.panel.shell.theme-minimalist input:focus,
+.panel.shell.theme-minimalist select:focus,
+.panel.shell.theme-minimalist textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .15);
+}
+.pricing [data-roi-repayment-editor] .roi-settings-field input:not([type="checkbox"]),
+.pricing [data-roi-repayment-editor] .roi-settings-field select {
+  height:34px;
+  min-height:34px;
+  padding:0 10px;
+  line-height:1.2;
+}/* Pricing cleanup: align selector, history columns, and compact rate-group cards. */
 .pricing-group-selector-row { display:flex; align-items:center; gap:16px; min-width:0; }
 .pricing-group-selector-row .shared-selector { display:flex; align-items:center; gap:12px; width:min(100%, 720px); min-width:0; }
 .pricing-group-selector-row .shared-selector__label { flex:0 0 auto; white-space:nowrap; }
@@ -2808,11 +2997,143 @@
 .pricing .electricity-group-history .roi-repayment-history__head, .pricing .electricity-group-history .electricity-group-history__row { grid-template-columns: 1.05fr 1.1fr 1fr 1fr auto; }
 .pricing .electricity-rates-section.is-dynamic-hidden { display:none; }
 .electricity-group-editor__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .electricity-group-editor__grid .roi-settings-field { min-width: 0; } .electricity-group-editor__grid input, .electricity-group-editor__grid select { box-sizing: border-box; width: 100%; min-width: 0; }
+.pricing .electricity-group-editor .roi-settings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pricing .electricity-group-editor input[data-pricing-group-field="effective_start_date"] { font-variant-numeric: tabular-nums; }
 @media (max-width:720px) { .electricity-group-editor__grid { grid-template-columns: 1fr !important; } }
 .roi-installation-history .roi-repayment-history__head, .roi-installation-history .roi-repayment-history__row { grid-template-columns: 130px minmax(145px, 1fr) 110px 140px !important; }
 .roi-installation-history { max-width: 100%; } .roi-installation-history .roi-repayment-history__head, .roi-installation-history .roi-repayment-history__row { grid-template-columns: minmax(105px,1.1fr) minmax(145px,1.4fr) minmax(90px,1fr) auto !important; }
 .roi-installation-history { width: 100%; max-width: 560px; } .roi-installation-history .roi-repayment-history__head, .roi-installation-history .roi-repayment-history__row { grid-template-columns: 120px 150px 110px 140px !important; }
 .roi-repayment-history { max-width: 560px; } .roi-repayment-history__head--actions, .roi-repayment-history__row:has(.roi-history-actions) { grid-template-columns: 120px 150px 110px 140px !important; }
+
+/* Keep the four-column electricity rule history readable at desktop width. */
+.theme-minimalist .pricing .roi-repayment-history.electricity-rate-history,
+.theme-minimalist .pricing .roi-repayment-history.electricity-group-history { width:100% !important; max-width:none !important; }
+.theme-minimalist .pricing .electricity-rate-history__head,
+.theme-minimalist .pricing .electricity-rate-history__row { min-width:0 !important; grid-template-columns:minmax(130px,1fr) minmax(170px,1.35fr) minmax(150px,1.15fr) minmax(132px,auto) !important; }
+.theme-minimalist .pricing .electricity-rate-history__head > :last-child,
+.theme-minimalist .pricing .electricity-rate-history__row > .roi-history-actions { grid-column:4 !important; justify-self:end; }
 .electricity-group-editor__grid { column-gap: 14px !important; row-gap: 14px !important; }
 .electricity-group-history { max-width: 560px; } .electricity-group-history .roi-repayment-history__head, .electricity-group-history .roi-repayment-history__row { grid-template-columns: 90px 110px 100px 110px auto !important; } .electricity-group-history .roi-history-actions { white-space: nowrap; }
 .electricity-group-history { max-width: 680px; } .electricity-group-history .roi-repayment-history__head, .electricity-group-history .roi-repayment-history__row { grid-template-columns: 90px 120px 100px 120px auto !important; }
+
+/* Keep electricity rate history cards full-width so all four columns, including
+   row actions, remain visible at normal desktop widths. */
+.pricing .roi-repayment-history.electricity-rate-history,
+.pricing .roi-repayment-history.electricity-group-history {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+.pricing .electricity-rate-history__head,
+.pricing .electricity-rate-history__row {
+  width: 100%;
+  min-width: 0 !important;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.25fr) minmax(140px, 1fr) minmax(120px, auto) !important;
+}
+.pricing .electricity-rate-history__head > :last-child,
+.pricing .electricity-rate-history__row > .roi-history-actions {
+  grid-column: 4 !important;
+  justify-self: end;
+}
+.roi-repayment-history.electricity-rate-history,
+.roi-repayment-history.electricity-group-history {
+  width: 100% !important;
+  max-width: none !important;
+}
+.electricity-rate-history__head,
+.electricity-rate-history__row {
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.25fr) minmax(140px, 1fr) minmax(120px, auto) !important;
+}
+.electricity-rate-history__head > :last-child,
+.electricity-rate-history__row > .roi-history-actions {
+  grid-column: 4 !important;
+  justify-self: end !important;
+}
+
+/* Populated Buy/Sell records are compact cards. Keep the complete row in the
+   visible content width so actions never depend on horizontal scrolling. */
+.pricing .roi-repayment-history.electricity-rate-history {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+.pricing .electricity-rate-history .electricity-rate-history__head {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0 2px 4px !important;
+}
+.pricing .electricity-rate-history .electricity-rate-history__head > span {
+  display: block !important;
+  white-space: normal !important;
+}
+.pricing .electricity-rate-history > .roi-repayment-history__head {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  padding: 0 2px 4px !important;
+}
+.pricing .electricity-rate-history > .roi-repayment-history__head > span {
+  display: block !important;
+  white-space: normal !important;
+  justify-self: start !important;
+  grid-column: 1 !important;
+  position: static !important;
+  width: 100% !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+}
+.pricing .electricity-rate-history .electricity-rate-history__row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  gap: 6px !important;
+  overflow: visible !important;
+}
+.pricing .electricity-rate-history .electricity-rate-history__row > span,
+.pricing .electricity-rate-history .electricity-rate-history__row > .roi-history-actions {
+  min-width: 0 !important;
+  grid-column: 1 !important;
+  justify-self: start !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+.pricing .electricity-rate-history .electricity-rate-history__row > .roi-history-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.settings-archive-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; margin-top:14px; }
+.settings-archive-statusbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding:12px 14px; border:1px solid var(--heros-panel-border); border-radius:12px; background:var(--heros-panel-surface); color:var(--heros-panel-muted); }
+.settings-archive-statusbar strong { color:var(--heros-panel-text); }
+.settings-archive-statusbar[data-state="running"] { border-color:var(--heros-panel-accent); }
+.settings-archive-statusbar[data-state="error"], .settings-archive-statusbar[data-state="paused_unavailable"] { border-color:var(--heros-panel-danger, #ff668d); }
+.settings-archive-statusbar[data-state="gaps"] { border-color:var(--heros-panel-warning, #f6c945); }
+.settings-archive-controls label { display:flex; flex-direction:column; gap:6px; min-width:150px; color:var(--heros-panel-muted); font-weight:700; }
+.settings-archive-controls input, .settings-archive-controls select { min-height:40px; box-sizing:border-box; padding:0 10px; border:1px solid var(--heros-panel-border); border-radius:10px; background:var(--heros-panel-surface); color:var(--heros-panel-text); font:inherit; }
+.settings-archive-date { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 40px; min-height:40px; }
+.settings-archive-date__display { grid-column:1; min-width:0; }
+.settings-archive-date__picker { grid-column:2; display:grid; place-items:center; min-height:40px; border:1px solid var(--heros-panel-border); border-left:0; border-radius:0 10px 10px 0; background:var(--heros-panel-surface); color:var(--heros-panel-text); pointer-events:none; }
+.settings-archive-date__native { position:absolute; z-index:1; top:0; right:0; width:40px; height:40px; min-height:0 !important; opacity:0; cursor:pointer; }
+.settings-archive-controls__actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+
+/* Keep archive status labels readable beside long progress messages. */
+.settings-archive .archive-status-list li { align-items: flex-start; flex-wrap: wrap; }
+.settings-archive .archive-status-list li span { flex: 0 0 auto; white-space: normal; overflow: visible; text-overflow: clip; }
+.settings-archive .archive-status-list li strong { flex: 1 1 180px; min-width: 0; text-align: right; overflow-wrap: anywhere; }
+
+
+@media (max-width: 700px) {
+  .settings-archive .archive-status-list li strong { flex: none; width: 100%; text-align: left; }
+}
+
+
+/* Settings and Pricing button standard: all action controls are 32px tall; toggle switches keep their control geometry. */
+.pricing button:not(.toggle-row__switch), .pricing a.panel-nav__item, .settings-page button:not(.toggle-row__switch), .settings-page a.panel-nav__item { height:32px; min-height:32px; max-height:32px; box-sizing:border-box; }
