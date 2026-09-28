@@ -1,12 +1,12 @@
 # HEROS test and QA follow-up
 
-Updated 2026-09-28.
+Updated 2026-09-29.
 
 ## Deployment state
 
-- `.111` is running HEROS panel V926. The module URL uses cache query `v928`; the panel and Pricing page load successfully and the temporary Buy verification record has been removed.
+- `.111` is running HEROS panel V926. The module URL uses cache query `v928`; the panel and Pricing page load successfully. A temporary group `TEMP_MOBILE_QA_DELETE_ME` and Buy record remain while the mobile verification cleanup awaits deletion confirmation.
 - `.112` was upgraded through the authenticated Home Assistant Terminal ingress. It is running panel V926 with module cache query `v928` and stylesheet layout query `layout=7`. Pricing, Reports, and Policy load successfully; it remains connected to Bytewatt.
-- Both hosts show empty Buy and Sell sections after verification. No temporary records remain.
+- `.112` was not changed in this follow-up. `.111` still has the temporary group/Buy record; no temporary Sell record persisted after the editor save attempt.
 
 ## Full pytest
 
@@ -29,7 +29,7 @@ pytest tests/test_roi.py tests/test_panel_contract.py
 
 ## Mobile verification
 
-The Codex In-app Browser viewport capability was used to inspect the live `.111` page at `390 x 844` CSS pixels. After a report of overlapping, clipped, and hidden content, all nine HEROS pages were rechecked visually and with an element-level DOM scan. The original suspected defects were not reproduced: no local card/container overflow, clipped controls, out-of-viewport controls, or independent heading/control overlaps were found. Pricing Buy/Sell states, Policy editor stacking, Reports catalog/date/period controls, and the Settings theme preview were inspected in their deeper page sections.
+The Codex In-app Browser viewport capability was used to inspect the live `.111` page at `390 x 844` CSS pixels. The populated Buy card and Buy edit state were checked with the temporary data. Buy record Modify/Delete actions were visible, but the temporary group's Modify/Delete action column was clipped out by the live fixed-column group history layout. A CSS-only mobile override was prepared locally to stack that row and its actions. Deployment is blocked: SMB is unreachable/denied, while strict SSH reaches the expected `.111` fingerprint but the existing approved key is rejected for the previously approved accounts. The Sell editor accepted values but did not persist a Sell row after reload.
 
 The detailed structured notes are in [MOBILE_QA_390X844.md](mobile-qa/MOBILE_QA_390X844.md). This is a real narrow viewport check, but it is not a physical iPhone or device-pixel-ratio/touch-emulation test. Safari-specific rendering, touch hit targets, and safe-area behavior remain suitable for a later device-capable pass.
 
@@ -52,5 +52,6 @@ The calls are present in the pre-existing sensor history and were not introduced
 ## Recommended next steps
 
 1. Prepare the managed test runtime with `python -m pip install -r requirements_test.txt` (or install the compatible pinned dependencies in CI), then run `python -m pytest`.
-2. Use a browser or device tool with 390x844 viewport emulation to capture all requested page screenshots and check overflow, controls, cards, date inputs, and theme previews.
-3. Reproduce the sensor warning with HA shutdown/unload logs and add a focused lifecycle test before changing task scheduling or cancellation behavior.
+2. Deploy and hard-refresh the local group-action CSS override on `.111`, then verify group and Buy actions again at 390x844 before deleting the temporary QA group.
+3. Reproduce the Sell-save persistence failure with a supported temporary record path, then inspect its populated mobile card.
+4. Reproduce the sensor warning with HA shutdown/unload logs and add a focused lifecycle test before changing task scheduling or cancellation behavior.

@@ -3016,6 +3016,31 @@ button.report-catalog__item {
 .electricity-group-history { max-width: 560px; } .electricity-group-history .roi-repayment-history__head, .electricity-group-history .roi-repayment-history__row { grid-template-columns: 90px 110px 100px 110px auto !important; } .electricity-group-history .roi-history-actions { white-space: nowrap; }
 .electricity-group-history { max-width: 680px; } .electricity-group-history .roi-repayment-history__head, .electricity-group-history .roi-repayment-history__row { grid-template-columns: 90px 120px 100px 120px auto !important; }
 
+@media (max-width: 720px) {
+  .pricing .electricity-group-history .roi-repayment-history__head,
+  .pricing .electricity-group-history .electricity-group-history__row {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .pricing .electricity-group-history .electricity-group-history__row > span,
+  .pricing .electricity-group-history .electricity-group-history__row > .roi-history-actions {
+    grid-column: 1 !important;
+    min-width: 0 !important;
+    justify-self: start !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  .pricing .electricity-group-history .electricity-group-history__row > .roi-history-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}
+
 /* Keep electricity rate history cards full-width so all four columns, including
    row actions, remain visible at normal desktop widths. */
 .pricing .roi-repayment-history.electricity-rate-history,
