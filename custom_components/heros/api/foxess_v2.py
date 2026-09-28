@@ -686,7 +686,10 @@ class FoxESSV2Client:
                     except asyncio.CancelledError:
                         raise
                     except Exception as err:
-                        telemetry_errors[f"battery_{battery_index}_{label}"] = (
+                        error_key = f"battery_{battery_index}_{label}"
+                        if battery_index == 1:
+                            error_key = f"battery_{label}"
+                        telemetry_errors[error_key] = (
                             str(err) if isinstance(err, FoxESSV2Error) else type(err).__name__
                         )
                         _LOGGER.warning(
@@ -821,16 +824,21 @@ class FoxESSV2Client:
                 "green_energy": green_energy,
                 "inverter_realtime": realtime,
                 "battery_realtime": battery_realtime,
-                "battery_units": battery_units,
-                "battery_serials": [str(item.get("batteryId", "")).split("@")[-1] for item in battery_units if item.get("batteryId")],
                 "battery_health": battery_health,
                 "battery_expected_life": battery_life,
                 "optional_telemetry_errors": telemetry_errors,
             },
         }
+        if len(battery_units) > 1:
+            data["raw_provider"]["battery_units"] = battery_units
+            data["raw_provider"]["battery_serials"] = [
+                str(item.get("batteryId", "")).split("@")[-1]
+                for item in battery_units if item.get("batteryId")
+            ]
         # V2 realtime places its aggregate PV reading before MPPT 1-4. Older
         # captures with only four values already contain the MPPT rows.
-        mppt_strings = pv_strings[1:7] if len(pv_strings) >= 7 else pv_strings[:6]
+        # FoxESS includes an aggregate row before the individual MPPT rows.
+        mppt_strings = pv_strings[1:7] if pv_strings else []
         for index, pv_string in enumerate(mppt_strings, start=1):
             if isinstance(pv_string, dict):
                 data[f"pv_string_{index}_voltage"] = _foxess_display_amount(
