@@ -10,6 +10,7 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.components.frontend import (
+    async_remove_panel,
     async_register_built_in_panel,
 )
 from homeassistant.components.persistent_notification import (
@@ -230,9 +231,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 FOXESS_V2_PLATFORMS = ["sensor", "select"]
 
-PANEL_COMPONENT_NAME = "heros-panel-769"
+PANEL_COMPONENT_NAME = "heros-panel-926"
 PANEL_FRONTEND_URL_PATH = "heros"
-PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=769"
+PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=926"
 PANEL_CONFIG = {
     "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -351,6 +352,9 @@ def _register_frontend_panel(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Register the built-in sidebar panel and load its module."""
     domain_data = hass.data.setdefault(DOMAIN, {})
 
+    # Re-registration must replace the previous module URL so a panel build
+    # update is picked up after an integration reload or Home Assistant restart.
+    async_remove_panel(hass, PANEL_FRONTEND_URL_PATH, warn_if_unknown=False)
     async_register_built_in_panel(
         hass,
         component_name="custom",
@@ -2582,22 +2586,6 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN, "ensure_report_history", handle_ensure_report_history,
         schema=_history_schema,
     )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

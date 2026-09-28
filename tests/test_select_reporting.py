@@ -332,3 +332,58 @@ def test_settings_target_options_merge_live_batteries_when_discovery_is_incomple
         "25000SB244W00011",
         "25000SB285W00047",
     ]
+
+
+def test_history_download_records_requested_range_progress_and_completion():
+    source = Path(__file__).resolve().parents[1].joinpath("custom_components", "heros", "archive_jobs.py").read_text(encoding="utf-8")
+    for field in ('"requested_start_date"', '"requested_end_date"', '"requested_days"',
+                  '"processed_days"', '"stored_days"', '"missing_days"', '"skipped_days"',
+                  '"completed"', '"failed_dates"', '"status": "interrupted"'):
+        assert field in source
+    assert 'await self.history.async_store_snapshot(' in source
+    assert 'await self.history.async_mark_missing_date(' in source
+    assert 'await controller.task' not in source
+
+
+def test_monthly_refresh_preserves_partial_status_instead_of_marking_ready():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "custom_components", "heros", "__init__.py"
+    ).read_text(encoding="utf-8")
+
+    assert "scope_completed = await _ensure_report_history_range(" in source
+    assert "if not scope_completed:" in source
+    assert '"status": "ready" if completed else "paused_unavailable"' in source
+
+
+def test_settings_archive_summary_uses_selected_scope_and_request_progress():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "examples", "www", "heros-panel.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'const selectedScope = String(archiveDateDraft.scope || archiveState.last_scope || history.current_scope || "all");' in source
+    assert 'scopeSummaries.find((item) => String(item?.scope_key || "") === selectedScope)' in source
+    assert 'const requestedDays = Number(archiveState.requested_days);' in source
+    assert 'const processedDays = Number(archiveState.processed_days);' in source
+    assert 'archiveState.completed !== true' in source
+    assert 'this._archiveDownloadInFlight' in source
+    assert 'historyLooksActive' in source
+    assert 'Archive download in progress: ' in source
+    assert 'Download missing data' in source
+    assert 'Download only the dates without a valid local record' in source
+    assert 'Use Refresh range to re-download every date.' in source
+    assert 'this._archiveDatePickerHoldUntil = 0;' in source
+    assert '  _holdArchiveDatePickerWindow(duration = 15000)' in source
+    assert 'this._isArchiveDatePickerHeld()' in source
+    assert 'const isDatePicker = field.dataset.archiveStart !== undefined || field.dataset.archiveEnd !== undefined;' in source
+
+
+
+def test_frontend_preserves_saved_all_battery_selection_after_refresh():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "examples", "www", "heros-panel.js"
+    ).read_text(encoding="utf-8")
+
+    assert "_batterySelectionCorrectionInFlight" in source
+    assert "if (current === desired) return;" in source
+    assert "this._pendingBatterySelection = desired" in source
+    assert "void this._selectSharedBatteryOption(desired).finally" in source

@@ -542,7 +542,8 @@ class ByteWattOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
             ): DateSelector(DateSelectorConfig()),
         }
-        if self.config_entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT) != PROVIDER_FOXESS_V2:
+        provider = self.config_entry.data.get(CONF_PROVIDER, PROVIDER_BYTEWATT)
+        if provider != PROVIDER_FOXESS_V2:
             fields[
                 vol.Optional(
                     CONF_SCAN_INTERVAL,
