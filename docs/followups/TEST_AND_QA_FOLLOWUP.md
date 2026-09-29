@@ -31,7 +31,7 @@ pytest tests/test_roi.py tests/test_panel_contract.py
 
 The Codex In-app Browser viewport capability was used to inspect the live `.111` page at `390 x 844` CSS pixels. The populated Buy card and Buy edit state were checked with the temporary data. Buy record Modify/Delete actions were visible, but the temporary group's Modify/Delete action column was clipped out by the live fixed-column group history layout. A CSS-only mobile override was prepared locally to stack that row and its actions. Deployment is blocked: SMB is unreachable/denied, while strict SSH reaches the expected `.111` fingerprint but the existing approved key is rejected for the previously approved accounts. The Sell editor accepted values but did not persist a Sell row after reload.
 
-The detailed structured notes are in [MOBILE_QA_390X844.md](mobile-qa/MOBILE_QA_390X844.md). This is a real narrow viewport check, but it is not a physical iPhone or device-pixel-ratio/touch-emulation test. Safari-specific rendering, touch hit targets, and safe-area behavior remain suitable for a later device-capable pass.
+The detailed structured notes are in [MOBILE_QA_390X844.md](mobile-qa/MOBILE_QA_390X844.md). Physical iPhone/Safari verification was completed manually. Result: usable on iPhone/Safari. A few minor visual/UX tweaks were observed; no urgent blocker was found. Remaining iPhone/Safari items are optional polish, not release blockers.
 
 ### Reproducible mobile QA procedure
 

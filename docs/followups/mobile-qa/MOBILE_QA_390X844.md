@@ -50,6 +50,6 @@ The live screenshots used for inspection showed the populated Buy card/edit stat
 
 ## Scope limitation
 
-This verifies the responsive layout at the requested 390×844 viewport. It is not a physical iPhone or device-pixel-ratio/touch-emulation test. A later device-capable pass may still check Safari-specific rendering, touch hit targets, and device safe-area behavior.
+This verifies the responsive layout at the requested 390×844 viewport. Physical iPhone/Safari verification was also completed manually. Result: usable on iPhone/Safari. A few minor visual/UX tweaks were observed; no urgent blocker was found. Remaining iPhone/Safari items are optional polish, not release blockers.
 
 A CSS-only mobile override was prepared in `examples/www/heros-panel.css` to stack the group row and its actions. Deployment to `.111` remains blocked: SMB is unreachable/denied, and strict SSH reaches the expected host fingerprint (`SHA256:XNZCsKEJPJ8HZi4WOLgrVASg7wQ8idZcyo3D5ty4rWA`) but the existing approved key is rejected for the previously approved accounts. The HMAC transport issue was isolated with `hmac-sha2-256-etm@openssh.com`; no account accepted the key. The live fix has not been verified.
