@@ -3022,7 +3022,13 @@ button.report-catalog__item {
     grid-template-columns: minmax(0, 1fr) !important;
     min-width: 0 !important;
     width: 100% !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+  }
+
+  .pricing .electricity-group-history {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
   }
 
   .pricing .electricity-group-history .electricity-group-history__row > span,
