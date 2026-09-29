@@ -3476,9 +3476,7 @@ class HerosPanel extends HTMLElement {
     ) {
       return;
     }
-    const groupsToSave = incomingGroups.length === 0 && existingGroups.length > 0
-      ? existingGroups
-      : incomingGroups;
+    const groupsToSave = incomingGroups;
     const activeGroupIdToSave = groupsToSave.length > 0
       ? String(model?.activeGroupId || existing.activeGroupId || groupsToSave[0]?.group_id || "")
       : "";
@@ -7872,6 +7870,8 @@ class HerosPanel extends HTMLElement {
         `
       : "";
     const availablePages = this._availablePages();
+    const preservedScrollX = window.scrollX;
+    const preservedScrollY = window.scrollY;
     const minimalistHeader = this._theme === "minimalist";
     const heroMarkup = minimalistHeader
       ? `
@@ -7948,6 +7948,9 @@ class HerosPanel extends HTMLElement {
       this._mountEmbeddedCards();
     } finally {
       this._bindInteractiveControls();
+      if (window.scrollX !== preservedScrollX || window.scrollY !== preservedScrollY) {
+        window.scrollTo(preservedScrollX, preservedScrollY);
+      }
     }
   }
 
@@ -8441,6 +8444,14 @@ class HerosPanel extends HTMLElement {
         event.preventDefault();
         event.stopPropagation();
         this._handlePricingUiSelectGroup(button.dataset.pricingUiSelectGroup);
+      };
+    });
+
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-delete-group]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiDeleteGroup(button.dataset.pricingUiDeleteGroup);
       };
     });
 
