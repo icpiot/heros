@@ -299,6 +299,14 @@ def test_pricing_ui_exposes_rate_groups_records_and_overlap_guard():
     assert 'data-pricing-ui-start-group' in panel_source
     assert "querySelectorAll('[data-pricing-ui-start-group]')" in panel_source
     assert 'data-pricing-ui-add-group' not in panel_source
+    start_group_binding = re.search(
+        r"querySelectorAll\('\[data-pricing-ui-start-group\]'\).*?\n\s*\}\);",
+        panel_source,
+        re.DOTALL,
+    )
+    assert start_group_binding is not None
+    assert "this._handlePricingUiStartGroup();" in start_group_binding.group(0)
+    assert "this._handlePricingUiAddGroup();" not in start_group_binding.group(0)
     assert 'data-pricing-ui-delete-group' in panel_source
     assert 'data-pricing-ui-add-rule' in panel_source
     assert 'data-pricing-ui-delete-rule' in panel_source

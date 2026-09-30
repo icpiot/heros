@@ -8427,7 +8427,7 @@ class HerosPanel extends HTMLElement {
       button.onclick = (event) => {
         event.preventDefault();
         event.stopPropagation();
-        this._handlePricingUiAddGroup();
+        this._handlePricingUiStartGroup();
       };
     });
 
