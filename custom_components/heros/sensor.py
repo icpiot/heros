@@ -685,7 +685,41 @@ class ByteWattLastUpdateSensor(ByteWattSensor):
         return hasattr(self.coordinator, '_last_successful_update') and self.coordinator._last_successful_update is not None
 
 
-class PricingDynamicRateSensor(CoordinatorEntity, SensorEntity):
+class _RefreshTaskLifecycleMixin:
+    """Manage dispatcher-triggered refresh tasks for persisted sensors."""
+
+    def _activate_refresh_lifecycle(self) -> None:
+        self._lifecycle_active = True
+        self.async_on_remove(self._cleanup_refresh_task)
+
+    def _cleanup_refresh_task(self) -> None:
+        self._lifecycle_active = False
+        task = self._refresh_task
+        self._refresh_task = None
+        if task is not None and not task.done():
+            task.cancel()
+
+    def _schedule_refresh_task(self, refresh) -> None:
+        if not self._lifecycle_active:
+            return
+        if self._refresh_task is not None and not self._refresh_task.done():
+            return
+        task = self.hass.async_create_task(refresh())
+        self._refresh_task = task
+        task.add_done_callback(self._refresh_task_done)
+
+    def _refresh_task_done(self, task) -> None:
+        if self._refresh_task is task:
+            self._refresh_task = None
+        if task.cancelled():
+            return
+        try:
+            task.result()
+        except Exception:
+            _LOGGER.exception("HEROS sensor refresh task failed")
+
+
+class PricingDynamicRateSensor(_RefreshTaskLifecycleMixin, CoordinatorEntity, SensorEntity):
     """Expose one configured dynamic tariff source as cents per kWh."""
 
     _SOURCE_FIELDS = {
@@ -701,6 +735,8 @@ class PricingDynamicRateSensor(CoordinatorEntity, SensorEntity):
         self._source_key = source_key
         self._source_field = self._SOURCE_FIELDS[source_key]
         self._schedule = None
+        self._refresh_task = None
+        self._lifecycle_active = False
         self._signal = signal_pricing_changed(config_entry.entry_id)
         self._attr_name = name
         self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}"
@@ -717,6 +753,7 @@ class PricingDynamicRateSensor(CoordinatorEntity, SensorEntity):
         }
 
     async def async_added_to_hass(self):
+        self._activate_refresh_lifecycle()
         self.async_on_remove(async_dispatcher_connect(self.hass, self._signal, self._handle_schedule_changed))
         self.async_on_remove(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._handle_state_changed))
         await self._refresh_schedule()
@@ -725,15 +762,16 @@ class PricingDynamicRateSensor(CoordinatorEntity, SensorEntity):
         await self._refresh_schedule()
 
     def _handle_schedule_changed(self) -> None:
-        self.hass.async_create_task(self._refresh_schedule())
+        self._schedule_refresh_task(self._refresh_schedule)
 
     def _handle_state_changed(self, event: Event) -> None:
-        if event.data.get("entity_id") in self._source_entity_ids:
+        if self._lifecycle_active and event.data.get("entity_id") in self._source_entity_ids:
             self.async_write_ha_state()
 
     async def _refresh_schedule(self) -> None:
         self._schedule = await self._store.async_schedule()
-        self.async_write_ha_state()
+        if self._lifecycle_active:
+            self.async_write_ha_state()
 
     @property
     def _source_entity_ids(self) -> set[str]:
@@ -789,7 +827,7 @@ class PricingDynamicRateSensor(CoordinatorEntity, SensorEntity):
             "source_last_changed": state.last_changed.isoformat() if state is not None else None,
         }
 
-class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
+class PricingScheduleSensor(_RefreshTaskLifecycleMixin, CoordinatorEntity, SensorEntity):
     """Expose the persisted pricing schedule back to the panel."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, config_entry: ConfigEntry):
@@ -801,6 +839,8 @@ class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = "mdi:currency-usd"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._schedule = None
+        self._refresh_task = None
+        self._lifecycle_active = False
         self._signal = signal_pricing_changed(config_entry.entry_id)
 
     @property
@@ -813,15 +853,17 @@ class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
         }
 
     async def async_added_to_hass(self):
+        self._activate_refresh_lifecycle()
         self.async_on_remove(async_dispatcher_connect(self.hass, self._signal, self._handle_refresh_signal))
         await self._refresh_schedule()
 
     def _handle_refresh_signal(self) -> None:
-        self.hass.async_create_task(self._refresh_schedule())
+        self._schedule_refresh_task(self._refresh_schedule)
 
     async def _refresh_schedule(self) -> None:
         self._schedule = await self._store.async_schedule()
-        self.async_write_ha_state()
+        if self._lifecycle_active:
+            self.async_write_ha_state()
 
     async def async_update(self) -> None:
         await self._refresh_schedule()
@@ -865,7 +907,7 @@ class PricingScheduleSensor(CoordinatorEntity, SensorEntity):
         }
 
 
-class PolicyChargeScheduleSensor(CoordinatorEntity, SensorEntity):
+class PolicyChargeScheduleSensor(_RefreshTaskLifecycleMixin, CoordinatorEntity, SensorEntity):
     """Expose persisted policy charge schedules back to the panel."""
 
     def __init__(self, coordinator: DataUpdateCoordinator, config_entry: ConfigEntry):
@@ -877,6 +919,8 @@ class PolicyChargeScheduleSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = "mdi:battery-charging"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._schedule_set = None
+        self._refresh_task = None
+        self._lifecycle_active = False
         self._signal = signal_policy_charge_changed(config_entry.entry_id)
 
     @property
@@ -889,15 +933,17 @@ class PolicyChargeScheduleSensor(CoordinatorEntity, SensorEntity):
         }
 
     async def async_added_to_hass(self):
+        self._activate_refresh_lifecycle()
         self.async_on_remove(async_dispatcher_connect(self.hass, self._signal, self._handle_refresh_signal))
         await self._refresh_schedule_set()
 
     def _handle_refresh_signal(self) -> None:
-        self.hass.async_create_task(self._refresh_schedule_set())
+        self._schedule_refresh_task(self._refresh_schedule_set)
 
     async def _refresh_schedule_set(self) -> None:
         self._schedule_set = await self._store.async_schedule_set()
-        self.async_write_ha_state()
+        if self._lifecycle_active:
+            self.async_write_ha_state()
 
     async def async_update(self) -> None:
         await self._refresh_schedule_set()
