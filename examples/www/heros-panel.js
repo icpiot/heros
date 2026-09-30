@@ -8423,7 +8423,7 @@ class HerosPanel extends HTMLElement {
       });
     });
 
-    this.shadowRoot.querySelectorAll('[data-pricing-ui-add-group]').forEach((button) => {
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-start-group]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
         event.stopPropagation();
