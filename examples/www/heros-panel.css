@@ -3141,8 +3141,55 @@ button.report-catalog__item {
   gap: 8px !important;
 }
 
+/* Keep populated Buy/Sell history aligned as a table on desktop. */
+@media (min-width: 721px) {
+  .pricing .roi-repayment-history.electricity-rate-history {
+    display: grid !important;
+    gap: 0 !important;
+  }
+  .pricing .electricity-rate-history > .roi-repayment-history__head {
+    display: grid !important;
+    grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.25fr) minmax(140px, 1fr) minmax(120px, auto) !important;
+    padding: 9px 12px !important;
+  }
+  .pricing .electricity-rate-history > .roi-repayment-history__head > span {
+    display: block !important;
+    width: auto !important;
+    grid-column: auto !important;
+  }
+  .pricing .electricity-rate-history .electricity-rate-history__row {
+    grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.25fr) minmax(140px, 1fr) minmax(120px, auto) !important;
+    gap: 10px !important;
+  }
+  .pricing .electricity-rate-history .electricity-rate-history__row > span,
+  .pricing .electricity-rate-history .electricity-rate-history__row > .roi-history-actions {
+    grid-column: auto !important;
+    justify-self: start !important;
+  }
+  .pricing .electricity-rate-history .electricity-rate-history__row > .roi-history-actions {
+    justify-self: end !important;
+  }
+}
+
 .settings-archive-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px; margin-top:14px; }
 .settings-archive-statusbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; padding:12px 14px; border:1px solid var(--heros-panel-border); border-radius:12px; background:var(--heros-panel-surface); color:var(--heros-panel-muted); }
+/* The minimalist theme has a more specific six-track history rule; keep
+   electricity Buy/Sell rows on the same four tracks as their headings. */
+@media (min-width: 721px) {
+  .panel.shell.theme-minimalist .pricing .roi-repayment-history.electricity-rate-history > .electricity-rate-history__row {
+    display: grid !important;
+    grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.25fr) minmax(140px, 1fr) minmax(120px, auto) !important;
+  }
+  .panel.shell.theme-minimalist .pricing .roi-repayment-history.electricity-rate-history > .electricity-rate-history__row > span,
+  .panel.shell.theme-minimalist .pricing .roi-repayment-history.electricity-rate-history > .electricity-rate-history__row > .roi-history-actions {
+    grid-column: auto !important;
+  }
+  .panel.shell.theme-minimalist .pricing .roi-repayment-history.electricity-rate-history > .electricity-rate-history__row > .roi-history-actions {
+    grid-column: 4 !important;
+    justify-self: end !important;
+  }
+}
+
 .settings-archive-statusbar strong { color:var(--heros-panel-text); }
 .settings-archive-statusbar[data-state="running"] { border-color:var(--heros-panel-accent); }
 .settings-archive-statusbar[data-state="error"], .settings-archive-statusbar[data-state="paused_unavailable"] { border-color:var(--heros-panel-danger, #ff668d); }

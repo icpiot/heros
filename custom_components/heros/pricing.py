@@ -720,6 +720,11 @@ class PricingSchedule:
         self._raise_for_duplicate_group_dates()
 
     def remove_group(self, group_id: str) -> bool:
+        target = next((group for group in self.groups if group.group_id == _clean_text(group_id)), None)
+        if target is not None and target.records:
+            raise ValueError(
+                "Group cannot be deleted until all linked buy and sell rate records have been deleted."
+            )
         before = len(self.groups)
         self.groups = [group for group in self.groups if group.group_id != _clean_text(group_id)]
         return len(self.groups) != before

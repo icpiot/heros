@@ -315,6 +315,16 @@ def test_pricing_ui_exposes_rate_groups_records_and_overlap_guard():
     assert '"public_holiday"' in panel_source
     assert "data-pricing-rule-day" in panel_source
     assert 'model.warning = warning' in panel_source
+    assert '${recordWarningMarkup}${buyWarningMarkup}${sellWarningMarkup}' in panel_source
+    sell_save = re.search(
+        r"  async _handlePricingUiAddRule\(recordType = \"buy\"\) \{(?P<body>.*?)\n  \}\n\n  async _handlePricingUiDeleteRule",
+        panel_source,
+        re.DOTALL,
+    )
+    assert sell_save is not None
+    assert 'await this._callPricingRecordService(group.group_id, rule);' in sell_save.group("body")
+    assert 'record_type: rule.record_type || "buy"' in panel_source
+    assert sell_save.group("body").count('this._pricingUiSaveInFlight = false;') >= 2
 
 
 def test_pricing_ui_runtime_state_stays_out_of_browser_storage():

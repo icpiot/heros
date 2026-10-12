@@ -206,6 +206,15 @@ def test_pricing_schedule_store_persists_groups_and_records(tmp_path):
     assert len(schedule.groups[0].records) == 1
     assert schedule.groups[0].records[0] == record
 
+    try:
+        asyncio.run(store.async_remove_group("group-1"))
+    except ValueError as error:
+        assert str(error) == (
+            "Group cannot be deleted until all linked buy and sell rate records have been deleted."
+        )
+    else:
+        raise AssertionError("A group with linked records must not be deleted")
+
     payload = load_pricing_history_file(
         tmp_path / "www" / "heros" / "entry-1" / "pricing_schedule.json"
     )

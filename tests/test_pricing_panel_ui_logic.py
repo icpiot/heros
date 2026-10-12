@@ -247,6 +247,84 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
 
 
+def test_pricing_panel_ui_blocks_group_delete_when_rendered_model_has_linked_rules():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        let confirmCalls = 0;
+        let saved = null;
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+            confirm() { confirmCalls += 1; return true; },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: { get() { return false; }, define() {} },
+          localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+
+        const panel = new context.HerosPanel();
+        panel._render = () => {};
+        panel._loadPricingUi = () => ({
+          groups: [{ group_id: "g1", rules: [] }], activeGroupId: "g1", warning: "",
+        });
+        panel._loadStoredPricingUi = () => ({
+          groups: [{ group_id: "g1", rules: [{ rule_id: "buy-1" }] }], activeGroupId: "g1", warning: "",
+        });
+        panel._savePricingUi = (model) => { saved = model; };
+
+        Promise.resolve()
+          .then(async () => {
+            await panel._handlePricingUiDeleteGroup("g1");
+            const ok = confirmCalls === 0
+              && saved?.warning === "Group cannot be deleted until all linked buy and sell rate records have been deleted.";
+            if (!ok) {
+              console.error(JSON.stringify({ confirmCalls, saved }, null, 2));
+              process.exit(1);
+            }
+          })
+          .catch((error) => { console.error(error); process.exit(1); });
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
 def test_pricing_panel_ui_prefers_backend_file_data_over_stale_browser_storage():
     script = textwrap.dedent(
         r"""
