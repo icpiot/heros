@@ -136,6 +136,67 @@ def test_pricing_panel_ui_overlap_and_delete_logic():
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
 
 
+def test_pricing_panel_ui_authoritative_empty_refresh_clears_deleted_groups():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
+        );
+        class HTMLElement {
+          attachShadow() { return { innerHTML: "", addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; } }; }
+        }
+        const storage = new Map([["heros.panel.pricing.ui", JSON.stringify({
+          groups: [{ group_id: "deleted-group", label: "Stale group", rules: [{ rule_id: "deleted-buy", record_type: "buy" }] }],
+          activeGroupId: "deleted-group",
+          localUpdatedAt: Date.now(),
+          pendingWriteUntil: 0,
+        })]]);
+        const context = {
+          console, HTMLElement, setTimeout, clearTimeout, URL, Date,
+          window: { location: { hash: "" }, addEventListener() {}, removeEventListener() {}, history: { replaceState() {} } },
+          document: { addEventListener() {}, removeEventListener() {}, createElement() { return {}; } },
+          customElements: { get() { return false; }, define() {} },
+          localStorage: { getItem(key) { return storage.get(key) || null; }, setItem(key, value) { storage.set(key, String(value)); }, removeItem(key) { storage.delete(key); } },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+        const panel = new context.HerosPanel();
+        panel._pricingGroupEditorOpen = true;
+        panel._pricingRecordEditorMode = "sell";
+        panel._pricingUiGroupDraft = { group_id: "deleted-group", label: "Stale group" };
+        panel._pricingUiRuleDrafts = { buy: { rule_id: "deleted-buy" }, sell: { rule_id: "deleted-sell" } };
+        panel._pricingUiRuleDraft = panel._pricingUiRuleDrafts.sell;
+        panel._savePricingUiFromBackend({ groups: [], activeGroupId: "", backendUpdatedAt: "2026-10-12T13:04:39.057545+00:00" }, true);
+        const restored = panel._pricingUiMemoryState;
+        if (restored.groups.length !== 0 || restored.activeGroupId !== ""
+          || panel._pricingGroupEditorOpen || panel._pricingRecordEditorMode
+          || Object.keys(panel._pricingUiGroupDraft).length
+          || panel._pricingUiRuleDrafts.buy.rule_id || panel._pricingUiRuleDrafts.sell.rule_id) {
+          console.error(JSON.stringify({ restored, panelState: {
+            groupEditor: panel._pricingGroupEditorOpen,
+            recordMode: panel._pricingRecordEditorMode,
+            groupDraft: panel._pricingUiGroupDraft,
+            ruleDrafts: panel._pricingUiRuleDrafts,
+          } }, null, 2));
+          process.exit(1);
+        }
+        """
+    )
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_reloads_authoritative_file_when_returning_to_pricing():
+    source = (ROOT / "examples/www/heros-panel.js").read_text(encoding="utf-8")
+    assert 'if (this._page === "pricing" && previousPage !== "pricing")' in source
+    assert 'if (this._page === "pricing") {\n        this._invalidatePricingFileLoad();' in source
+
+
 def test_pricing_panel_ui_rolls_back_when_service_call_fails():
     script = textwrap.dedent(
         r"""
@@ -241,6 +302,84 @@ def test_pricing_panel_ui_rolls_back_when_service_call_fails():
             console.error(error);
             process.exit(1);
           });
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_blocks_group_delete_when_rendered_model_has_linked_rules():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return {
+              innerHTML: "",
+              addEventListener() {},
+              querySelectorAll() { return []; },
+              querySelector() { return null; },
+            };
+          }
+        }
+
+        let confirmCalls = 0;
+        let saved = null;
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+            confirm() { confirmCalls += 1; return true; },
+          },
+          document: {
+            addEventListener() {},
+            removeEventListener() {},
+            createElement() { return {}; },
+          },
+          customElements: { get() { return false; }, define() {} },
+          localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+
+        const panel = new context.HerosPanel();
+        panel._render = () => {};
+        panel._loadPricingUi = () => ({
+          groups: [{ group_id: "g1", rules: [] }], activeGroupId: "g1", warning: "",
+        });
+        panel._loadStoredPricingUi = () => ({
+          groups: [{ group_id: "g1", rules: [{ rule_id: "buy-1" }] }], activeGroupId: "g1", warning: "",
+        });
+        panel._savePricingUi = (model) => { saved = model; };
+
+        Promise.resolve()
+          .then(async () => {
+            await panel._handlePricingUiDeleteGroup("g1");
+            const ok = confirmCalls === 0
+              && saved?.warning === "Group cannot be deleted until all linked buy and sell rate records have been deleted.";
+            if (!ok) {
+              console.error(JSON.stringify({ confirmCalls, saved }, null, 2));
+              process.exit(1);
+            }
+          })
+          .catch((error) => { console.error(error); process.exit(1); });
         """
     )
 
@@ -614,4 +753,284 @@ def test_pricing_panel_ui_new_group_keeps_stable_group_id():
         """
     )
 
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_save_sell_renders_record_without_reload():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace(
+          "class HerosPanel extends HTMLElement",
+          "globalThis.HerosPanel = class HerosPanel extends HTMLElement",
+        );
+
+        class HTMLElement {
+          attachShadow() {
+            return { innerHTML: "", addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; } };
+          }
+        }
+        const context = {
+          console,
+          HTMLElement,
+          setTimeout,
+          clearTimeout,
+          URL,
+          window: {
+            location: { hash: "" },
+            addEventListener() {},
+            removeEventListener() {},
+            history: { replaceState() {} },
+          },
+          document: { addEventListener() {}, removeEventListener() {}, createElement() { return {}; } },
+          customElements: { get() { return false; }, define() {} },
+          localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+
+        const panel = new context.HerosPanel();
+        let state = {
+          groups: [{ group_id: "g1", label: "Temporary", rules: [] }],
+          activeGroupId: "g1",
+          warning: "",
+        };
+        const renderCalls = [];
+        let servicePayload = null;
+        panel._pricingUiSaveInFlight = false;
+        panel._loadPricingUi = () => state;
+        panel._savePricingUi = (next) => { state = JSON.parse(JSON.stringify(next)); };
+        panel._readPricingUiRuleForm = () => ({
+          rule_id: "sell-1",
+          label: "TEMP_SELL_POST_FIX_QA",
+          record_type: "sell",
+          day_types: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+          start_time: "00:00",
+          end_time: "23:59",
+          import_rate: "",
+          export_rate: 1,
+          other_charges: "",
+          notes: "",
+        });
+        panel._pricingUiValidationForRule = () => "";
+        panel._generateRuleId = () => "sell-generated";
+        panel._resetPricingUiRuleDraft = () => {};
+        panel._clearPricingEditorUrl = () => {};
+        panel._holdRenderWindow = () => {};
+        panel._render = (force) => renderCalls.push({ force, rules: state.groups[0].rules.map((rule) => ({ ...rule })) });
+        panel._callPricingRecordService = (_groupId, rule) => { servicePayload = { ...rule }; return Promise.resolve(); };
+
+        Promise.resolve()
+          .then(async () => {
+            await panel._handlePricingUiAddRule("sell");
+            const immediate = renderCalls[0];
+            const final = renderCalls[renderCalls.length - 1];
+            const savedSell = state.groups[0].rules.find((rule) => rule.record_type === "sell");
+            const ok = renderCalls.length >= 2
+              && immediate?.force === true
+              && immediate.rules.some((rule) => rule.record_type === "sell")
+              && final.rules.some((rule) => rule.label === "TEMP_SELL_POST_FIX_QA")
+              && savedSell?.export_rate === 1
+              && servicePayload?.record_type === "sell";
+            if (!ok) {
+              console.error(JSON.stringify({ renderCalls, state, servicePayload }, null, 2));
+              process.exit(1);
+            }
+          })
+          .catch((error) => { console.error(error); process.exit(1); });
+        """
+    )
+
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_save_validation_clears_in_flight_and_buy_still_saves():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace("class HerosPanel extends HTMLElement", "globalThis.HerosPanel = class HerosPanel extends HTMLElement");
+        class HTMLElement { attachShadow() { return { innerHTML: "", addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; } }; } }
+        const context = {
+          console, HTMLElement, setTimeout, clearTimeout, URL,
+          window: { location: { hash: "" }, addEventListener() {}, removeEventListener() {}, history: { replaceState() {} } },
+          document: { addEventListener() {}, removeEventListener() {}, createElement() { return {}; } },
+          customElements: { get() { return false; }, define() {} },
+          localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+        const panel = new context.HerosPanel();
+        let state = { groups: [{ group_id: "g1", rules: [] }], activeGroupId: "g1", warning: "" };
+        let type = "sell";
+        let calls = [];
+        let renderCalls = [];
+        panel._loadPricingUi = () => state;
+        panel._savePricingUi = (next) => { state = JSON.parse(JSON.stringify(next)); };
+        panel._readPricingUiRuleForm = () => type === "sell"
+          ? { rule_id: "sell-1", label: "Sell", record_type: "sell", day_types: ["mon"], start_time: "00:00", end_time: "23:59", import_rate: "", export_rate: "", other_charges: "", notes: "" }
+          : { rule_id: "buy-1", label: "Buy", record_type: "buy", day_types: ["mon"], start_time: "00:00", end_time: "23:59", import_rate: 1, export_rate: "", other_charges: "", notes: "" };
+        panel._pricingUiValidationForRule = (_group, rule) => rule.record_type === "sell" && !rule.export_rate ? "Sell rate is required." : "";
+        panel._resetPricingUiRuleDraft = () => {};
+        panel._clearPricingEditorUrl = () => {};
+        panel._holdRenderWindow = () => {};
+        panel._render = (force) => { renderCalls.push({ force, warning: state.warning }); };
+        panel._callPricingRecordService = (_groupId, rule) => { calls.push({ ...rule }); return Promise.resolve(); };
+        Promise.resolve()
+          .then(async () => {
+            await panel._handlePricingUiAddRule("sell");
+            const invalidOk = state.warning === "Sell rate is required."
+              && panel._pricingUiSaveInFlight === false
+              && calls.length === 0
+              && renderCalls[0]?.force === true
+              && renderCalls[0]?.warning === "Sell rate is required.";
+            type = "buy";
+            state.warning = "";
+            await panel._handlePricingUiAddRule("buy");
+            const buyOk = state.groups[0].rules.some((rule) => rule.record_type === "buy" && rule.import_rate === 1)
+              && calls.some((rule) => rule.record_type === "buy");
+            if (!invalidOk || !buyOk) {
+              console.error(JSON.stringify({ state, calls, renderCalls, invalidOk, buyOk }, null, 2));
+              process.exit(1);
+            }
+          })
+          .catch((error) => { console.error(error); process.exit(1); });
+        """
+    )
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_save_sell_button_binds_and_calls_service():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace("class HerosPanel extends HTMLElement", "globalThis.HerosPanel = class HerosPanel extends HTMLElement");
+        class HTMLElement { attachShadow() { return { innerHTML: "", addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; } }; } }
+        const context = {
+          console, HTMLElement, setTimeout, clearTimeout, URL,
+          window: { location: { hash: "" }, addEventListener() {}, removeEventListener() {}, history: { replaceState() {} } },
+          document: { addEventListener() {}, removeEventListener() {}, createElement() { return {}; } },
+          customElements: { get() { return false; }, define() {} },
+          localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+        const panel = new context.HerosPanel();
+        const fields = [
+          { type: "hidden", dataset: { pricingRecordType: "sell", pricingRuleField: "rule_id" }, value: "sell-1" },
+          { type: "text", dataset: { pricingRecordType: "sell", pricingRuleField: "label" }, value: "TEMP_SELL_POST_FIX_QA" },
+          { type: "number", dataset: { pricingRecordType: "sell", pricingRuleField: "export_rate" }, value: "1" },
+          { type: "time", dataset: { pricingRecordType: "sell", pricingRuleField: "start_time" }, value: "00:00" },
+          { type: "time", dataset: { pricingRecordType: "sell", pricingRuleField: "end_time" }, value: "23:59" },
+        ];
+        const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => ({
+          type: "checkbox", checked: true, dataset: { pricingRecordType: "sell", pricingRuleDay: day },
+        }));
+        const button = { dataset: { pricingUiAddRule: "sell" }, addEventListener() {} };
+        panel.shadowRoot = {
+          activeElement: null,
+          addEventListener() {},
+          querySelector() { return null; },
+          querySelectorAll(selector) {
+            if (selector === '[data-pricing-ui-add-rule]') return [button];
+            if (selector === '[data-pricing-rule-field][data-pricing-record-type="sell"]') return fields;
+            if (selector === '[data-pricing-rule-day][data-pricing-record-type="sell"]:checked') return days;
+            return [];
+          },
+        };
+        let state = { groups: [{ group_id: "temp-group", rules: [] }], activeGroupId: "temp-group", warning: "" };
+        let calls = [];
+        let renders = [];
+        panel._loadPricingUi = () => state;
+        panel._savePricingUi = (next) => { state = JSON.parse(JSON.stringify(next)); };
+        panel._pricingUiRuleDrafts = { buy: panel._pricingUiRuleDefaults("buy"), sell: panel._pricingUiRuleDefaults("sell") };
+        panel._pricingUiRuleDraft = panel._pricingUiRuleDrafts.sell;
+        panel._pricingUiSaveInFlight = false;
+        panel._resetPricingUiRuleDraft = () => {};
+        panel._clearPricingEditorUrl = () => {};
+        panel._holdRenderWindow = () => {};
+        panel._render = (force) => renders.push({ force, rules: state.groups[0].rules.map((rule) => ({ ...rule })) });
+        panel._callPricingRecordService = (groupId, rule) => { calls.push({ groupId, ...rule, export_rate: Number(rule.export_rate) }); return Promise.resolve(); };
+        panel._criticalPressHandlersBound = true;
+        Promise.resolve()
+          .then(async () => {
+            panel._bindInteractiveControls();
+            if (typeof button.onclick !== "function") throw new Error("Save Sell button was not bound");
+            button.onclick({ preventDefault() {}, stopPropagation() {} });
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            const saved = state.groups[0].rules[0];
+            const ok = calls.length === 1
+              && calls[0].groupId === "temp-group"
+              && calls[0].record_type === "sell"
+              && calls[0].export_rate === 1
+              && saved?.record_type === "sell"
+              && saved?.export_rate === "1"
+              && renders.some((render) => render.force === true && render.rules.some((rule) => rule.record_type === "sell"));
+            if (!ok) {
+              console.error(JSON.stringify({ calls, state, renders, bound: typeof button.onclick }, null, 2));
+              process.exit(1);
+            }
+          })
+          .catch((error) => { console.error(error); process.exit(1); });
+        """
+    )
+    subprocess.run(["node", "-e", script], cwd=ROOT, check=True)
+
+
+def test_pricing_panel_ui_delete_cleanup_clears_editor_and_draft_state():
+    script = textwrap.dedent(
+        r"""
+        const fs = require("fs");
+        const vm = require("vm");
+        let source = fs.readFileSync("examples/www/heros-panel.js", "utf8");
+        source = source.replace(/^import .*$/mg, "");
+        source = source.replace("class HerosPanel extends HTMLElement", "globalThis.HerosPanel = class HerosPanel extends HTMLElement");
+        class HTMLElement {
+          attachShadow() { return { innerHTML: "", addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; } }; }
+        }
+        const context = {
+          console, HTMLElement, URL,
+          window: { location: { href: "http://example.test/heros?heros_page=pricing&heros_editor=modify&heros_action=edit" }, history: { replaceState() {} } },
+          document: { addEventListener() {}, removeEventListener() {} },
+          customElements: { get() { return false; }, define() {} },
+        };
+        context.globalThis = context;
+        vm.createContext(context);
+        vm.runInContext(source, context, { filename: "heros-panel.js" });
+        const panel = new context.HerosPanel();
+        panel._pricingGroupSelectorOpen = true;
+        panel._pricingGroupEditorOpen = true;
+        panel._pricingRecordEditorMode = "sell";
+        panel._pricingUiGroupDraft = { group_id: "deleted-group" };
+        panel._pricingUiForcedGroupType = "fixed";
+        panel._pricingUiRuleDrafts = { buy: { rule_id: "buy-1" }, sell: { rule_id: "sell-1" } };
+        panel._pricingUiRuleDraft = panel._pricingUiRuleDrafts.sell;
+        panel._renderHoldUntil = Date.now() + 10000;
+        panel._clearPricingEditorUrl = () => { panel._urlCleared = true; };
+        panel._clearPricingUiEditorState();
+        const ok = !panel._pricingGroupSelectorOpen
+          && !panel._pricingGroupEditorOpen
+          && panel._pricingRecordEditorMode === ""
+          && Object.keys(panel._pricingUiGroupDraft).length === 0
+          && panel._pricingUiForcedGroupType === ""
+          && !panel._pricingUiRuleDrafts.buy?.rule_id
+          && !panel._pricingUiRuleDrafts.sell?.rule_id
+          && panel._pricingUiRuleDraft === panel._pricingUiRuleDrafts.buy
+          && panel._renderHoldUntil === 0
+          && panel._urlCleared === true;
+        if (!ok) throw new Error("Pricing delete cleanup did not clear editor state");
+        """
+    )
     subprocess.run(["node", "-e", script], cwd=ROOT, check=True)

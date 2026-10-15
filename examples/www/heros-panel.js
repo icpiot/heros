@@ -1236,7 +1236,11 @@ class HerosPanel extends HTMLElement {
   }
 
   _setPage(page) {
+    const previousPage = this._page;
     this._page = this._normalizePage(page);
+    if (this._page === "pricing" && previousPage !== "pricing") {
+      this._invalidatePricingFileLoad();
+    }
     this._savePage(this._page);
     this._syncPolicyChargeLiveRefreshTimer();
     this._render();
@@ -1288,6 +1292,9 @@ class HerosPanel extends HTMLElement {
     const nextPage = this._loadPage();
     if (nextPage !== this._page) {
       this._page = nextPage;
+      if (this._page === "pricing") {
+        this._invalidatePricingFileLoad();
+      }
     }
     this._ensurePricingFileLoaded();
     this._render();
@@ -1473,6 +1480,21 @@ class HerosPanel extends HTMLElement {
     }
   }
 
+  _clearPricingUiEditorState({ clearUrl = true, releaseRenderHold = true } = {}) {
+    this._pricingGroupSelectorOpen = false;
+    this._pricingGroupEditorOpen = false;
+    this._pricingRecordEditorMode = "";
+    this._pricingUiGroupDraft = {};
+    this._pricingUiForcedGroupType = "";
+    this._pricingUiRuleDrafts = {
+      buy: this._pricingUiRuleDefaults("buy"),
+      sell: this._pricingUiRuleDefaults("sell"),
+    };
+    this._pricingUiRuleDraft = this._pricingUiRuleDrafts.buy;
+    if (releaseRenderHold) this._renderHoldUntil = 0;
+    if (clearUrl) this._clearPricingEditorUrl();
+  }
+
   _pricingHelpContent(section) {
     const content = {
       group: [
@@ -1557,6 +1579,9 @@ class HerosPanel extends HTMLElement {
     const text = String(message || "").toLowerCase();
     if (!text) {
       return "";
+    }
+    if (text.includes("group cannot be deleted")) {
+      return "group";
     }
     if (text.includes("export rate") || text.includes("feed-in") || text.includes("sell ")) {
       return "sell";
@@ -1688,7 +1713,7 @@ class HerosPanel extends HTMLElement {
 
   _isPricingAutoCommitRateReady(value) {
     const text = String(value ?? "").trim();
-    return /^\d+(?:\.\d+)?$/.test(text) && Number(text) > 0 && text.length >= 3;
+    return /^\d+(?:\.\d+)?$/.test(text) && Number(text) > 0;
   }
 
   _pricingAutoCommitSignature(kind, payload = {}) {
@@ -3238,7 +3263,7 @@ class HerosPanel extends HTMLElement {
       .then((payload) => {
         const model = this._pricingUiFromScheduleData(this._pricingScheduleDataFromPayload(payload));
         this._pricingFileLoading = false;
-        this._savePricingUiFromBackend(model);
+        this._savePricingUiFromBackend(model, true);
         if (this._page === "pricing" && !this._shouldHoldRender()) {
           this._render();
         }
@@ -3460,14 +3485,14 @@ class HerosPanel extends HTMLElement {
     });
   }
 
-  _savePricingUiFromBackend(model) {
+  _savePricingUiFromBackend(model, authoritative = false) {
     const backendUpdatedAt = Date.parse(String(model?.backendUpdatedAt || ""));
     const existing = this._loadStoredPricingUi();
     const existingLocalUpdatedAt = Number(existing.localUpdatedAt || 0);
     const existingPendingWriteUntil = Number(existing.pendingWriteUntil || 0);
     const incomingGroups = Array.isArray(model?.groups) ? model.groups : [];
     const existingGroups = Array.isArray(existing.groups) ? existing.groups : [];
-    if (
+    if (!authoritative &&
       existingGroups.length > 0
       && (
         Date.now() < existingPendingWriteUntil
@@ -3488,6 +3513,44 @@ class HerosPanel extends HTMLElement {
       localUpdatedAt: Number.isFinite(backendUpdatedAt) ? backendUpdatedAt : Date.now(),
       pendingWriteUntil: 0,
     });
+    if (authoritative) {
+      this._reconcilePricingUiEditorState(this._pricingUiMemoryState);
+    }
+  }
+
+  _reconcilePricingUiEditorState(model) {
+    const groups = Array.isArray(model?.groups) ? model.groups : [];
+    const groupIds = new Set(groups.map((group) => String(group?.group_id || "")).filter(Boolean));
+    const recordIds = new Set(groups.flatMap((group) => (
+      Array.isArray(group?.rules) ? group.rules : []
+    )).map((rule) => String(rule?.rule_id || "")).filter(Boolean));
+    const draftGroupId = String(this._pricingUiGroupDraft?.group_id || "");
+    const activeGroupId = String(model?.activeGroupId || "");
+    const activeGroupMissing = Boolean(activeGroupId) && !groupIds.has(activeGroupId);
+    const draftGroupMissing = Boolean(draftGroupId) && !groupIds.has(draftGroupId);
+    if (!groups.length || activeGroupMissing || draftGroupMissing) {
+      this._pricingGroupSelectorOpen = false;
+      this._pricingGroupEditorOpen = false;
+      this._pricingRecordEditorMode = "";
+      this._pricingUiGroupDraft = {};
+      this._pricingUiForcedGroupType = "";
+      this._pricingUiRuleDrafts = {
+        buy: this._pricingUiRuleDefaults("buy"),
+        sell: this._pricingUiRuleDefaults("sell"),
+      };
+      this._pricingUiRuleDraft = this._pricingUiRuleDrafts.buy;
+      this._clearPricingEditorUrl();
+      return;
+    }
+    for (const recordType of ["buy", "sell"]) {
+      const draft = this._pricingUiRuleDrafts?.[recordType];
+      if (draft?.rule_id && !recordIds.has(String(draft.rule_id))) {
+        this._pricingUiRuleDrafts[recordType] = this._pricingUiRuleDefaults(recordType);
+      }
+    }
+    if (this._pricingUiRuleDraft?.rule_id && !recordIds.has(String(this._pricingUiRuleDraft.rule_id))) {
+      this._pricingUiRuleDraft = this._pricingUiRuleDrafts?.[this._pricingRecordEditorMode] || this._pricingUiRuleDefaults();
+    }
   }
 
   _pricingUiGroupDefaults() {
@@ -4683,12 +4746,30 @@ class HerosPanel extends HTMLElement {
   }
 
   async _handlePricingUiDeleteGroup(groupId) {
-    if (!window.confirm("Delete this rate group and all of its saved buy/sell records?")) {
+    const model = this._loadPricingUi();
+    const storedModel = this._loadStoredPricingUi();
+    const deleteGroupId = String(groupId || "");
+    const group = (model.groups || []).find(
+      (item) => String(item?.group_id || "") === deleteGroupId,
+    );
+    const storedGroup = (storedModel.groups || []).find(
+      (item) => String(item?.group_id || "") === deleteGroupId,
+    );
+    const groupWithLinkedRules = [group, storedGroup].find(
+      (item) => Array.isArray(item?.rules) && item.rules.length > 0,
+    );
+    if (groupWithLinkedRules) {
+      const warningModel = storedGroup ? storedModel : model;
+      warningModel.warning =
+        "Group cannot be deleted until all linked buy and sell rate records have been deleted.";
+      this._savePricingUi(warningModel);
+      this._render();
       return;
     }
-    const model = this._loadPricingUi();
+    if (!window.confirm("Delete this empty rate group?")) {
+      return;
+    }
     const previousModel = JSON.parse(JSON.stringify(model));
-    const deleteGroupId = String(groupId || "");
     model.groups = (model.groups || []).filter((group) => String(group.group_id || "") !== deleteGroupId);
     if (String(model.activeGroupId || "") === deleteGroupId) {
       model.activeGroupId = model.groups[0]?.group_id || "";
@@ -4698,7 +4779,13 @@ class HerosPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingRemoveGroupService(deleteGroupId);
-      this._refreshPricingFileSoon();
+      this._clearPricingUiEditorState();
+      this._pricingUiMemoryState = null;
+      this._pricingFileLoadKey = "";
+      this._pricingFileLoading = false;
+      this._render();
+      this._refreshPricingFileSoon(500);
+      setTimeout(() => this._refreshPricingFileSoon(1200), 700);
     } catch (error) {
       this._savePricingUi({
         ...previousModel,
@@ -4719,6 +4806,7 @@ class HerosPanel extends HTMLElement {
       model.warning = "Add or select a rate group before adding records.";
       this._savePricingUi(model);
       this._render();
+      this._pricingUiSaveInFlight = false;
       return;
     }
     const rule = this._readPricingUiRuleForm(recordType);
@@ -4729,7 +4817,8 @@ class HerosPanel extends HTMLElement {
     if (warning) {
       model.warning = warning;
       this._savePricingUi(model);
-      this._render();
+      this._render(true);
+      this._pricingUiSaveInFlight = false;
       return;
     }
     const existingRules = Array.isArray(group.rules) ? [...group.rules] : [];
@@ -4749,13 +4838,13 @@ class HerosPanel extends HTMLElement {
     this._pricingGroupEditorOpen = false;
     this._clearPricingEditorUrl();
     this._holdRenderWindow();
-    this._render();
+    this._render(true);
     try {
       await this._callPricingRecordService(group.group_id, rule);
       const savedModel = this._loadPricingUi();
       savedModel.warning = "";
       this._savePricingUi(savedModel);
-      this._render();
+      this._render(true);
       this._refreshPricingFileSoon();
     } catch (error) {
       const failedModel = {
@@ -4765,7 +4854,7 @@ class HerosPanel extends HTMLElement {
       };
       this._pricingUiGroupDraft = { ...group };
       this._savePricingUi(failedModel);
-      this._render();
+      this._render(true);
     }
     this._pricingUiSaveInFlight = false;
   }
@@ -4791,6 +4880,14 @@ class HerosPanel extends HTMLElement {
     this._render();
     try {
       await this._callPricingRemoveRecordService(group.group_id, deleteRuleId);
+      const deletedDraftRule = Object.values(this._pricingUiRuleDrafts || {}).some(
+        (draft) => String(draft?.rule_id || "") === deleteRuleId,
+      ) || String(this._pricingUiRuleDraft?.rule_id || "") === deleteRuleId;
+      if (deletedDraftRule || !(group.rules || []).length) {
+        this._clearPricingUiEditorState();
+      }
+      this._pricingUiMemoryState = null;
+      this._pricingFileLoadKey = "";
       this._refreshPricingFileSoon();
     } catch (error) {
       this._savePricingUi(previousModel);
@@ -6835,14 +6932,14 @@ class HerosPanel extends HTMLElement {
       : '<p class="roi-repayment-history__empty">No rate groups have been saved yet.</p>';
     const renderRuleCards = (rules, emptyLabel, emptyDescription) => rules.length
       ? `<div class="roi-repayment-history electricity-rate-history" role="list" aria-label="Electricity rate history" style="width:100%;max-width:none;overflow:visible;">
-          <div class="roi-repayment-history__head roi-repayment-history__head--actions" style="min-width:0;display:grid;grid-template-columns:1fr;gap:4px;"><span>RATE / DAYS / TIME / ACTIONS</span></div>
+          <div class="roi-repayment-history__head roi-repayment-history__head--actions"><span>RATE</span><span>DAYS</span><span>TIME</span><span>ACTIONS</span></div>
           ${rules.map((rule) => {
             const isSellRule = String(rule.record_type || "buy") === "sell";
             const rate = isSellRule ? rule.export_rate : rule.import_rate;
             const rateText = rate !== null && rate !== undefined && String(rate) !== "" ? `${this._formatPricingRate(rate, "cents/kWh")}` : "Not set";
             const days = (Array.isArray(rule.day_types) ? rule.day_types : []).map((day) => this._pricingSummaryDayLabel(day)).join(", ") || "No days selected";
             const time = `${this._formatPricingTime(rule.start_time, "00:00")} – ${this._formatPricingTime(rule.end_time, "23:59")}`;
-            return `<div class="roi-repayment-history__row electricity-rate-history__row" role="listitem" style="min-width:0;display:grid;grid-template-columns:1fr;gap:6px;"><span><strong>${this._escapeHtml(String(rule.label || (isSellRule ? "Sell rate" : "Buy rate")))}</strong><small>${this._escapeHtml(rateText)}</small></span><span>${this._escapeHtml(days)}</span><span>${this._escapeHtml(time)}</span><span class="roi-history-actions" style="grid-column:1;justify-self:start;"><button type="button" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify</button><button type="button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button></span></div>`;
+            return `<div class="roi-repayment-history__row electricity-rate-history__row" role="listitem"><span><strong>${this._escapeHtml(String(rule.label || (isSellRule ? "Sell rate" : "Buy rate")))}</strong><small>${this._escapeHtml(rateText)}</small></span><span>${this._escapeHtml(days)}</span><span>${this._escapeHtml(time)}</span><span class="roi-history-actions"><button type="button" data-pricing-ui-modify-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Modify</button><button type="button" data-pricing-ui-delete-rule="${this._escapeHtml(String(rule.rule_id || ""))}">Delete</button></span></div>`;
           }).join("")}
         </div>`
       : `<p class="roi-repayment-history__empty">${emptyLabel} ${emptyDescription}</p>`;
@@ -6934,7 +7031,7 @@ class HerosPanel extends HTMLElement {
             and supersedes older rates. Buy and sell records are saved separately inside the group.
           </p>
         </article>
-        ${groupWarningMarkup}
+        ${recordWarningMarkup}${buyWarningMarkup}${sellWarningMarkup}
 
         <article class="panel-card roi-settings-card">
           <div class="panel-card__header"><h2>Finance & ROI</h2><span>HEROS</span></div>
@@ -6991,6 +7088,7 @@ class HerosPanel extends HTMLElement {
           <p>Manage date-effective electricity groups and their Buy and Sell rates.</p>
           <section class="roi-settings-section electricity-rates-section" aria-label="Group">
             <div class="roi-section-heading"><h3>Group</h3><button type="button" class="panel-nav__item roi-add-toggle" data-pricing-ui-start-group>Add group</button></div>
+            ${groupWarningMarkup}
             ${renderGroupEditor}
             <div class="pricing-rule-list">${groupCards}</div>
           </section>
@@ -7843,8 +7941,8 @@ class HerosPanel extends HTMLElement {
     return true;
   }
 
-  _render() {
-    if (this._page === "pricing" && this.shadowRoot?.activeElement?.closest?.(".roi-settings-card")) {
+  _render(force = false) {
+    if (!force && this._page === "pricing" && this.shadowRoot?.activeElement?.closest?.(".roi-settings-card")) {
       this._holdRenderWindow(10000);
       return;
     }
@@ -8439,6 +8537,14 @@ class HerosPanel extends HTMLElement {
       };
     });
 
+    this.shadowRoot.querySelectorAll('[data-pricing-ui-start-record]').forEach((button) => {
+      button.onclick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._handlePricingUiStartRecord(button.dataset.pricingUiStartRecord || "buy");
+      };
+    });
+
     this.shadowRoot.querySelectorAll('[data-pricing-ui-select-group]').forEach((button) => {
       button.onclick = (event) => {
         event.preventDefault();
@@ -8760,6 +8866,7 @@ class HerosPanel extends HTMLElement {
         const entry = (this._roiSettingsData?.vpp_rates || []).find((item) => String(item?.entry_id || "") === String(editVppRate.dataset.vppEditRate));
         if (!entry) return;
         this._editingVppRateId = String(entry.entry_id);
+        this.shadowRoot.querySelector("[data-vpp-editor]")?.classList.remove("is-hidden");
         this.shadowRoot.querySelector("[data-vpp-provider]").value = String(entry.provider || "");
         this.shadowRoot.querySelector("[data-vpp-effective-date]").value = this._normalizePricingDate(entry.effective_start_date);
         this.shadowRoot.querySelector("[data-vpp-cents-per-kwh]").value = String(entry.cents_per_kwh ?? "");

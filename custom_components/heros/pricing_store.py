@@ -199,6 +199,8 @@ class PricingScheduleStore:
         """Remove a pricing rate group and persist the schedule."""
         try:
             return await self.hass.async_add_executor_job(self._remove_group_sync, group_id)
+        except ValueError:
+            raise
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Failed to remove pricing group for %s: %s", self.entry_id, err)
             return PricingSchedule()

@@ -28,6 +28,7 @@ test-*.txt
 # Local HA credentials and pytest/Codex artifacts.
 .ha_*_token
 .tmp-pytest-*
+.pytest_tmp/
 .codex_test.py
 heros-v594-*.js
 heros-v595-*.js
