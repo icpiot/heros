@@ -73,8 +73,7 @@ The panel is served from:
 
 `/local/community/heros/heros-panel.js?v=931`
 
-The current report card is loaded by the panel at version `v713` (report card
-build `706`). The Reports page uses a compact, category-first Report Catalog:
+The Reports page uses a compact, category-first Report Catalog:
 select Operational, Financial, Solar, or Data & Diagnostics, then choose a
 report from that category. The legacy duplicate report-button strip is no
 longer part of the rendered page.
