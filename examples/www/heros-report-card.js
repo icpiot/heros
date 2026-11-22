@@ -1,1 +1,1 @@
-import "./heros-report-card.009.js?v=711";
+import "./heros-report-card.009.js?v=712";

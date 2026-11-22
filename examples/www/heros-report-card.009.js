@@ -1,5 +1,5 @@
 // Legacy contract markers: Archived report for ${this._escape(selectedDate)} is incomplete after; Archived report loaded for
-const HEROS_REPORT_CARD_BUILD = "704";
+const HEROS_REPORT_CARD_BUILD = "705";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HEROS_REPORT_CARD_TAG = `heros-report-card-${HEROS_REPORT_CARD_BUILD}`;
 const HEROS_REPORT_PERIODS = [
@@ -6098,6 +6098,7 @@ const showLive = options.showLive !== false;
           box-shadow:0 24px 48px rgba(0, 0, 0, 0.42);
         }
         /* Match the standard HEROS panel controls. */
+        .panel-tabs[hidden] { display:none !important; }
         .panel-tabs button,
         .period-tabs button,
         .date-nav,
