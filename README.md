@@ -73,6 +73,12 @@ The panel is served from:
 
 `/local/community/heros/heros-panel.js?v=931`
 
+The current report card is loaded by the panel at version `v713` (report card
+build `706`). The Reports page uses a compact, category-first Report Catalog:
+select Operational, Financial, Solar, or Data & Diagnostics, then choose a
+report from that category. The legacy duplicate report-button strip is no
+longer part of the rendered page.
+
 The panel ships with built-in theme presets:
 
 - `midnight`
@@ -83,9 +89,9 @@ The Home Assistant deploy scripts are manifest-driven:
 [`scripts/ha_deploy.manifest`](scripts/ha_deploy.manifest)
 controls which repo paths are copied into HA, so the same script shape can be
 reused for other projects by swapping the manifest and environment variables.
-For Codex-driven live sync work, prefer the direct Home Assistant config share
-`\\10.0.0.102\config\` rather than relying on a mapped `H:\` drive being
-present in the current session.
+For authorized HEROS live sync work, keep both paired test instances in sync:
+`\\10.0.0.111\config\` and `\\10.0.0.112\config\`. Verify the target before
+copying files; do not infer a destination from a mapped drive.
 
 ### Development workflow
 
@@ -94,6 +100,16 @@ For ongoing Codex-assisted work in this repo:
 - checkpoint to git after roughly every 5 meaningful implementation updates
 - keep major UI, reporting, mapping, or storage changes reflected in the repo docs
 - avoid bundling unrelated dirty-worktree changes into the same checkpoint
+
+### Modern web guidance
+
+Client-side UI changes are reviewed with Google's
+[Modern Web Guidance](https://github.com/GoogleChrome/modern-web-guidance).
+The review covers accessibility, keyboard and IME behavior, responsive
+layouts, non-mutating JavaScript collection methods, safe DOM updates, and
+content density. Relevant guidance is applied to the panel and report assets
+before deployment, followed by syntax checks, automated tests, and live visual
+inspection.
 
 ### Manual
 
