@@ -1,5 +1,5 @@
 // Legacy contract markers: Archived report for ${this._escape(selectedDate)} is incomplete after; Archived report loaded for
-const HEROS_REPORT_CARD_BUILD = "699";
+const HEROS_REPORT_CARD_BUILD = "703";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HEROS_REPORT_CARD_TAG = `heros-report-card-${HEROS_REPORT_CARD_BUILD}`;
 const HEROS_REPORT_PERIODS = [
@@ -41,8 +41,19 @@ const HEROS_ANALYSIS_VIEWS = new Set([
   "peak-demand", "solar-capture", "forecast-accuracy", "predicted-actual", "solar-compare",
   "scope-health", "export-data", "day-compare", "battery-export", "export-compare", "seasonal-trend", "anomaly", "exception",
 ]);
+const HEROS_REPORT_CATALOG = [
+  { category: "Operational", items: [["Overview", "power"], ["Operational", "operational"], ["Daily Detail", "detail"], ["Trend", "trend"], ["Battery Compare", "battery-compare"], ["Battery Balance", "battery-balance"], ["Battery Flow", "battery-flow"], ["Peak Demand", "peak-demand"], ["Mode Timeline", "mode"]] },
+  { category: "Financial", items: [["Profit", "profit"], ["Cost Summary", "cost-summary"], ["Energy Flow Value", "energy-flow"], ["Savings", "savings"], ["Load Shifting", "load-shifting"], ["Tariff Impact", "tariff"], ["Tariff vs Solar", "tariff-vs-solar"], ["Export Revenue", "export-revenue"], ["Self-Consumption Value", "self-consumption-value"]] },
+  { category: "Solar", items: [["Solar Capture", "solar-capture"], ["Forecast Accuracy", "forecast-accuracy"], ["Self-Sufficiency", "self-sufficiency"], ["Predicted vs Actual", "predicted-actual"], ["Solar Compare", "solar-compare"]] },
+  { category: "Data & Diagnostics", items: [["Scope Health", "scope-health"], ["Export / Data", "export-data"], ["Period Compare", "day-compare"], ["Battery Export", "battery-export"], ["Export Compare", "export-compare"], ["Seasonal Trend", "seasonal-trend"], ["Anomaly", "anomaly"], ["Exception", "exception"]] },
+];
 
 class ByteWattReportCard extends HTMLElement {
+  _renderReportCatalog() {
+    const selected = HEROS_REPORT_CATALOG.find((group) => group.category === this._reportCatalogGroup) || HEROS_REPORT_CATALOG[0];
+    return `<section class="report-catalog" aria-label="Report Catalog"><div class="report-catalog__heading"><h2>Report Catalog</h2><span id="report-catalog-help">Choose a group, then a report</span></div><div class="report-catalog__groups" role="group" aria-describedby="report-catalog-help">${HEROS_REPORT_CATALOG.map((group) => `<button type="button" class="report-catalog__group-button ${selected.category === group.category ? "active" : ""}" aria-pressed="${selected.category === group.category}" data-catalog-group="${this._escape(group.category)}">${this._escape(group.category)}</button>`).join("")}</div><div class="report-catalog__items">${selected.items.map(([label, view]) => `<button type="button" class="report-catalog__item ${this._view === view ? "active" : ""}" aria-current="${this._view === view ? "page" : "false"}" data-view="${view}">${this._escape(label)}</button>`).join("")}</div></section>`;
+  }
+
   setConfig(config) {
     const prefix = config?.entity_prefix || "heros";
     this._config = {
@@ -53,6 +64,7 @@ class ByteWattReportCard extends HTMLElement {
     this.classList.toggle("theme-minimalist", this._config.theme === "minimalist");
     this.classList.toggle("theme-cyberpunk", this._config.theme === "cyberpunk");
     this._view = this._view || "power";
+    this._reportCatalogGroup = this._reportCatalogGroup || "Operational";
     this._historyRequestedKey = this._historyRequestedKey || "";
     this._activeSeries = this._activeSeries || {
       bat: true,
@@ -3256,7 +3268,11 @@ const showLive = options.showLive !== false;
           <div class="panel-header chart-header">
             <div class="chart-header__row chart-header__row--primary">
               <div class="chart-toolbar chart-toolbar--main">
-                <div class="panel-tabs">
+                <div class="report-catalog-slot">
+                  ${this._renderReportCatalog()}
+                </div>
+                <!-- Report navigation is provided by the catalog above. -->
+                <div class="panel-tabs" hidden>
                   <button type="button" class="${this._view === "power" ? "active" : ""}" data-view="power">Power Diagram</button>
                   <button type="button" class="${this._view === "statistical" ? "active" : ""}" data-view="statistical">Statistical Diagram</button>
                   <button type="button" class="${this._view === "mode" ? "active" : ""}" data-view="mode">Mode Timeline</button>
@@ -3271,7 +3287,7 @@ const showLive = options.showLive !== false;
               </div>
             </div>
             <div class="chart-header__row chart-header__row--secondary">
-              ${this._view === "tariff" ? `<div class="chart-tools chart-tools--date">${this._renderTariffPeriodControls(selectedDateLabel)}</div>` : `
+              ${this._view === "tariff" ? `<div class="chart-tools chart-tools--date chart-tools--tariff-period">${this._renderTariffPeriodControls(selectedDateLabel)}</div>` : `
               <div class="chart-tools chart-tools--date">
               <div class="parameter-group parameter-group--date control-group">
               <button class="date-nav" type="button" data-shift-date="-1" aria-label="Previous day">&#8249;</button>
@@ -3391,6 +3407,19 @@ const showLive = options.showLive !== false;
         }
       </section>
     `;
+  }
+
+  _financialTotalsForDays(financialDays) {
+    const sum = (key) => financialDays.reduce((total, item) => total + (Number(item.tariff?.[key]) || 0), 0);
+    const importCost = sum("import");
+    const exportCredit = sum("credit");
+    const supplyCost = sum("supply") / 100; // Saved daily charges are cents.
+    const netCost = importCost + supplyCost - exportCredit;
+    const gridOnlyCost = sum("gridOnly") + supplyCost;
+    return {
+      importCost, exportCredit, supplyCost, netCost, gridOnlyCost,
+      avoidedCost: Math.max(0, gridOnlyCost - netCost),
+    };
   }
 
   _renderAnalysisReport(reporting, kind) {
@@ -3653,11 +3682,13 @@ const showLive = options.showLive !== false;
         return `<div class="analysis-export-compare__row"><b>${index + 1}</b><span>${this._escape(label)}${detail ? `<small>${this._escape(detail)}</small>` : ""}</span><i class="is-battery" style="width:${Math.max(0, Math.min(100, battery / comparisonScale * 100))}%"></i><strong>${this._fmtEnergy(battery)}</strong><i class="is-solar" style="width:${Math.max(0, Math.min(100, solar / comparisonScale * 100))}%"></i><strong>${this._fmtEnergy(solar)}</strong></div>`;
       }).join("") || `<div class="analysis-empty">No non-zero export periods were recorded for this period.</div>`;
       const solarExportTotal = allExportRows.reduce((sum, row) => sum + (Number(row.solarAmount) || 0), 0);
+      const exportCompareLegend = `<div class="analysis-export-compare__legend"><span><i class="is-battery"></i>Battery export</span><span><i class="is-solar"></i>Solar export (estimated)</span></div>`;
       const batteryExportTotal = exportRows.reduce((sum, row) => sum + (Number(row.batteryAmount) || 0), 0);
       content = kind === "export-compare"
         ? `<div class="ring-grid ring-grid--statistical battery-export-hero">${this._ring("Total export", this._fmtEnergy(exportTotal), "export")}</div>${metrics([["Battery export", this._fmtEnergy(batteryExportTotal)], ["Solar export (est.)", this._fmtEnergy(solarExportTotal)], ["Export periods", String(exportRows.length)]])}<div class="analysis-export-compare"><div class="analysis-export-compare__label">${multiDayExport ? "Export by date" : "Export periods"} · largest periods first</div><div class="analysis-export-compare__head"><span>Date / period</span><span>Battery export</span><span>Solar export (est.)</span></div>${comparisonRows}</div><p class="analysis-note">Solar export is estimated from the overlap between provider feed-in and solar generation; the provider does not identify the source of every exported watt. Dates use YYYY-MM-DD.</p>` : `<div class="ring-grid ring-grid--statistical battery-export-hero">${this._ring("Total export", this._fmtEnergy(exportTotal), "export")}</div>${metrics([["Battery export", this._fmtEnergy(batteryExportTotal)], ["Solar export", this._fmtEnergy(solarExportTotal)], ["Export periods", String(exportRows.length)]])}<div class="analysis-ranking"><div class="analysis-ranking__label">${rankingLabel}</div>${rankingRows}</div><p class="analysis-note">Battery Export shows the classified battery-export total; total export remains in the hero for reconciliation. Dates use YYYY-MM-DD.</p>`;
       content = kind === "export-compare"
         ? `<div class="ring-grid ring-grid--statistical battery-export-hero">${this._ring("Total export", this._fmtEnergy(exportTotal), "export")}</div>${metrics([["Battery export", this._fmtEnergy(batteryExportTotal)], ["Solar export (est.)", this._fmtEnergy(solarExportTotal)], ["Export periods", String(exportRows.length)]])}<div class="analysis-export-compare"><div class="analysis-export-compare__label">${multiDayExport ? "Export by date" : "Export periods"} · largest periods first</div><div class="analysis-export-compare__head"><span>Date / period</span><span>Battery export</span><span>Solar export (est.)</span></div>${comparisonRows}</div><p class="analysis-note">Solar export is estimated from the overlap between provider feed-in and solar generation; the provider does not identify the source of every exported watt. Dates use YYYY-MM-DD.</p>` : `<div class="ring-grid ring-grid--statistical battery-export-hero">${this._ring("Battery export", this._fmtEnergy(exportTotal), "export")}</div>${metrics([["Battery export", this._fmtEnergy(batteryExportTotal)], ["Battery export periods", String(exportRows.length)]])}<div class="analysis-ranking"><div class="analysis-ranking__label">${rankingLabel}</div>${rankingRows}</div><p class="analysis-note">Only periods with classified battery export are listed here. The combined Solar export + Battery export report is available under Export Compare. Dates use YYYY-MM-DD.</p>`;
+      if (kind === "export-compare") content = content.replace('<div class="analysis-export-compare">', `${exportCompareLegend}<div class="analysis-export-compare">`);
     } else if (kind === "trend") {
       const daily = dailyEnergy;
       const max = Math.max(...daily.flatMap((item) => [item.solar, item.load]), 0.01);
@@ -3679,13 +3710,7 @@ const showLive = options.showLive !== false;
         const batteryUsed = Math.max(0, number(energyRow.discharge) - number(energyRow.batteryExport));
         return { date, tariff, solarUsed, batteryUsed, solar: number(energyRow.solar), load: number(energyRow.load), grid: number(energyRow.grid), feed: number(energyRow.feed) };
       });
-      const sum = (key) => financialDays.reduce((total, item) => total + number(item.tariff?.[key]), 0);
-      const importCost = sum("import");
-      const exportCredit = sum("credit");
-      const supplyCost = financialDays.reduce((total, item) => total + number(item.tariff?.supply), 0);
-      const netCost = importCost + supplyCost - exportCredit;
-      const gridOnlyCost = sum("gridOnly") + supplyCost;
-      const avoidedCost = Math.max(0, gridOnlyCost - importCost);
+      const { importCost, exportCredit, supplyCost, netCost, gridOnlyCost, avoidedCost } = this._financialTotalsForDays(financialDays);
       const exportKwh = financialDays.reduce((total, item) => total + item.feed, 0);
       const solarExportKwh = dailyEnergy.reduce((total, item) => total + number(item.solarExport), 0);
       const batteryExportKwh = dailyEnergy.reduce((total, item) => total + number(item.batteryExport), 0);
@@ -3696,9 +3721,9 @@ const showLive = options.showLive !== false;
         return total + item.solarUsed * localRate;
       }, 0);
       const money = (value) => `$${this._fmtNumber(value, 2)}`;
-      const rowsMarkup = financialDays.filter((item) => item.tariff?.data || item.solar || item.load || item.feed).map((item, index) => `<div class="analysis-ranking__row"><b>${index + 1}</b><span>${this._escape(item.date)}</span><span>${money(item.tariff?.import || 0)}</span><span>${money(item.tariff?.credit || 0)}</span><strong>${money((item.tariff?.import || 0) + (item.tariff?.supply || 0) - (item.tariff?.credit || 0))}</strong></div>`).join("") || `<div class="analysis-empty">No financial source data is available for this period.</div>`;
+      const rowsMarkup = financialDays.filter((item) => item.tariff?.data || item.solar || item.load || item.feed).map((item, index) => `<div class="analysis-ranking__row"><b>${index + 1}</b><span>${this._escape(item.date)}</span><span>${money(item.tariff?.import || 0)}</span><span>${money(item.tariff?.credit || 0)}</span><strong>${money(this._financialTotalsForDays([item]).netCost)}</strong></div>`).join("") || `<div class="analysis-empty">No financial source data is available for this period.</div>`;
       const financialTable = `<div class="analysis-ranking financial-report__table"><div class="analysis-ranking__head"><span>Date</span><span>Import</span><span>Credit</span><span>Net cost</span></div>${rowsMarkup}</div>`;
-      if (kind === "profit") content = `${metrics([["Net energy value", money(exportCredit - importCost)], ["Export credit", money(exportCredit), "is-positive"], ["Import cost", money(importCost)], ["Supply charges", money(supplyCost)]])}${financialTable}<p class="analysis-note">Profit is export credit minus import cost and supply charges for the selected period. Missing tariff records remain visible through period coverage.</p>`;
+      if (kind === "profit") content = `${metrics([["Net energy value", money(exportCredit - importCost - supplyCost)], ["Export credit", money(exportCredit), "is-positive"], ["Import cost", money(importCost)], ["Supply charges", money(supplyCost)]])}${financialTable}<p class="analysis-note">Profit is export credit minus import cost and supply charges for the selected period. Missing tariff records remain visible through period coverage.</p>`;
       else if (kind === "cost-summary") content = `${metrics([["Import cost", money(importCost)], ["Supply charges", money(supplyCost)], ["Export credit", money(exportCredit), "is-positive"], ["Net cost", money(netCost)]])}${financialTable}<p class="analysis-note">Net cost = import cost + supply charges - export credit. Values use the same saved tariff records as Tariff Impact.</p>`;
       else if (kind === "savings") content = `${metrics([["Avoided grid-only cost", money(avoidedCost), "is-positive"], ["Actual import cost", money(importCost)], ["Grid-only estimate", money(gridOnlyCost)], ["Solar used locally", this._fmtEnergy(selfConsumedKwh)]])}${financialTable}<p class="analysis-note">Savings compares priced household demand against the cost of buying that demand from the grid, using the active tariff.</p>`;
       else if (kind === "load-shifting") content = `${metrics([["Energy shifted", this._fmtEnergy(Math.max(0, avoidedCost > 0 ? selfConsumedKwh + batteryUsedKwh : 0)), "is-positive"], ["Solar used locally", this._fmtEnergy(selfConsumedKwh)], ["Battery supplied", this._fmtEnergy(batteryUsedKwh)], ["Grid import", this._fmtEnergy(totals.grid_consumption)]])}${financialTable}<p class="analysis-note">Load shifting shows solar used on site plus battery-supplied load that avoided a grid import.</p>`;
@@ -6090,6 +6115,24 @@ const showLive = options.showLive !== false;
           color:#06111f;
           box-shadow:0 10px 24px color-mix(in srgb, var(--heros-panel-accent, #00e5ff) 22%, transparent);
         }
+        .report-catalog { width:100%; margin:0 0 8px; border:1px solid var(--heros-panel-border, rgba(0,229,255,.22)); border-radius:10px; padding:8px; background:color-mix(in srgb, var(--card-background-color, #fff) 92%, var(--primary-color, #00e5ff) 8%); }
+        .report-catalog__heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:2px 4px 7px; border-bottom:1px solid var(--heros-panel-border, rgba(0,229,255,.22)); }
+        .report-catalog__heading h2 { margin:0; font-size:1rem; }
+        .report-catalog__heading span { color:var(--heros-panel-muted, #64748b); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; }
+        .report-catalog__groups { display:flex; flex-wrap:wrap; gap:6px; padding:8px 4px 4px; }
+        .report-catalog__group-button { min-height:30px; padding:6px 10px; border:1px solid var(--heros-panel-border, rgba(0,229,255,.22)); border-radius:7px; background:transparent; color:var(--heros-panel-muted, #64748b); font:inherit; font-size:.78rem; font-weight:800; cursor:pointer; }
+        .report-catalog__group-button.active { background:color-mix(in srgb, var(--heros-panel-accent, #00e5ff) 18%, var(--heros-panel-surface, #fff)); border-color:var(--heros-panel-accent, #00e5ff); color:var(--heros-panel-text, #0f172a); }
+        .report-catalog__items { display:flex; flex-wrap:wrap; gap:6px; padding:6px 4px 4px; border-top:1px solid var(--heros-panel-border, rgba(0,229,255,.22)); }
+        .report-catalog__item { min-height:30px; padding:6px 10px; border:1px solid var(--heros-panel-border, rgba(0,229,255,.22)); border-radius:7px; background:var(--heros-panel-surface, #fff); color:var(--heros-panel-text, #0f172a); font:inherit; font-size:.8rem; font-weight:700; cursor:pointer; }
+        .report-catalog__item.active { background:color-mix(in srgb, var(--heros-panel-accent, #00e5ff) 22%, var(--heros-panel-surface, #fff)); border-color:var(--heros-panel-accent, #00e5ff); }
+        .analysis-export-compare__legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin:10px 0 4px; color:var(--secondary-text-color,#64748b); font-size:.78rem; font-weight:700; }
+        .analysis-export-compare__legend span { display:inline-flex; align-items:center; gap:6px; }
+        .analysis-export-compare__legend i { width:10px; height:10px; border-radius:999px; display:inline-block; }
+        .analysis-export-compare__legend .is-battery { background:#20c9ef; }
+        .analysis-export-compare__legend .is-solar { background:#ff9f1c; }
+        .minimalist-report-surface .operational-report__bar i,
+        .minimalist-report-surface .analysis-report__bar i { background:#2563eb !important; }
+        .minimalist-report-surface .operational-report__legend i { background:#2563eb !important; }
         .panel-tabs button:hover,
         .panel-tabs button:focus-visible,
         .period-tabs button:hover,
@@ -6342,6 +6385,16 @@ const showLive = options.showLive !== false;
           color:#0f172a !important;
           border-color:#cbd5e1 !important;
         }
+        .minimalist-report-surface .chart-tools--tariff-period {
+          box-sizing:border-box;
+          display:inline-flex;
+          align-items:center;
+          gap:6px;
+          padding:4px 6px;
+          border:1px solid #bae6fd;
+          border-radius:12px;
+          background:#ecfeff !important;
+        }
         .minimalist-report-surface .chart-header,
         .minimalist-report-surface .analysis-report,
         .minimalist-report-surface .operational-report,
@@ -6393,6 +6446,14 @@ const showLive = options.showLive !== false;
         event.stopPropagation();
         this._view = button.dataset.view;
         this._hassRenderSignature = this._renderSignature();
+        this.render();
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-catalog-group]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._reportCatalogGroup = button.dataset.catalogGroup || "Operational";
         this.render();
       });
     });

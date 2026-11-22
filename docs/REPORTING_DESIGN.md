@@ -7,6 +7,8 @@
 
 Financial reports use Tariff Impact as the layout template: report navigation, date and period controls, summary hero values, chart, legend, and explanatory note remain in the same order and spacing. Desktop summary heroes stay on one row; narrow mobile layouts may wrap.
 
+Saved import and export rates and daily supply charges are in cents. Convert each calculated cost to dollars once before combining financial totals. Cost Summary, Savings, Profit, and Tariff Impact must agree on net cost and avoided grid-only cost for the same dates. Tariff Impact may show the raw daily supply charge in cents when it is explicitly labelled as cents.
+
 Colors are semantic and shared with the overview: solar is fluorescent yellow, grid import is orange, feed-in is green, battery charge and discharge use their existing battery colors, and missing or unavailable data is red or slate grey. Every chart must include an explicit legend and must explain unavailable intervals.
 
 ## Energy Flow Value report

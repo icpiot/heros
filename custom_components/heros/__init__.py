@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any, Optional
 
 import voluptuous as vol
@@ -231,9 +231,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 FOXESS_V2_PLATFORMS = ["sensor", "select"]
 
-PANEL_COMPONENT_NAME = "heros-panel-926"
+PANEL_COMPONENT_NAME = "heros-panel-929"
 PANEL_FRONTEND_URL_PATH = "heros"
-PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=926"
+PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=929"
 PANEL_CONFIG = {
     "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",
@@ -714,8 +714,70 @@ async def _monthly_archive_refresh(hass: HomeAssistant, entry_id: str) -> None:
             })
 
 
+async def _daily_archive_backfill(hass: HomeAssistant, entry_id: str) -> None:
+    """Store completed report days without requiring the Reports page to open."""
+    entry_data = hass.data.get(DOMAIN, {}).get(entry_id, {})
+    if not _archive_provider_supported(entry_data):
+        return
+    yesterday = dt_util.now().date() - timedelta(days=1)
+    lock = entry_data.setdefault("history_archive_lock", asyncio.Lock())
+    if lock.locked():
+        return
+    controller = _archive_controller(hass, entry_id)
+    if controller.task is not None and not controller.task.done():
+        return
+    async with lock:
+        history = controller.history
+        state = await history.async_archive_state()
+        completed_through = str(state.get("daily_archive_completed_through") or "")
+        pending_start = str(state.get("daily_archive_start_date") or "")
+        if completed_through:
+            start = date.fromisoformat(completed_through) + timedelta(days=1)
+        elif pending_start:
+            start = date.fromisoformat(pending_start)
+        else:
+            latest_dates = []
+            for scope_key, _, _ in _history_scope_targets(entry_data):
+                dates = await history.async_record_dates(scope_key)
+                completed_dates = [date.fromisoformat(day) for day in dates
+                                   if day <= yesterday.isoformat()]
+                if completed_dates:
+                    latest_dates.append(max(completed_dates))
+            start = min(latest_dates) + timedelta(days=1) if latest_dates else yesterday
+            await history.async_update_archive_state({"daily_archive_start_date": start.isoformat()})
+        if start > yesterday:
+            return
+        # Keep each job within the archive controller's ten-year date limit.
+        end = min(yesterday, start + timedelta(days=3652))
+        completed = True
+        for scope_key, label, station_id in _history_scope_targets(entry_data):
+            try:
+                scope_completed = await _ensure_report_history_range(
+                    hass, entry_id, scope_key=scope_key,
+                    start_date=start.isoformat(), end_date=end.isoformat(),
+                    label=label, station_id=station_id,
+                )
+                completed = completed and scope_completed
+            except RuntimeError:
+                # A user-started report download won the controller between checks.
+                return
+        if completed:
+            await history.async_update_archive_state({
+                "daily_archive_completed_through": end.isoformat(),
+                "daily_archive_start_date": "",
+            })
+
+
+async def _run_daily_archive_backfill(hass: HomeAssistant, entry_id: str) -> None:
+    """Log maintenance errors so the next scheduled attempt can retry."""
+    try:
+        await _daily_archive_backfill(hass, entry_id)
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception("HEROS daily archive backfill failed for %s", entry_id)
+
+
 def _schedule_archive_maintenance(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Schedule low-frequency archive reconciliation without changing live polling."""
+    """Reconcile completed days and older months without changing live polling."""
     entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if not entry_data or not _archive_provider_supported(entry_data):
         return
@@ -723,13 +785,15 @@ def _schedule_archive_maintenance(hass: HomeAssistant, entry: ConfigEntry) -> No
         return
 
     async def _tick(_now) -> None:
+        await _run_daily_archive_backfill(hass, entry.entry_id)
         await _monthly_archive_refresh(hass, entry.entry_id)
 
     entry_data["history_archive_unsub"] = async_track_time_interval(
         hass,
         _tick,
-        timedelta(hours=6),
+        timedelta(hours=1),
     )
+    hass.async_create_task(_run_daily_archive_backfill(hass, entry.entry_id))
 def _archive_controller(hass: HomeAssistant, entry_id: str) -> ArchiveJobController:
     """Get the sole runtime controller for this loaded HEROS entry."""
     entry_data = hass.data[DOMAIN].get(entry_id)

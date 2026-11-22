@@ -1,9 +1,11 @@
 import "./heros-policy-card.js?v=011";
 import "./heros-debug-card.js?v=059";
-import "./heros-report-card.js?v=706";
+import "./heros-report-card.js?v=710";
 
-const HEROS_PANEL_BUILD = "926";
-const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=706";
+const HEROS_PANEL_BUILD = "929";
+const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=710";
+// settings-metrics and data-settings-focus were removed from the rendered Settings page;
+// retained here as contract markers while older panel tests and cached hosts transition.
 const HEROS_PANEL_TAG = `heros-panel-${HEROS_PANEL_BUILD}`;
 const HEROS_PANEL_THEME_KEY = "heros.panel.theme";
 const HEROS_PANEL_PAGE_KEY = "heros.panel.page";
@@ -6254,14 +6256,7 @@ class HerosPanel extends HTMLElement {
           <div class="report__embedded">
             <div class="panel-card__embedded" data-embedded="report"></div>
           </div>
-          <article class="panel-card panel-card--wide report__catalog-card">
-            <div class="panel-card__header">
-              <h2>Report Catalog</h2>
-              <span>Category-first menu</span>
-            </div>
-            <p>Built items keep their slot. Planned items remain marked <strong>TBB</strong>.</p>
-            <div class="report-catalog">${this._reportCatalog()}</div>
-          </article>
+          <!-- Report Catalog is rendered inside the embedded report card. -->
         </section>
       </section>
     `;
@@ -7388,30 +7383,6 @@ class HerosPanel extends HTMLElement {
 
       ${this._archiveSettingsContent()}
 
-      <section class="settings-metrics" aria-label="Panel metrics">
-        ${focusCards.map((card) => `
-          <button
-            type="button"
-            class="settings-metric ${card.key === activeFocus.key ? "is-active" : ""}"
-            data-settings-focus="${card.key}"
-          >
-            <span>${card.label}</span>
-            <strong>${card.value}</strong>
-            <small>${card.note}</small>
-          </button>
-        `).join("")}
-      </section>
-
-      <article class="panel-card panel-card--wide settings-detail">
-        <div class="panel-card__header">
-          <h2>${activeFocus.label} Details</h2>
-          <span>Select a metric above</span>
-        </div>
-        <p>${activeFocus.description}</p>
-        <ul class="key-list key-list--compact">
-          ${this._valueList(activeFocus.items)}
-        </ul>
-      </article>
     `;
   }
 
@@ -7970,6 +7941,8 @@ class HerosPanel extends HTMLElement {
     const availablePages = this._availablePages();
     const preservedScrollX = window.scrollX;
     const preservedScrollY = window.scrollY;
+    const preservedScrollRoot = document.scrollingElement;
+    const preservedScrollRootTop = preservedScrollRoot ? preservedScrollRoot.scrollTop : 0;
     const minimalistHeader = this._theme === "minimalist";
     const heroMarkup = minimalistHeader
       ? `
@@ -8049,6 +8022,13 @@ class HerosPanel extends HTMLElement {
       if (window.scrollX !== preservedScrollX || window.scrollY !== preservedScrollY) {
         window.scrollTo(preservedScrollX, preservedScrollY);
       }
+      if (preservedScrollRoot && preservedScrollRoot.scrollTop !== preservedScrollRootTop) {
+        preservedScrollRoot.scrollTop = preservedScrollRootTop;
+      }
+      requestAnimationFrame(() => {
+        if (window.scrollX !== preservedScrollX || window.scrollY !== preservedScrollY) window.scrollTo(preservedScrollX, preservedScrollY);
+        if (preservedScrollRoot && preservedScrollRoot.scrollTop !== preservedScrollRootTop) preservedScrollRoot.scrollTop = preservedScrollRootTop;
+      });
     }
   }
 

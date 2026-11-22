@@ -3067,6 +3067,12 @@ button.report-catalog__item {
   grid-column: 4 !important;
   justify-self: end;
 }
+.pricing .electricity-rates-section .electricity-rate-history,
+.pricing .electricity-rates-section .electricity-rate-history__head,
+.pricing .electricity-rates-section .electricity-rate-history__row {
+  width:100% !important;
+  max-width:none !important;
+}
 .roi-repayment-history.electricity-rate-history,
 .roi-repayment-history.electricity-group-history {
   width: 100% !important;

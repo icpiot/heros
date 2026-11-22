@@ -152,7 +152,7 @@ type: module
 Reporting card:
 
 ```yaml
-url: /local/community/heros/heros-report-card.js?v=706
+url: /local/community/heros/heros-report-card.js?v=710
 type: module
 ```
 
@@ -194,7 +194,7 @@ type: module
 Reporting card next iteration:
 
 ```yaml
-url: /local/community/heros/heros-report-card.js?v=706
+url: /local/community/heros/heros-report-card.js?v=710
 type: module
 ```
 
