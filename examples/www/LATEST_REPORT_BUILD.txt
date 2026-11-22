@@ -1,1 +1,1 @@
-url: /local/community/heros/heros-report-card.js?v=710
+url: /local/community/heros/heros-report-card.js?v=711

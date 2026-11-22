@@ -1898,7 +1898,6 @@ button.report-catalog__item {
 
 .pricing-record-section__grid input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: invert(68%) sepia(80%) saturate(645%) hue-rotate(157deg) brightness(101%) contrast(101%);
   opacity: 0.95;
 }
 

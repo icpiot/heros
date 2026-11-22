@@ -1,5 +1,5 @@
 // Legacy contract markers: Archived report for ${this._escape(selectedDate)} is incomplete after; Archived report loaded for
-const HEROS_REPORT_CARD_BUILD = "703";
+const HEROS_REPORT_CARD_BUILD = "704";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HEROS_REPORT_CARD_TAG = `heros-report-card-${HEROS_REPORT_CARD_BUILD}`;
 const HEROS_REPORT_PERIODS = [
@@ -1180,7 +1180,7 @@ class ByteWattReportCard extends HTMLElement {
       this._cacheRenderedReport(currentSelection, selectedDate, reporting);
       return displayState;
     }
-    const snapshot = JSON.parse(JSON.stringify(reporting || {}));
+    const snapshot = structuredClone(reporting || {});
     const historicalPowerDiagram = this._powerDiagramFromRecord(selectedRecord);
     const historicalNeedsRefresh = this._historyRecordNeedsRefresh(selectedRecord, selectedDate);
     const displayPowerDiagram = this._trimTrailingPlaceholderTail(historicalPowerDiagram);
@@ -1233,7 +1233,7 @@ class ByteWattReportCard extends HTMLElement {
 
   _clonePlain(value) {
     return value && typeof value === "object"
-      ? JSON.parse(JSON.stringify(value))
+      ? structuredClone(value)
       : value;
   }
 
@@ -1718,7 +1718,7 @@ class ByteWattReportCard extends HTMLElement {
   }
 
   _archivePendingReporting(reporting, selectedDate) {
-    const snapshot = JSON.parse(JSON.stringify(reporting || this._lastReportingForDisplay?.reporting || {}));
+    const snapshot = structuredClone(reporting || this._lastReportingForDisplay?.reporting || {});
     snapshot.reporting_date = selectedDate;
     snapshot.meta = {
       ...(snapshot.meta || {}),
@@ -3665,7 +3665,7 @@ const showLive = options.showLive !== false;
       const exportTotal = exportRows.reduce((sum, row) => sum + row.amount, 0);
       const dateHeader = multiDayExport ? "<span>Date</span>" : "";
       const dateCell = (row) => multiDayExport ? `<span>${this._escape(row.date)}</span>` : "";
-      const ranking = [...exportRows].sort((left, right) => right.amount - left.amount);
+      const ranking = exportRows.toSorted((left, right) => right.amount - left.amount);
       const rankingScale = Math.max(...ranking.map((row) => row.amount), 0.01);
       const rankingLabel = multiDayExport ? "Battery export (kWh) - dates shown newest first" : "Battery export periods (kWh) - largest periods first";
       const rankingRows = ranking.map((row, index) => {
@@ -3763,8 +3763,8 @@ const showLive = options.showLive !== false;
       const spread = validSoc.length ? Math.max(...validSoc) - Math.min(...validSoc) : 0;
       content = `${metrics([["Fleet average SOC", this._fmtPercent(average)], ["SOC spread", this._fmtPercent(spread)], ["Highest SOC", this._fmtPercent(validSoc.length ? Math.max(...validSoc) : null)], ["Lowest SOC", this._fmtPercent(validSoc.length ? Math.min(...validSoc) : null)]])}<div class="analysis-chart-label">Battery state of charge (%) · marker shows fleet average</div><div class="analysis-balance">${batteryRows.map((row) => { const soc = Math.max(0, Math.min(100, number(row.soc))); return `<div class="analysis-balance__row"><strong>${this._escape(row.label)}</strong><div><i style="width:${soc}%"></i><em style="left:${average}%" title="Fleet average"></em></div><span>${this._fmtPercent(row.soc)}</span></div>`; }).join("")}</div><p class="analysis-note">${batteryRows.length > 1 ? "The marker shows fleet average SOC; shorter bars indicate batteries below the fleet level." : "Balance needs two or more provider battery rows. The current aggregate SOC is shown for reference."}</p>`;
     } else if (kind === "peak-demand") {
-      const ranked = [...dailyEnergy].sort((a, b) => b.load - a.load);
-      const ordered = [...dailyEnergy].sort((a, b) => b.date.localeCompare(a.date));
+      const ranked = dailyEnergy.toSorted((a, b) => b.load - a.load);
+      const ordered = dailyEnergy.toSorted((a, b) => b.date.localeCompare(a.date));
       const scale = Math.max(...ordered.map((row) => row.load), .01);
       content = `${metrics([["Highest demand", this._fmtEnergy(ranked[0]?.load)], ["Peak date", ranked[0]?.date || "—"], ["Average demand", this._fmtEnergy(average("load"))], ["Period coverage", `${dailyEnergy.length}/${expectedPeriodDays} days`]])}<div class="analysis-ranking"><div class="analysis-ranking__label">Household load (kWh) · dates shown newest first</div>${ordered.map((row, index) => `<div><b>${index + 1}</b><span>${this._escape(row.date)}</span><i style="width:${row.load / scale * 100}%"></i><strong>${this._fmtEnergy(row.load)}</strong></div>`).join("") || `<div class="analysis-empty">No demand records are available.</div>`}</div><p class="analysis-note">Peak demand is the largest household-load total within the selected period. Dates are shown newest first; coverage shows available archive days against the expected period.</p>`;
     } else if (kind === "solar-capture") {
@@ -3806,7 +3806,7 @@ const showLive = options.showLive !== false;
       content = `${metrics([[`Selected ${periodName.toLowerCase()}`, selectedRangeLabel], [`Previous ${periodName.toLowerCase()}`, previousRangeLabel], ["Solar change", this._fmtEnergy(Math.abs(delta("solar_generation")))], ["Load change", this._fmtEnergy(Math.abs(delta("load_consumption")))]])}<div class="analysis-table"><div class="analysis-table__row is-head"><span>Measure</span><span>Selected ${this._escape(periodName)}</span><span>Previous ${this._escape(periodName)}</span><span>Change</span></div>${[["Solar", "solar_generation"], ["Household load", "load_consumption"], ["Grid import", "grid_consumption"], ["Feed-in", "feed_in"]].map(([label,key]) => `<div class="analysis-table__row"><strong>${label}</strong><span>${this._fmtEnergy(selectedTotals[key])}</span><span>${this._fmtEnergy(previousTotals[key])}</span><span>${delta(key) >= 0 ? "+" : "−"}${this._fmtEnergy(Math.abs(delta(key)))}</span></div>`).join("")}</div><p class="analysis-note">The selected ${periodName.toLowerCase()} is compared with the immediately preceding ${periodName.toLowerCase()} of the same length. Date ranges are shown above.</p>`;
     } else if (kind === "seasonal-trend" || kind === "anomaly") {
       const averageSolar = average("solar"); const selected = kind === "anomaly" ? dailyEnergy.filter((row) => Math.abs(row.solar - averageSolar) > Math.max(1, averageSolar * .35)) : dailyEnergy;
-      const ordered = [...selected].sort((a, b) => b.date.localeCompare(a.date));
+      const ordered = selected.toSorted((a, b) => b.date.localeCompare(a.date));
       const scale = Math.max(...ordered.map((row) => row.solar), .01);
       const rankingLabel = kind === "anomaly" ? "Solar generation (kWh) · deviation from selected-period average" : "Solar generation (kWh)";
       content = `${metrics([[kind === "anomaly" ? "Flagged days" : "Days shown", String(selected.length)], ["Average solar", this._fmtEnergy(averageSolar)], ["Average load", this._fmtEnergy(average("load"))], ["Solar range", this._fmtEnergy(Math.max(...dailyEnergy.map((row)=>row.solar),0) - Math.min(...dailyEnergy.map((row)=>row.solar),0))]])}<div class="analysis-ranking"><div class="analysis-ranking__label">${rankingLabel}</div>${ordered.map((row, index) => `<div><b>${index + 1}</b><span>${kind === "anomaly" ? (row.solar >= averageSolar ? "Above average" : "Below average") : this._escape(row.date)}</span>${kind === "anomaly" ? `<small>${this._escape(row.date)}</small>` : ""}<i style="width:${row.solar / scale * 100}%"></i><strong>${this._fmtEnergy(row.solar)}</strong></div>`).join("") || `<div class="analysis-empty">No solar anomalies meet the current threshold.</div>`}</div><p class="analysis-note">${kind === "anomaly" ? "An anomaly is a solar day more than 35% from the selected-period average; it is a review signal, not a fault diagnosis. Dates are shown newest first." : "Values are shown newest first for the selected period. Coverage is reported against the expected period length."}</p>`;
@@ -4591,7 +4591,7 @@ const showLive = options.showLive !== false;
     }
     const markers = this.shadowRoot?.querySelector("[data-chart-hover-markers]");
     if (markers) {
-      markers.innerHTML = "";
+      markers.replaceChildren();
       delete markers.dataset.renderedPointKey;
     }
     this._hideChartTooltip();

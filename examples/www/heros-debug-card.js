@@ -536,7 +536,7 @@ class ByteWattDebugCard extends HTMLElement {
   }
 
   _selectedReportSnapshot(reporting) {
-    const snapshot = reporting && typeof reporting === "object" ? JSON.parse(JSON.stringify(reporting)) : {};
+    const snapshot = reporting && typeof reporting === "object" ? structuredClone(reporting) : {};
     const range = this._debugRange();
     const selectedDate = range.displayDate || this._formatLocalDate(range.anchor) || "";
     const records = this._selectedHistoryRecords();

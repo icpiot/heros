@@ -1,9 +1,9 @@
 import "./heros-policy-card.js?v=011";
 import "./heros-debug-card.js?v=059";
-import "./heros-report-card.js?v=710";
+import "./heros-report-card.js?v=711";
 
-const HEROS_PANEL_BUILD = "929";
-const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=710";
+const HEROS_PANEL_BUILD = "930";
+const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=711";
 // settings-metrics and data-settings-focus were removed from the rendered Settings page;
 // retained here as contract markers while older panel tests and cached hosts transition.
 const HEROS_PANEL_TAG = `heros-panel-${HEROS_PANEL_BUILD}`;
@@ -3637,7 +3637,7 @@ class HerosPanel extends HTMLElement {
       } else target.value = "";
       input.remove(); target.hidden = false; this._updatePricingActionLinks();
     };
-    input.addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); finish(); } });
+    input.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); finish(); } });
     input.addEventListener("blur", finish, { once: true });
     input.focus();
     return true;
@@ -4510,7 +4510,7 @@ class HerosPanel extends HTMLElement {
   }
 
   _pricingUiSortedGroups(model = this._loadPricingUi()) {
-    return [...(Array.isArray(model.groups) ? model.groups : [])].sort((a, b) => (
+    return (Array.isArray(model.groups) ? model.groups : []).toSorted((a, b) => (
       String(b.effective_start_date || "").localeCompare(String(a.effective_start_date || ""))
     ));
   }
@@ -4518,7 +4518,7 @@ class HerosPanel extends HTMLElement {
   async _handlePricingUiSaveGroup(updateActive = false) {
     if (this._pricingUiSaveInFlight) return;
     const model = this._loadPricingUi();
-    const previousModel = JSON.parse(JSON.stringify(model));
+    const previousModel = structuredClone(model);
     const activeGroup = this._pricingUiActiveGroup(model);
     const group = this._readPricingUiGroupForm();
     if (this._pricingUiForcedGroupType) {
@@ -4771,7 +4771,7 @@ class HerosPanel extends HTMLElement {
     if (!window.confirm("Delete this empty rate group?")) {
       return;
     }
-    const previousModel = JSON.parse(JSON.stringify(model));
+    const previousModel = structuredClone(model);
     model.groups = (model.groups || []).filter((group) => String(group.group_id || "") !== deleteGroupId);
     if (String(model.activeGroupId || "") === deleteGroupId) {
       model.activeGroupId = model.groups[0]?.group_id || "";
@@ -4802,7 +4802,7 @@ class HerosPanel extends HTMLElement {
     if (this._pricingUiSaveInFlight) return;
     this._pricingUiSaveInFlight = true;
     const model = this._loadPricingUi();
-    const previousModel = JSON.parse(JSON.stringify(model));
+    const previousModel = structuredClone(model);
     const group = this._pricingUiActiveGroup(model);
     if (!group) {
       model.warning = "Add or select a rate group before adding records.";
@@ -4866,7 +4866,7 @@ class HerosPanel extends HTMLElement {
       return;
     }
     const model = this._loadPricingUi();
-    const previousModel = JSON.parse(JSON.stringify(model));
+    const previousModel = structuredClone(model);
     const group = this._pricingUiActiveGroup(model);
     if (!group) {
       return;
