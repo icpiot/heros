@@ -231,9 +231,9 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS = ["sensor", "number", "time", "switch", "button", "select"]
 FOXESS_V2_PLATFORMS = ["sensor", "select"]
 
-PANEL_COMPONENT_NAME = "heros-panel-930"
+PANEL_COMPONENT_NAME = "heros-panel-931"
 PANEL_FRONTEND_URL_PATH = "heros"
-PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=930"
+PANEL_MODULE_URL = "/local/community/heros/heros-panel.js?v=931"
 PANEL_CONFIG = {
     "title": "HEROS (Home Energy Reporting & Optimisation System)",
     "subtitle": "Live energy control, custom theming, and provider-aware dashboards.",

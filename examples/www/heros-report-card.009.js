@@ -1,5 +1,5 @@
 // Legacy contract markers: Archived report for ${this._escape(selectedDate)} is incomplete after; Archived report loaded for
-const HEROS_REPORT_CARD_BUILD = "705";
+const HEROS_REPORT_CARD_BUILD = "706";
 const TODAY_HISTORY_REFRESH_MS = 60_000;
 const HEROS_REPORT_CARD_TAG = `heros-report-card-${HEROS_REPORT_CARD_BUILD}`;
 const HEROS_REPORT_PERIODS = [

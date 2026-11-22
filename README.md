@@ -71,7 +71,7 @@ No `panel_custom.yaml` entry is required.
 
 The panel is served from:
 
-`/local/community/heros/heros-panel.js?v=930`
+`/local/community/heros/heros-panel.js?v=931`
 
 The panel ships with built-in theme presets:
 

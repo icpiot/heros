@@ -1,9 +1,9 @@
 import "./heros-policy-card.js?v=011";
 import "./heros-debug-card.js?v=059";
-import "./heros-report-card.js?v=712";
+import "./heros-report-card.js?v=713";
 
-const HEROS_PANEL_BUILD = "930";
-const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=712";
+const HEROS_PANEL_BUILD = "931";
+const HEROS_REPORT_CARD_MODULE_URL = "./heros-report-card.js?v=713";
 // settings-metrics and data-settings-focus were removed from the rendered Settings page;
 // retained here as contract markers while older panel tests and cached hosts transition.
 const HEROS_PANEL_TAG = `heros-panel-${HEROS_PANEL_BUILD}`;
