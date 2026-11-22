@@ -392,8 +392,8 @@ Open an issue at https://github.com/icpiot/heros/issues.
 
 ## Credits
 
-Originally built with the Home Assistant community and OpenAI Codex. Subsequent
-contributors are credited in the commit history.
+Originally built with the Home Assistant community and ChatGPT, then continued
+with OpenAI Codex. Subsequent contributors are credited in the commit history.
 
 
 
